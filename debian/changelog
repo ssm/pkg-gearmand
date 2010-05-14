@@ -1,0 +1,129 @@
+gearmand (0.13-1) unstable; urgency=low
+
+  * New upstream release. (Closes: #581517)
+
+ -- Monty Taylor <mordred@inaugust.com>  Fri, 14 May 2010 06:48:17 +0200
+
+gearmand (0.12-1) unstable; urgency=low
+
+  * Cleaned up docs/api and docs/dev. (Closes: #562428)
+  * New upstream release. 
+  * Removed libgearman-server0 and libgearman-server-dev packages. Upstream
+    has removed these as installed libraries. 
+  * Updated to source format 3.0.
+  * New standards version 3.8.4.
+  * Added -dev depend on libevent-dev (Closes: #569734)
+
+ -- Monty Taylor <mordred@inaugust.com>  Thu, 18 Feb 2010 12:33:40 -0800
+
+gearmand (0.11-1) unstable; urgency=low
+
+  * Cleaned up debian/rules.
+  * New upstream release. 
+  * Added entries to the copyright file. 
+
+ -- Monty Taylor <mordred@inaugust.com>  Wed, 02 Dec 2009 12:45:07 -0800
+
+gearmand (0.10-2) unstable; urgency=low
+
+  * Fixed an empty libgearman-server-dev package.
+  * Added a patch to prevent writing test files into /tmp.  
+  * Removed lintian override now that the manpages are split.
+
+ -- Monty Taylor <mordred@inaugust.com>  Sun, 11 Oct 2009 00:57:35 -0700
+
+gearmand (0.10-1) unstable; urgency=low
+
+  * Added doc-base entries for documentation.
+  * Added lintian-override for arch-dep-package-has-big-usr-share. The files
+    are all manpages, which do in fact need to be in the package. 
+  * New upstream version. 
+  * Removed postgres include path hack. 
+
+ -- Monty Taylor <mordred@inaugust.com>  Mon, 28 Sep 2009 21:43:31 -0700
+
+gearmand (0.9-5) unstable; urgency=low
+
+  * Fix LSB init script header. Thanks Petter. (Closes: #544770)
+  * Updated standards version to 3.8.3.
+
+ -- Monty Taylor <mordred@inaugust.com>  Mon, 07 Sep 2009 15:08:39 -0700
+
+gearmand (0.9-4) unstable; urgency=low
+
+  * Clean up /var/lib/gearman.
+  * Put priority back to optional. It's sort of clear that setting it to
+    extra was the wrong choice.
+
+ -- Monty Taylor <mordred@inaugust.com>  Tue, 11 Aug 2009 10:06:22 -0700
+
+gearmand (0.9-3) unstable; urgency=low
+
+  * Added missing -dev depends on libpq-dev and libsqlite-dev reported
+    against Ubuntu. (LP: #408433)
+  * Test for existence of daemon in startup script to comply with policy.
+    (Closes: #539757)
+  * Give gearman a real home dir - it'll need somewhere to stick sqlite queues.
+
+ -- Monty Taylor <mordred@inaugust.com>  Tue, 04 Aug 2009 10:18:57 -0700
+
+gearmand (0.9-2) unstable; urgency=low
+
+  * Removed a stray chown that was left in below.
+
+ -- Monty Taylor <mordred@inaugust.com>  Sun, 02 Aug 2009 12:06:29 -0700
+
+gearmand (0.9-1) unstable; urgency=low
+
+  [ Thomas Koch ]
+  * Fixed init script to actually work. (Closes: #538121)
+  * Create gearman user to own pid and log files.
+  * Provide and parse /etc/default/gearman-job-server.
+
+  [ Monty Taylor ]
+  * Add depend on adduser.
+  * New upstream release.
+  * Added build dep on libsqlite3-dev and libpq-dev.
+  * Added workaround for postgres include file location madness. Better fix
+    coming from upstream next release.
+  * Lowered priority to extra, because libmemcached and libdrizzle are both
+    extra to follow policy.
+  * Added -dev depends on -dev packages of libraries needed. (Closes: #538015)
+  * Added direct depend on libgearman1 for gearman-job-server and gearman-tools.
+  * Added gensymbols files libgearman1.symbols.
+  * Don't run tests on s390. 
+
+ -- Monty Taylor <mordred@inaugust.com>  Thu, 30 Jul 2009 16:09:36 -0700
+
+gearmand (0.8-2) unstable; urgency=low
+
+  * Reverted gearman-server to gearman-job-server. The Perl server already
+    has this package name.
+
+ -- Monty Taylor <mordred@inaugust.com>  Fri, 10 Jul 2009 01:31:59 -0700
+
+gearmand (0.8-1) unstable; urgency=low
+
+  * Removed perl from build-depends, it's already provided.
+  * Added procps to build-depends so that we can use kill in make test.
+  * New upstream release.
+
+ -- Monty Taylor <mordred@inaugust.com>  Fri, 10 Jul 2009 01:11:15 -0700
+
+gearmand (0.7-1) unstable; urgency=low
+
+  * Added depend on libgearman1 to libgearman-dev. (Closes: #531655)
+  * Aligned section with the one in the override file.
+  * Renamed gearman-worker to gearman-tools on request of upstream.
+  * Renamed gearman-job-server to gearman-server on request of upstream.
+  * Fixed typo in init script.
+  * Updated standards version to 3.8.2.
+  * New upstream release.
+
+ -- Monty Taylor <mordred@inaugust.com>  Sun, 21 Jun 2009 11:01:50 -0700
+
+gearmand (0.6-1) unstable; urgency=low
+
+  * Initial release. (Closes: #528309)
+
+ -- Monty Taylor <mordred@inaugust.com>  Mon, 11 May 2009 15:08:16 -0700

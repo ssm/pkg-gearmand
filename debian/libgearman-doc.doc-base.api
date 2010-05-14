@@ -1,0 +1,9 @@
+Document: libgearman-api
+Title: libgearman API Documentation
+Author: Eric Day
+Abstract: Public API doxygen descriptions for libgearman
+Section: Programming/C
+
+Format: HTML
+Index: /usr/share/doc/libgearman-doc/api/html/index.html
+Files: /usr/share/doc/libgearman-doc/api/html/*.html 

@@ -1,0 +1,9 @@
+Document: libgearman-dev
+Title: libgearman Developer Documentation
+Author: Eric Day
+Abstract: Internal developer doxygen descriptions for libgearman
+Section: Programming/C
+
+Format: HTML
+Index: /usr/share/doc/libgearman-doc/dev/html/index.html
+Files: /usr/share/doc/libgearman-doc/dev/html/*.html 

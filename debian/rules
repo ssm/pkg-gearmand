@@ -1,0 +1,52 @@
+#!/usr/bin/make -f
+
+CFLAGS=
+CXXFLAGS=
+
+DEB_BUILD_ARCH := $(shell dpkg-architecture -qDEB_BUILD_ARCH)
+
+TMP=$(CURDIR)/debian/tmp/
+
+override_dh_auto_configure:
+	dh_auto_configure -- --disable-rpath
+
+override_dh_auto_test:
+ifneq (${DEB_BUILD_ARCH},s390)
+	$(MAKE) test
+endif
+
+build: build-stamp
+build-stamp:
+	dh build
+	$(MAKE) docs
+	touch build-stamp
+
+clean:
+	dh clean
+	# Keep this here until we delete api and dev in the upstream clean rule
+	rm -rf docs/api docs/dev
+	find docs
+
+install: build install-stamp
+install-stamp:
+	dh --until auto_install install
+	# Run gensymbols
+	dpkg-gensymbols -c -plibgearman4 -Idebian/libgearman4.symbols -e${TMP}/usr/lib/libgearman.so 
+	dh_install --fail-missing -X DEBIAN/symbols
+	dh --after auto_install install
+
+	touch install-stamp
+
+
+binary-arch: install
+	dh binary-arch --before strip
+	dh_strip --dbg-package=libgearman-dbg
+	dh binary-arch --after strip
+
+binary-indep: install
+	dh binary-indep
+
+binary: binary-arch binary-indep
+
+get-orig-source:
+	uscan --verbose --force-download --rename --repack --destdir=..

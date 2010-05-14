@@ -1,0 +1,23 @@
+Format-Specification: http://wiki.debian.org/Proposals/CopyrightFormat
+Debianized-By: Ben Morris <ben@poppinphresh.com>
+Debianized-Date: Sat, 04 Apr 2009 21:36:42 -0400
+Original-Source: https://launchpad.net/gearmand/+download
+
+Files: libgearman-server/queue_libsqlite3.*
+Copright: Copyright (C) 2009, Cory Bennett
+License: BSD
+
+Files: debian/*
+Copyright: Copyright (c) 2009, Ben Morris and Monty Taylor
+License: GPL-3
+
+Files: *
+Copyright: Copyright (c) 2008, Brian Aker and Eric Day
+License: BSD
+
+On Debian GNU/Linux systems, the complete text of the BSD License can
+be found in `/usr/share/common-licenses/BSD'.
+
+On Debian GNU/Linux systems, the complete text of the GNU General
+Public License v3 can be found in `/usr/share/common-licenses/GPL-3'.
+
