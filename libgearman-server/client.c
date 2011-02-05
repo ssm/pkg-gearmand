@@ -44,7 +44,7 @@ gearman_server_client_create(gearman_server_con_st *con,
     }
     else
     {
-      client= malloc(sizeof(gearman_server_client_st));
+      client= (gearman_server_client_st *)malloc(sizeof(gearman_server_client_st));
       if (client == NULL)
       {
         gearman_log_error(con->thread->gearman, "gearman_server_client_create", "malloc");
@@ -80,7 +80,10 @@ void gearman_server_client_free(gearman_server_client_st *client)
 
     /* If this was a foreground job and is now abandoned, mark to not run. */
     if (client->job->client_list == NULL)
-      client->job->state|= GEARMAN_SERVER_JOB_IGNORE;
+    {
+      client->job->ignore_job= true;
+      client->job->job_queued= false;
+    }
   }
 
   if (client->options.allocated)

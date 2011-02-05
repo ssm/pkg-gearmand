@@ -1,5 +1,4 @@
 usr/include/libgearman/*
 usr/lib/libgearman.so
-usr/lib/libgearman.la
 usr/lib/pkgconfig/*
 usr/share/man/man3/*

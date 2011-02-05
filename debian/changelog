@@ -1,3 +1,14 @@
+gearmand (0.14-1) unstable; urgency=low
+
+  * New upstream release. (Closes: #590116)
+  * Don't install .la file. (Closes: #590967)
+  * Listen on localhost by default - thanks Francois. (Closes: #609640)
+  * New standards version 3.9.1.
+  * Cleaned up debian/rules.
+  * Install the upstream changelog.
+
+ -- Monty Taylor <mordred@inaugust.com>  Sat, 05 Feb 2011 09:21:29 -0800
+
 gearmand (0.13-1) unstable; urgency=low
 
   * New upstream release. (Closes: #581517)
