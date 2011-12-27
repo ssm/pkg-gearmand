@@ -2,7 +2,10 @@ Source: gearmand
 Section: misc
 Priority: optional
 Maintainer: Monty Taylor <mordred@inaugust.com>
-Build-Depends: debhelper (>= 7.0.50), libevent-dev, uuid-dev, libdrizzle-dev (>= 0.3), doxygen, libmemcached-dev (>= 0.30), libsqlite3-dev, libpq-dev, memcached, procps, automake, autoconf, libtool
+Build-Depends: debhelper (>= 7.0.50), libevent-dev, uuid-dev,
+ libdrizzle-dev (>= 0.3), doxygen, libmemcached-dev (>= 0.30),
+ libsqlite3-dev, libpq-dev, memcached, procps, automake, autoconf,
+ libtool, libboost-program-options-dev, libevent-dev, libcloog-ppl-dev
 Standards-Version: 3.9.1
 Homepage: http://launchpad.net/gearmand
 Vcs-Browser: http://bazaar.launchpad.net/~gearman-developers/debian/sid/gearmand/sid/files
