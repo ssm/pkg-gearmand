@@ -13,8 +13,8 @@
 
 m4_ifndef([AC_AUTOCONF_VERSION],
   [m4_copy([m4_PACKAGE_VERSION], [AC_AUTOCONF_VERSION])])dnl
-m4_if(m4_defn([AC_AUTOCONF_VERSION]), [2.63],,
-[m4_warning([this file was generated for autoconf 2.63.
+m4_if(m4_defn([AC_AUTOCONF_VERSION]), [2.65],,
+[m4_warning([this file was generated for autoconf 2.65.
 You have another version of autoconf.  It may work, but is not guaranteed to.
 If you have problems, you may need to regenerate the build system entirely.
 To do so, use the procedure documented by the package, typically `autoreconf'.])])
@@ -1027,6 +1027,7 @@ m4_include([m4/pandora_64bit.m4])
 m4_include([m4/pandora_canonical.m4])
 m4_include([m4/pandora_check_compiler_version.m4])
 m4_include([m4/pandora_check_cxx_standard.m4])
+m4_include([m4/pandora_clock_gettime.m4])
 m4_include([m4/pandora_enable_dtrace.m4])
 m4_include([m4/pandora_ensure_gcc_version.m4])
 m4_include([m4/pandora_extensions.m4])
@@ -1034,6 +1035,7 @@ m4_include([m4/pandora_have_better_malloc.m4])
 m4_include([m4/pandora_have_gcc_atomics.m4])
 m4_include([m4/pandora_have_libdrizzle.m4])
 m4_include([m4/pandora_have_libevent.m4])
+m4_include([m4/pandora_have_libgtest.m4])
 m4_include([m4/pandora_have_libmemcached.m4])
 m4_include([m4/pandora_have_libpq.m4])
 m4_include([m4/pandora_have_libsqlite3.m4])
@@ -1044,7 +1046,6 @@ m4_include([m4/pandora_libtool.m4])
 m4_include([m4/pandora_optimize.m4])
 m4_include([m4/pandora_platform.m4])
 m4_include([m4/pandora_pthread.m4])
-m4_include([m4/pandora_stack_direction.m4])
 m4_include([m4/pandora_use_pipe.m4])
 m4_include([m4/pandora_vc_build.m4])
 m4_include([m4/pandora_version.m4])
