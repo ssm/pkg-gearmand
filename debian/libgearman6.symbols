@@ -1,4 +1,4 @@
-libgearman.so.4 libgearman4 #MINVER#
+libgearman.so.6 libgearman6 #MINVER#
  gearman_bugreport@Base 0.12
  gearman_client_add_options@Base 0.12
  gearman_client_add_server@Base 0.12

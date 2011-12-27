@@ -12,7 +12,7 @@ Vcs-Browser: http://bazaar.launchpad.net/~gearman-developers/debian/sid/gearmand
 Vcs-Bzr: http://bazaar.launchpad.net/~gearman-developers/debian/sid/gearmand/sid
 
 
-Package: libgearman4
+Package: libgearman6
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Provides: libgearman-server0
@@ -28,7 +28,7 @@ Description: Library providing Gearman client and worker functions
 Package: libgearman-dev
 Section: libdevel
 Architecture: any
-Depends: libgearman4 (= ${binary:Version}), libevent-dev, ${shlibs:Depends}, ${misc:Depends}
+Depends: libgearman6 (= ${binary:Version}), libevent-dev, ${shlibs:Depends}, ${misc:Depends}
 Provides: libgearman-server-dev
 Replaces: libgearman-server-dev
 Conflicts: libgearman-server-dev
@@ -43,7 +43,7 @@ Package: libgearman-dbg
 Section: debug
 Priority: extra
 Architecture: any
-Depends: libgearman4 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: libgearman6 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: Debug symbols for the Gearman Client Library
  Gearman is a system to farm out work to other machines, dispatching function
  calls to machines that are better suited to do work, to do work in parallel,
@@ -79,7 +79,7 @@ Architecture: any
 Provides: gearman-worker
 Conflicts: gearman-worker
 Replaces: gearman-worker
-Depends: libgearman4 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: libgearman6 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: Tools for the Gearman distributed job queue
  Gearman is a system to farm out work to other machines, dispatching function
  calls to machines that are better suited to do work, to do work in parallel,
