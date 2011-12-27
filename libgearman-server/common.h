@@ -11,25 +11,15 @@
  * @brief System Include Files
  */
 
-#ifndef __GEARMAN_SERVER_COMMON_H__
-#define __GEARMAN_SERVER_COMMON_H__
+#pragma once
 
-#include "config.h"
+#include <config.h>
 
-#define GEARMAN_CORE
-#include "gearmand.h"
+#include <libgearman-server/gearmand.h>
+#include <libgearman-server/byteorder.h>
 
-#ifdef HAVE_ASSERT_H
-#include <assert.h>
-#endif
-#ifdef HAVE_ERRNO_H
-#include <errno.h>
-#endif
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
-#endif
-#ifdef HAVE_GETOPT_H
-#include <getopt.h>
 #endif
 #ifdef HAVE_PTHREAD
 #include <pthread.h>
@@ -39,15 +29,6 @@
 #endif
 #ifdef HAVE_STDDEF_H
 #include <stddef.h>
-#endif
-#ifdef HAVE_STDIO_H
-#include <stdio.h>
-#endif
-#ifdef HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
-#ifdef HAVE_STRING_H
-#include <string.h>
 #endif
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
@@ -166,6 +147,8 @@ extern "C" {
   __hash ## _count--; \
 }
 
+#define gearmand_array_size(__object) (sizeof((__object)) / sizeof(*(__object)))
+
 /* All thread-safe libevent functions are not in libevent 1.3x, and this is the
    common package version. Make this work for these earlier versions. */
 #ifndef HAVE_EVENT_BASE_NEW
@@ -183,5 +166,3 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __GEARMAN_SERVER_COMMON_H__ */

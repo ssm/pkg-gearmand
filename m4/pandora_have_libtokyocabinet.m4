@@ -1,5 +1,5 @@
-dnl  Copyright (C) 2009 Sun Microsystems
-dnl This file is free software; Sun Microsystems
+dnl  Copyright (C) 2009 Sun Microsystems, Inc.
+dnl This file is free software; Sun Microsystems, Inc.
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
  
@@ -37,7 +37,15 @@ bool ret= tcadboptimize(NULL, "params");
       ac_cv_libtokyocabinet=yes
       LTLIBTOKYOCABINET=${LIBTOKYOCABINET_LIBS}
       LIBTOKYOCABINET=${LIBTOKYOCABINET_LIBS}
-    ],[test x = y])
+      AC_DEFINE([HAVE_LIBTOKYOCABINET], [ 1 ], [Enable libtokyocabinet support])
+    ],
+    [
+    test x = y
+    AC_DEFINE([HAVE_LIBTOKYOCABINET], [ 0 ], [Enable libtokyocabinet support])
+    ])
+  ],
+  [
+    AC_DEFINE([HAVE_LIBTOKYOCABINET], [ 0 ], [Enable libtokyocabinet support])
   ])
 
   AM_CONDITIONAL(HAVE_LIBTOKYOCABINET, [test "${ac_cv_libtokyocabinet}" = "yes"])
@@ -50,5 +58,5 @@ AC_DEFUN([PANDORA_HAVE_LIBTOKYOCABINET],[
 AC_DEFUN([PANDORA_REQUIRE_LIBTOKYOCABINET],[
   AC_REQUIRE([_PANDORA_SEARCH_LIBTOKYOCABINET])
   AS_IF([test "x${ac_cv_libtokyocabinet}" = "xno"],
-    AC_MSG_ERROR([libtokyocabinet is required for ${PACKAGE}. On Debian systems this is found in libtokyocabinet-dev. On RedHat, in tokyocabinet-devel.]))
+    PANDORA_MSG_ERROR([libtokyocabinet is required for ${PACKAGE}. On Debian systems this is found in libtokyocabinet-dev. On RedHat, in tokyocabinet-devel.]))
 ])
