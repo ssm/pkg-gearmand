@@ -1,28 +1,69 @@
-/* Gearman server and library
- * Copyright (C) 2008 Brian Aker, Eric Day
- * All rights reserved.
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
+
 
 /**
  * @file
  * @brief Gearmand Declarations
  */
 
-#ifndef __GEARMAND_H__
-#define __GEARMAND_H__
+#pragma once
 
-#include <libgearman/gearman.h>
+#include <inttypes.h>
+#include <netinet/in.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <poll.h>
+
 #include <event.h>
 
+#include <libgearman-1.0/visibility.h>
+#include <libgearman-1.0/protocol.h>
+
+#include <libgearman-server/error.h>
+
 #include <libgearman-server/constants.h>
+#include <libgearman-server/wakeup.h>
+#include <libgearman-server/connection_list.h>
+#include <libgearman-server/byteorder.h>
 #include <libgearman-server/log.h>
-#include <libgearman-server/conf.h>
-#include <libgearman-server/conf_module.h>
-#include <libgearman-server/connection.h>
 #include <libgearman-server/packet.h>
+#include <libgearman-server/connection.h>
 #include <libgearman-server/function.h>
 #include <libgearman-server/client.h>
 #include <libgearman-server/worker.h>
@@ -31,6 +72,32 @@
 #include <libgearman-server/server.h>
 #include <libgearman-server/gearmand_thread.h>
 #include <libgearman-server/gearmand_con.h>
+
+struct gearmand_st
+{
+  gearmand_verbose_t verbose;
+  gearmand_error_t ret;
+  int backlog; // Set socket backlog for listening connection
+  bool is_listen_event;
+  bool is_wakeup_event;
+  int timeout;
+  uint32_t port_count;
+  uint32_t threads;
+  uint32_t thread_count;
+  uint32_t free_dcon_count;
+  uint32_t max_thread_free_dcon_count;
+  int wakeup_fd[2];
+  const char *host;
+  gearmand_log_fn *log_fn;
+  void *log_context;
+  struct event_base *base;
+  struct gearmand_port_st *port_list;
+  gearmand_thread_st *thread_list;
+  gearmand_thread_st *thread_add_next;
+  gearmand_con_st *free_dcon_list;
+  gearman_server_st server;
+  struct event wakeup_event;
+};
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,40 +111,10 @@ extern "C" {
  * @{
  */
 
-struct gearmand_port_st
-{
-  in_port_t port;
-  uint32_t listen_count;
-  gearmand_st *gearmand;
-  gearman_connection_add_fn *add_fn;
-  int *listen_fd;
-  struct event *listen_event;
-};
+GEARMAN_API
+gearmand_st *Gearmand(void);
 
-struct gearmand_st
-{
-  gearman_verbose_t verbose;
-  gearman_return_t ret;
-  int backlog;
-  bool is_listen_event;
-  bool is_wakeup_event;
-  uint32_t port_count;
-  uint32_t threads;
-  uint32_t thread_count;
-  uint32_t free_dcon_count;
-  uint32_t max_thread_free_dcon_count;
-  int wakeup_fd[2];
-  const char *host;
-  gearman_log_fn *log_fn;
-  void *log_context;
-  struct event_base *base;
-  gearmand_port_st *port_list;
-  gearmand_thread_st *thread_list;
-  gearmand_thread_st *thread_add_next;
-  gearmand_con_st *free_dcon_list;
-  gearman_server_st server;
-  struct event wakeup_event;
-};
+#define Server (&(Gearmand()->server))
 
 /**
  * Create a server instance.
@@ -86,7 +123,14 @@ struct gearmand_st
  * @return Pointer to an allocated gearmand structure.
  */
 GEARMAN_API
-gearmand_st *gearmand_create(const char *host, in_port_t port);
+gearmand_st *gearmand_create(const char *host,
+                             const char *port,
+                             uint32_t threads,
+                             int backlog,
+                             uint8_t job_retries,
+                             uint8_t worker_wakeup,
+                             gearmand_log_fn *function, void *log_context, const gearmand_verbose_t verbose,
+                             bool round_robin);
 
 /**
  * Free resources used by a server instace.
@@ -96,53 +140,9 @@ gearmand_st *gearmand_create(const char *host, in_port_t port);
 GEARMAN_API
 void gearmand_free(gearmand_st *gearmand);
 
-/**
- * Set socket backlog for listening connection.
- * @param gearmand Server instance structure previously initialized with
- *        gearmand_create.
- * @param backlog Number of backlog connections to set during listen.
- */
-GEARMAN_API
-void gearmand_set_backlog(gearmand_st *gearmand, int backlog);
 
-/**
- * Set maximum job retry count.
- * @param gearmand Server instance structure previously initialized with
- *        gearmand_create.
- * @param job_retries Number of job attempts.
- */
 GEARMAN_API
-void gearmand_set_job_retries(gearmand_st *gearmand, uint8_t job_retries);
-
-/**
- * Set maximum number of workers to wake up per job.
- * @param gearmand Server instance structure previously initialized with
- *        gearmand_create.
- * @param worker_wakeup Number of workers to wake up.
- */
-GEARMAN_API
-void gearmand_set_worker_wakeup(gearmand_st *gearmand, uint8_t worker_wakeup);
-
-/**
- * Set number of I/O threads for server to use.
- * @param gearmand Server instance structure previously initialized with
- *        gearmand_create.
- * @param threads Number of threads.
- */
-GEARMAN_API
-void gearmand_set_threads(gearmand_st *gearmand, uint32_t threads);
-
-/**
- * Set logging callback for server instance.
- * @param gearmand Server instance structure previously initialized with
- *        gearmand_create.
- * @param function Function to call when there is a logging message.
- * @param context Argument to pass into the log callback function.
- * @param verbose Verbosity level.
- */
-GEARMAN_API
-void gearmand_set_log_fn(gearmand_st *gearmand, gearman_log_fn *function,
-                         void *context, gearman_verbose_t verbose);
+gearman_server_st *gearmand_server(gearmand_st *gearmand);
 
 /**
  * Add a port to listen on when starting server with optional callback.
@@ -154,8 +154,9 @@ void gearmand_set_log_fn(gearmand_st *gearmand, gearman_log_fn *function,
  * @return Standard gearman return value.
  */
 GEARMAN_API
-gearman_return_t gearmand_port_add(gearmand_st *gearmand, in_port_t port,
-                                   gearman_connection_add_fn *function);
+gearmand_error_t gearmand_port_add(gearmand_st *gearmand,
+                                   const char *port,
+                                   gearmand_connection_add_fn *function);
 
 /**
  * Run the server instance.
@@ -164,7 +165,7 @@ gearman_return_t gearmand_port_add(gearmand_st *gearmand, in_port_t port,
  * @return Standard gearman return value.
  */
 GEARMAN_API
-gearman_return_t gearmand_run(gearmand_st *gearmand);
+gearmand_error_t gearmand_run(gearmand_st *gearmand);
 
 /**
  * Interrupt a running gearmand server from another thread. You should only
@@ -177,20 +178,17 @@ gearman_return_t gearmand_run(gearmand_st *gearmand);
 GEARMAN_API
 void gearmand_wakeup(gearmand_st *gearmand, gearmand_wakeup_t wakeup);
 
-/**
- * Sets the round-robin mode on the server object. RR will distribute work
- * fairly among every function assigned to a worker, instead of draining
- * each function before moving on to the next.
- * @param gearmand Server instance previously initialized
- * @param bool true=round robin is used, false=round robin is not used
- */
 GEARMAN_API
-void gearmand_set_round_robin(gearmand_st *gearmand, bool round_robin);
+const char *gearmand_version(void);
+
+GEARMAN_API
+const char *gearmand_bugreport(void);
+
+GEARMAN_API
+const char *gearmand_verbose_name(gearmand_verbose_t verbose);
 
 /** @} */
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __GEARMAND_H__ */

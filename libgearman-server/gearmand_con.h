@@ -14,6 +14,10 @@
 #ifndef __GEARMAND_CON_H__
 #define __GEARMAND_CON_H__
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,8 +39,7 @@ struct gearmand_con_st
   gearmand_con_st *next;
   gearmand_con_st *prev;
   gearman_server_con_st *server_con;
-  gearman_connection_st *con;
-  gearman_connection_add_fn *add_fn;
+  gearmand_connection_add_fn *add_fn;
   struct event event;
   char host[NI_MAXHOST];
   char port[NI_MAXSERV];
@@ -54,9 +57,9 @@ struct gearmand_con_st
  * @return Pointer to an allocated gearmand structure.
  */
 GEARMAN_API
-gearman_return_t gearmand_con_create(gearmand_st *gearmand, int fd,
+gearmand_error_t gearmand_con_create(gearmand_st *gearmand, int fd,
                                      const char *host, const char *port,
-                                     gearman_connection_add_fn *add_fn);
+                                     gearmand_connection_add_fn *add_fn);
 
 /**
  * Free resources used by a connection.
@@ -75,8 +78,8 @@ void gearmand_con_check_queue(gearmand_thread_st *thread);
  * Callback function used for setting events in libevent.
  */
 GEARMAN_API
-gearman_return_t gearmand_connection_watch(gearman_connection_st *con, short events,
-                                    void *context);
+gearmand_error_t gearmand_connection_watch(gearmand_io_st *con, short events,
+                                           void *context);
 
 /** @} */
 

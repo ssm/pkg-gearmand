@@ -6,78 +6,99 @@
  * the COPYING file in the parent directory for full text.
  */
 
-/**
- * @file
- * @brief Local Gearman Declarations
- */
+/*
+  All logging facilities within the server.
+*/
 
-#ifndef __GEARMAND_LOG_H__
-#define __GEARMAND_LOG_H__
+#include <stdio.h>
+
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef GEARMAN_CORE
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+#define AT __FILE__ ":" TOSTRING(__LINE__)
 
-/**
- * @addtogroup gearman_local Local Gearman Declarations
- * @ingroup gearman_universal
- * @{
- */
+#ifdef __cplusplus
+#define gearman_literal_param(X) (X), (size_t(sizeof(X) - 1))
+#else
+#define gearman_literal_param(X) (X), ((size_t)((sizeof(X) - 1)))
+#endif
 
-/**
- * Log a message.
- *
- * @param[in] gearman Structure previously initialized with gearman_create() or
- *  gearman_clone().
- * @param[in] verbose Logging level of the message.
- * @param[in] format Format and variable argument list of message.
- * @param[in] args Variable argument list that has been initialized.
- */
+#define GEARMAN_DEFAULT_LOG_PARAM AT, __func__
+
 GEARMAN_INTERNAL_API
-void gearmand_log(gearmand_st *gearman, gearman_verbose_t verbose,
-                 const char *format, va_list args);
+void gearmand_initialize_thread_logging(const char *identity);
 
 /**
  * Log a fatal message, see gearmand_log() for argument details.
  */
 GEARMAN_INTERNAL_API
-void gearmand_log_fatal(gearmand_st *gearman, const char *format, ...);
+void gearmand_log_fatal(const char *position, const char *func, const char *format, ...);
+#define gearmand_fatal(_mesg) gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, (_mesg))
+
+GEARMAN_INTERNAL_API
+void gearmand_log_fatal_perror(const char *position, const char *function, const char *message);
+#define gearmand_fatal_perror(_mesg) gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, (_mesg))
+
 
 /**
  * Log an error message, see gearmand_log() for argument details.
  */
 GEARMAN_INTERNAL_API
-void gearmand_log_error(gearmand_st *gearman, const char *format, ...);
+gearmand_error_t gearmand_log_error(const char *position, const char *function, const char *format, ...);
+#define gearmand_error(_mesg) gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, (_mesg))
+
+GEARMAN_INTERNAL_API
+gearmand_error_t gearmand_log_perror(const char *position, const char *function, const char *message);
+#define gearmand_perror(_mesg) gearmand_log_perror(GEARMAN_DEFAULT_LOG_PARAM,  (_mesg))
+
+GEARMAN_INTERNAL_API
+gearmand_error_t gearmand_log_gerror(const char *position, const char *function, const gearmand_error_t rc, const char *format, ...);
+#define gearmand_gerror(_mesg, _gearmand_errot_t) gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, (_gearmand_errot_t), (_mesg))
+
+GEARMAN_INTERNAL_API
+gearmand_error_t gearmand_log_gai_error(const char *position, const char *function, const int rc, const char *message);
+#define gearmand_gai_error(_mesg, _gai_int) gearmand_log_gai_error(GEARMAN_DEFAULT_LOG_PARAM, (_gai_int), (_mesg))
+
+GEARMAN_INTERNAL_API
+gearmand_error_t gearmand_log_memory_error(const char *position, const char *function, const char *allocator, const char *type, size_t count, size_t size);
+#define gearmand_merror(__allocator, __object_type, __count) gearmand_log_memory_error(GEARMAN_DEFAULT_LOG_PARAM, (__allocator), (#__object_type), (__count), (sizeof(__object_type)))
+
+
 
 /**
  * Log an info message, see gearmand_log() for argument details.
  */
 GEARMAN_INTERNAL_API
-void gearmand_log_info(gearmand_st *gearman, const char *format, ...);
+void gearmand_log_info(const char *position, const char *function, const char *format, ...);
+#define gearmand_info(_mesg) gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, (_mesg))
+
+/**
+ * Log an info message, see gearmand_log() for argument details.
+ */
+GEARMAN_INTERNAL_API
+void gearmand_log_warning(const char *position, const char *function, const char *format, ...);
+#define gearmand_warning(_mesg) gearmand_log_warning(GEARMAN_DEFAULT_LOG_PARAM, (_mesg))
 
 /**
  * Log a debug message, see gearmand_log() for argument details.
  */
 GEARMAN_INTERNAL_API
-void gearmand_log_debug(gearmand_st *gearman, const char *format, ...);
+void gearmand_log_debug(const char *position, const char *function, const char *format, ...);
+#define gearmand_debug(_mesg) gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, (_mesg))
+
 
 /**
  * Log a crazy message, see gearmand_log() for argument details.
  */
 GEARMAN_INTERNAL_API
-void gearmand_log_crazy(gearmand_st *gearman, const char *format, ...);
-
-GEARMAN_INTERNAL_API
-void gearman_conf_error_set(gearman_conf_st *conf, const char *msg, const char *format, ...);
-
-#endif /* GEARMAN_CORE */
-
-/** @} */
+void gearmand_log_crazy(const char *position, const char *function, const char *format, ...);
+#define gearmand_crazy(_mesg) gearmand_log_crazy(GEARMAN_DEFAULT_LOG_PARAM, (_mesg))
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __GEARMAND_LOG_H__ */
