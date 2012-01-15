@@ -71,6 +71,7 @@ noinst_HEADERS+= \
 		 libtest/gearmand.h \
 		 libtest/get.h \
 		 libtest/has.hpp \
+		 libtest/http.hpp \
 		 libtest/is_pid.hpp \
 		 libtest/is_local.hpp \
 		 libtest/killpid.h \
@@ -88,6 +89,7 @@ noinst_HEADERS+= \
 		 libtest/string.hpp \
 		 libtest/test.h \
 		 libtest/test.hpp \
+		 libtest/vchar.hpp \
 		 libtest/visibility.h \
 		 libtest/wait.h
 
@@ -99,6 +101,7 @@ libtest_libtest_la_SOURCES= \
 			    libtest/dream.cc \
 			    libtest/framework.cc \
 			    libtest/has.cc \
+			    libtest/http.cc \
 			    libtest/is_local.cc \
 			    libtest/killpid.cc \
 			    libtest/libtool.cc \
@@ -109,15 +112,18 @@ libtest_libtest_la_SOURCES= \
 			    libtest/signal.cc \
 			    libtest/socket.cc \
 			    libtest/strerror.cc \
-			    libtest/test.cc
+			    libtest/test.cc \
+			    libtest/vchar.cc
 
 libtest_libtest_la_CXXFLAGS=
 libtest_libtest_la_CXXFLAGS+= ${NO_CONVERSION}
 libtest_libtest_la_CXXFLAGS+= -DBUILDING_LIBTEST
 libtest_libtest_la_CXXFLAGS+= $(PTHREAD_CFLAGS)
 libtest_libtest_la_CXXFLAGS+= -DLIBTEST_TEMP="\"tmp_chroot\""
+libtest_libtest_la_CXXFLAGS+= $(CURL_CFLAGS)
 libtest_libtest_la_LIBADD=
 libtest_libtest_la_LIBADD+= $(PTHREAD_LIBS)
+libtest_libtest_la_LIBADD+= $(CURL_LIBS)
 libtest_libtest_la_DEPENDENCIES= libtest_tmp_dir
 
 # Declare unittest so that we can append to it

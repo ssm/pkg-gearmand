@@ -56,19 +56,18 @@
 /* Define to 1 if you have <boost/program_options.hpp> */
 #undef HAVE_BOOST_PROGRAM_OPTIONS_HPP
 
+/* Define to 1 if you have <boost/thread.hpp> */
+#undef HAVE_BOOST_THREAD_HPP
+
 /* Define to 1 if you have the `btowc' function. */
 #undef HAVE_BTOWC
 
-/* Have a working clock_gettime function */
-#undef HAVE_CLOCK_GETTIME
+/* Define to 1 if you have the <curl/curl.h> header file. */
+#undef HAVE_CURL_CURL_H
 
 /* Define to 1 if you have the declaration of `getenv', and to 0 if you don't.
    */
 #undef HAVE_DECL_GETENV
-
-/* Define to 1 if you have the declaration of `madvise', and to 0 if you
-   don't. */
-#undef HAVE_DECL_MADVISE
 
 /* Define to 1 if you have the declaration of `strerror_r', and to 0 if you
    don't. */
@@ -131,8 +130,14 @@
 /* Define to 1 if you have the `bind' library (-lbind). */
 #undef HAVE_LIBBIND
 
+/* libcurl support */
+#undef HAVE_LIBCURL
+
 /* Define to 1 if you have the `c_p' library (-lc_p). */
 #undef HAVE_LIBC_P
+
+/* Have dlopen */
+#undef HAVE_LIBDL
 
 /* Enable libdrizzle support */
 #undef HAVE_LIBDRIZZLE
@@ -157,6 +162,9 @@
 
 /* Define to 1 if you have the <libpq-fe.h> header file. */
 #undef HAVE_LIBPQ_FE_H
+
+/* Have clock_gettime */
+#undef HAVE_LIBRT
 
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #undef HAVE_LIBSOCKET
@@ -421,9 +429,6 @@
 /* Define to necessary symbol if this constant uses a non-standard name on
    your system. */
 #undef PTHREAD_CREATE_JOINABLE
-
-/* Define if system doesn't define */
-#undef RUSAGE_THREAD
 
 /* Size of long long as computed by sizeof() */
 #undef SIZEOF_LONG_LONG

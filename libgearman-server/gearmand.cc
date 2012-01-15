@@ -21,7 +21,7 @@
 
 #include <libgearman-server/gearmand.h>
 
-#include <libgearman-server/port.h>
+#include <libgearman-server/struct/port.h>
 #include <libgearman-server/plugins.h>
 
 using namespace gearmand;
@@ -166,9 +166,6 @@ gearmand_st *gearmand_create(const char *host_arg,
   _global_gearmand= gearmand;
 
   gearmand_set_log_fn(gearmand, log_function, log_context, verbose_arg);
-  char buffer[1024];
-  snprintf(buffer, sizeof(buffer), "Starting up with verbose set to %s", gearmand_verbose_name(verbose_arg));
-  gearmand_info("");
 
   return gearmand;
 }
@@ -276,7 +273,8 @@ gearmand_error_t gearmand_run(gearmand_st *gearmand)
   /* Initialize server components. */
   if (gearmand->base == NULL)
   {
-    gearmand_info("Starting up");
+    gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Starting up, verbose set to %s", 
+                      gearmand_verbose_name(gearmand->verbose));
 
     if (gearmand->threads > 0)
     {
@@ -379,7 +377,6 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
 {
   for (uint32_t x= 0; x < gearmand->port_count; x++)
   {
-    int ret;
     struct linger ling= {0, 0};
     struct gearmand_port_st *port;
     struct addrinfo hints;
@@ -388,10 +385,10 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
     port= &gearmand->port_list[x];
 
     memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_flags  = AI_PASSIVE;
-    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags= AI_PASSIVE;
+    hints.ai_socktype= SOCK_STREAM;
 
-    ret= getaddrinfo(gearmand->host, port->port, &hints, &addrinfo);
+    int ret= getaddrinfo(gearmand->host, port->port, &hints, &addrinfo);
     if (ret != 0)
     {
       char buffer[1024];
