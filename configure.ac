@@ -6,7 +6,7 @@
 # Use and distribution licensed under the BSD license.  See
 # the COPYING file in this directory for full text.
 
-AC_INIT([gearmand],[0.26],[https://bugs.launchpad.net/gearmand], [gearmand], [http://gearman.info/])
+AC_INIT([gearmand],[0.27],[https://bugs.launchpad.net/gearmand], [gearmand], [http://gearman.info/])
 
 AC_CONFIG_AUX_DIR(config)
 
@@ -52,6 +52,7 @@ AX_PTHREAD(, [AC_MSG_ERROR(could not find libpthread)])
 dnl First look for Boost, maybe for a specific minimum version:
 BOOST_REQUIRE([1.39])
 BOOST_PROGRAM_OPTIONS
+BOOST_THREADS
 
 PANDORA_CXX_CSTDINT
 PANDORA_CXX_CINTTYPES
@@ -68,6 +69,22 @@ AC_DEFINE([GEARMAND_BINARY], "./gearmand/gearmand", [Name of the gearmand binary
 AC_DEFINE([HAVE_LIBGEARMAN], 1, [libgearman support])
 AC_DEFINE([HAVE_GEARMAND_BINARY], 1, [libgearman support])
 
+AX_LIB_CURL([7.21.7],
+            [
+             AC_CHECK_HEADERS([curl/curl.h], 
+                              [
+                               AC_DEFINE([HAVE_LIBCURL], [ 1 ], [libcurl support])
+                               ],
+                               [
+                                AC_DEFINE([HAVE_LIBCURL], [ 0 ], [libcurl support])
+                                ]
+                               )
+             ],
+            [
+             AC_DEFINE([HAVE_LIBCURL], [ 0 ], [libcurl support])
+             ]
+            )
+
 m4_include([m4/drizzled.m4])
 WITH_LIBDRIZZLE
 
@@ -75,15 +92,14 @@ PANDORA_REQUIRE_LIBEVENT
 PANDORA_REQUIRE_LIBUUID
 
 AX_LIB_SQLITE3
-AS_IF([test "x${ac_cv_libsqlite3}" = "xyes"],
+AS_IF([test "x${WANT_SQLITE3}" = "xyes"],
       [
        AC_DEFINE([HAVE_LIBSQLITE3], [ 1 ], [Have the SQLITE3 library])
       ],
       [
-       ac_cv_libsqlite3=no
        AC_DEFINE([HAVE_LIBSQLITE3], [ 0 ], [Have the SQLITE3 library])
       ])
-AM_CONDITIONAL(HAVE_LIBSQLITE3, test "x${ac_cv_libsqlite3}" = "xyes")
+AM_CONDITIONAL(HAVE_LIBSQLITE3, test "x${WANT_SQLITE3}" = "xyes")
 
 
 PANDORA_HAVE_BETTER_MALLOC
@@ -145,6 +161,39 @@ AC_CHECK_FUNCS([setenv])
 AC_CHECK_FUNCS([strtol])
 AC_CHECK_FUNCS([strtoul])
 
+# Check for the ability to call dlopen (used in libhostile)
+AC_CHECK_LIB([dl], [dlopen], 
+             [
+              DL_LIB="-ldl"
+              AC_SUBST(DL_LIB)
+              AC_DEFINE([HAVE_LIBDL], [ 1 ], [Have dlopen])
+              ],
+             [
+              AC_DEFINE([HAVE_LIBDL], [ 0 ], [Have dlopen])
+              ])
+
+# Check for -lrt
+AC_CHECK_LIB([rt], [clock_gettime], 
+             [
+              RT_LIB="-lrt"
+              AC_SUBST(RT_LIB)
+              AC_DEFINE([HAVE_LIBRT], [ 1 ], [Have clock_gettime])
+              ], 
+             [
+              AC_DEFINE([HAVE_LIBRT], [ 0 ], [Have clock_gettime])
+              ])
+
+# Check for -lm
+AC_CHECK_LIB([m], [floor], 
+             [
+              M_LIB="-lrt"
+              AC_SUBST(M_LIB)
+              AC_DEFINE([HAVE_LIBRT], [ 1 ], [Have clock_gettime])
+              ], 
+             [
+              AC_DEFINE([HAVE_LIBRT], [ 0 ], [Have clock_gettime])
+              ])
+
 AC_CHECK_FUNC(setsockopt, [], [AC_CHECK_LIB(socket, setsockopt)])
 AC_CHECK_FUNC(bind, [], [AC_CHECK_LIB(bind, bind)])
 
@@ -176,7 +225,7 @@ echo "   * C Compiler:                $CC_VERSION"
 echo "   * Assertions enabled:        $ac_cv_assert"
 echo "   * Debug enabled:             $with_debug"
 echo "   * Warnings as failure:       $ac_cv_warnings_as_errors"
-echo "   * Building with libsqlite3   $ac_cv_libsqlite3"
+echo "   * Building with libsqlite3   $WANT_SQLITE3"
 echo "   * Building with libdrizzle   $ac_enable_libdrizzle"
 echo "   * Building with libmemcached $ac_enable_libmemcached"
 echo "   * Building with libpq        $ac_cv_libpq"

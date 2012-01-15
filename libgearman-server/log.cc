@@ -18,7 +18,7 @@
 #include <cstring>
 
 static pthread_key_t logging_key;
-static pthread_once_t intitialize_log_once = PTHREAD_ONCE_INIT;
+static pthread_once_t intitialize_log_once= PTHREAD_ONCE_INIT;
 
 static void delete_log(void *ptr)
 {
@@ -38,7 +38,7 @@ void gearmand_initialize_thread_logging(const char *identity)
   (void) pthread_once(&intitialize_log_once, create_log);
 
   void *ptr;
-  if ((ptr = pthread_getspecific(logging_key)) == NULL)
+  if ((ptr= pthread_getspecific(logging_key)) == NULL)
   {
     const char *key_to_use= strdup(identity);
     (void) pthread_setspecific(logging_key, key_to_use);
@@ -61,7 +61,7 @@ void gearmand_initialize_thread_logging(const char *identity)
 
 static void gearmand_log(const char *position, const char * /* func */, gearmand_verbose_t verbose, const char *format, va_list args)
 {
-  if (not Gearmand())
+  if (Gearmand() == NULL)
   {
     fprintf(stderr, "%s %7s: ", position,  gearmand_verbose_name(verbose));
     vprintf(format, args);
@@ -237,10 +237,29 @@ gearmand_error_t gearmand_log_gerror(const char *position, const char *function,
   {
     va_list args;
 
-    if (not Gearmand() or Gearmand()->verbose >= GEARMAND_VERBOSE_ERROR)
+    if (Gearmand() == NULL or Gearmand()->verbose >= GEARMAND_VERBOSE_ERROR)
     {
       va_start(args, format);
       gearmand_log(position, function, GEARMAND_VERBOSE_ERROR, format, args);
+      va_end(args);
+    }
+  }
+  else if (rc == GEARMAN_IO_WAIT)
+  { }
+
+  return rc;
+}
+
+gearmand_error_t gearmand_log_gerror_warn(const char *position, const char *function, const gearmand_error_t rc, const char *format, ...)
+{
+  if (gearmand_failed(rc) and rc != GEARMAN_IO_WAIT)
+  {
+    va_list args;
+
+    if (Gearmand() == NULL or Gearmand()->verbose >= GEARMAND_VERBOSE_WARN)
+    {
+      va_start(args, format);
+      gearmand_log(position, function, GEARMAND_VERBOSE_WARN, format, args);
       va_end(args);
     }
   }

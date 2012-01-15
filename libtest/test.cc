@@ -35,6 +35,10 @@
 
 #include <signal.h>
 
+#if defined(HAVE_CURL_CURL_H) && HAVE_CURL_CURL_H
+#include <curl/curl.h>
+#endif
+
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
@@ -70,9 +74,29 @@ static long int timedif(struct timeval a, struct timeval b)
   return s + us;
 }
 
-static Framework *world= NULL;
+static void cleanup_curl(void)
+{
+#if defined(HAVE_CURL_CURL_H) && HAVE_CURL_CURL_H
+  curl_global_cleanup();
+#endif
+}
+
 int main(int argc, char *argv[])
 {
+#if defined(HAVE_CURL_CURL_H) && HAVE_CURL_CURL_H
+  if (curl_global_init(CURL_GLOBAL_ALL))
+  {
+    Error << "curl_global_init(CURL_GLOBAL_ALL) failed";
+    return EXIT_FAILURE;
+  }
+#endif
+
+  if (atexit(cleanup_curl))
+  {
+    Error << "atexit() failed";
+    return EXIT_FAILURE;
+  }
+
   srandom((unsigned int)time(NULL));
 
   if (getenv("LIBTEST_QUIET") and strcmp(getenv("LIBTEST_QUIET"), "0") == 0)
@@ -105,7 +129,7 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  world= new Framework();
+  Framework *world= new Framework();
 
   if (world == NULL)
   {
@@ -221,40 +245,53 @@ int main(int argc, char *argv[])
       }
 
       test_return_t return_code;
-      if (test_success(return_code= world->item.startup(creators_ptr)))
-      {
-        if (test_success(return_code= world->item.flush(creators_ptr, run)))
+      try {
+        if (test_success(return_code= world->item.startup(creators_ptr)))
         {
-          // @note pre will fail is SKIPPED is returned
-          if (test_success(return_code= world->item.pre(creators_ptr)))
+          if (test_success(return_code= world->item.flush(creators_ptr, run)))
           {
-            { // Runner Code
-              gettimeofday(&start_time, NULL);
-              assert(world->runner());
-              assert(run->test_fn);
-              return_code= world->runner()->run(run->test_fn, creators_ptr);
-              gettimeofday(&end_time, NULL);
-              load_time= timedif(end_time, start_time);
+            // @note pre will fail is SKIPPED is returned
+            if (test_success(return_code= world->item.pre(creators_ptr)))
+            {
+              { // Runner Code
+                gettimeofday(&start_time, NULL);
+                assert(world->runner());
+                assert(run->test_fn);
+                return_code= world->runner()->run(run->test_fn, creators_ptr);
+                gettimeofday(&end_time, NULL);
+                load_time= timedif(end_time, start_time);
+              }
             }
-          }
 
-          // @todo do something if post fails
-          (void)world->item.post(creators_ptr);
+            // @todo do something if post fails
+            (void)world->item.post(creators_ptr);
+          }
+          else if (return_code == TEST_SKIPPED)
+          { }
+          else if (return_code == TEST_FAILURE)
+          {
+            Error << " item.flush(failure)";
+            signal.set_shutdown(SHUTDOWN_GRACEFUL);
+          }
         }
         else if (return_code == TEST_SKIPPED)
         { }
         else if (return_code == TEST_FAILURE)
         {
-          Error << " item.flush(failure)";
+          Error << " item.startup(failure)";
           signal.set_shutdown(SHUTDOWN_GRACEFUL);
         }
       }
-      else if (return_code == TEST_SKIPPED)
-      { }
-      else if (return_code == TEST_FAILURE)
+
+      catch (std::exception &e)
       {
-        Error << " item.startup(failure)";
-        signal.set_shutdown(SHUTDOWN_GRACEFUL);
+        Error << "Exception was thrown: " << e.what();
+        return_code= TEST_FAILURE;
+      }
+      catch (...)
+      {
+        Error << "Unknown exception occurred";
+        return_code= TEST_FAILURE;
       }
 
       stats.total++;
