@@ -1,0 +1,3 @@
+debian_patches_fix_spelling.patch
+debian_patches_fix_test_files.patch
+debian_patches_remove_googleanalytics.patch

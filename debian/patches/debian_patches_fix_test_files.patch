@@ -1,0 +1,57 @@
+Description: Use a file that acutally exists during tests.
+ Upstream uses /etc/services which is not available during build as it 
+ is part of the netbase package. It is safe to substitute is with 
+ /etc/passwd which serves the same purpose as only the presence of the 
+ denoted file is checked. 
+Author: Michael Fladischer <FladischerMichael@fladi.at>
+Last-Update: 2012-01-12
+Forwarded: no
+
+--- a/libtest/unittest.cc
++++ b/libtest/unittest.cc
+@@ -463,28 +463,28 @@
+   return TEST_SUCCESS;
+ }
+ 
+-static test_return_t wait_services_BINARY(void *)
++static test_return_t wait_passwd_BINARY(void *)
+ {
+-  const char *args[]= { "--quiet", "/etc/services", 0 };
++  const char *args[]= { "--quiet", "/etc/passwd", 0 };
+ 
+   test_compare(EXIT_SUCCESS, exec_cmdline("libtest/wait", args, true));
+ 
+   return TEST_SUCCESS;
+ }
+ 
+-static test_return_t wait_services_BINARY2(void *)
++static test_return_t wait_passwd_BINARY2(void *)
+ {
+-  const char *args[]= { "/etc/services", 0 };
++  const char *args[]= { "/etc/passwd", 0 };
+ 
+   test_compare(EXIT_SUCCESS, exec_cmdline("libtest/wait", args, true));
+ 
+   return TEST_SUCCESS;
+ }
+ 
+-static test_return_t application_wait_services_BINARY2(void *)
++static test_return_t application_wait_passwd_BINARY2(void *)
+ {
+   libtest::Application("libtest/wait", true);
+-  const char *args[]= { "/etc/services", 0 };
++  const char *args[]= { "/etc/passwd", 0 };
+ 
+   test_compare(EXIT_SUCCESS, exec_cmdline("libtest/wait", args, true));
+ 
+@@ -570,8 +570,8 @@
+   {"wait --quiet", 0, wait_BINARY },
+   {"wait --quiet --help", 0, wait_help_BINARY },
+   {"wait --quiet --version", 0, wait_version_BINARY },
+-  {"wait --quiet /etc/services", 0, wait_services_BINARY },
+-  {"wait /etc/services", 0, wait_services_BINARY2 },
++  {"wait --quiet /etc/passwd", 0, wait_passwd_BINARY },
++  {"wait /etc/passwd", 0, wait_passwd_BINARY2 },
+   {0, 0, 0}
+ };
+ 

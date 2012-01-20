@@ -1,0 +1,271 @@
+Description: Fix spellig errors discovered by lintian
+ Lintian complained about several spelling errors in upstream source. This 
+ patch fixes all of them.
+Author: Michael Fladischer <FladischerMichael@fladi.at>
+Last-Update: 2012-01-14
+Forwarded: no
+
+--- a/libgearman-server/job.c
++++ b/libgearman-server/job.c
+@@ -189,7 +189,7 @@
+                              (int)unique_size, unique);
+     if (checked_length >= GEARMAN_UNIQUE_SIZE || checked_length < 0)
+     {
+-      gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "We recieved a unique beyond GEARMAN_UNIQUE_SIZE: %.*s", (int)unique_size, unique);
++      gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "We received a unique beyond GEARMAN_UNIQUE_SIZE: %.*s", (int)unique_size, unique);
+     }
+ 
+     server->job_handle_count++;
+--- a/libgearman-server/packet.cc
++++ b/libgearman-server/packet.cc
+@@ -523,7 +523,7 @@
+       ptr= (uint8_t *)memchr(((uint8_t *)data) + used_size, 0, data_size - used_size);
+       if (not ptr)
+       {
+-        gearmand_log_crazy(GEARMAN_DEFAULT_LOG_PARAM, "Possible protocol error for %s, recieved only %u args", gearman_command_info(packet->command)->name, packet->argc);
++        gearmand_log_crazy(GEARMAN_DEFAULT_LOG_PARAM, "Possible protocol error for %s, received only %u args", gearman_command_info(packet->command)->name, packet->argc);
+         *ret_ptr= GEARMAN_IO_WAIT;
+         return used_size;
+       }
+--- a/docs/man/gearman_task_context.3
++++ b/docs/man/gearman_task_context.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_data.3
++++ b/docs/man/gearman_task_data.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_data_size.3
++++ b/docs/man/gearman_task_data_size.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_denominator.3
++++ b/docs/man/gearman_task_denominator.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_error.3
++++ b/docs/man/gearman_task_error.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_free.3
++++ b/docs/man/gearman_task_free.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_function_name.3
++++ b/docs/man/gearman_task_function_name.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_give_workload.3
++++ b/docs/man/gearman_task_give_workload.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_is_known.3
++++ b/docs/man/gearman_task_is_known.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_is_running.3
++++ b/docs/man/gearman_task_is_running.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_job_handle.3
++++ b/docs/man/gearman_task_job_handle.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_numerator.3
++++ b/docs/man/gearman_task_numerator.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_recv_data.3
++++ b/docs/man/gearman_task_recv_data.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_return.3
++++ b/docs/man/gearman_task_return.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_send_workload.3
++++ b/docs/man/gearman_task_send_workload.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_set_context.3
++++ b/docs/man/gearman_task_set_context.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_st.3
++++ b/docs/man/gearman_task_st.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_take_data.3
++++ b/docs/man/gearman_task_take_data.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearman_task_unique.3
++++ b/docs/man/gearman_task_unique.3
+@@ -117,7 +117,7 @@
+ Link with \-lgearman
+ .SH DESCRIPTION
+ .sp
+-A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP recieves a task in the form of a \fIjob\fP.
++A \fI\%gearman_task_st\fP represents a \fItask\fP.  Work that is sent by a \fIclient\fP to a gearman server is seen as a task (a \fIworker\fP receives a task in the form of a \fIjob\fP.
+ .sp
+ Tasks, i.e. \fI\%gearman_task_st\fP are created by calling either
+ \fBgearman_execute()\fP, \fBgearman_client_add_task()\fP, or
+--- a/docs/man/gearmand.8
++++ b/docs/man/gearmand.8
+@@ -258,7 +258,7 @@
+ A persistent queue module is enabled by passing the \-q or –queue\-type option to gearmand. Run gearmand –help to see which queue modules are supported on your system. If you are missing options for one you would like to use, you will need to install any dependencies and then recompile the gearmand package.
+ .SS Extended Protocols
+ .sp
+-The protocol plugin interface allows you to take over the packet send and recieve functions, allowing you to pack the buffers as required by the protocol. The core read and write functions can (and should) be used by the protocol plugin.
++The protocol plugin interface allows you to take over the packet send and receive functions, allowing you to pack the buffers as required by the protocol. The core read and write functions can (and should) be used by the protocol plugin.
+ .SS HTTP
+ .sp
+ This protocol plugin allows you to map HTTP requests to Gearman jobs. It only provides client job submission currently, but it may be extended to support other request types in the future. The plugin can handle both GET and POST data, the latter being used to send a workload to the job server. The URL being requested is translated into the function being called.
+--- a/docs/man/gearman_client_job_status.3
++++ b/docs/man/gearman_client_job_status.3
+@@ -43,7 +43,7 @@
+ .sp
+ \fBgearman_client_job_status()\fP is used to find the status of a job via its \fBgearman_job_handle_t\fP. The arguments is_known, is_running, numerator, and denominator are all optional. Unless a Gearman worker has sent numerator/denominator via \fBgearman_job_send_status()\fP, those values will be zero.
+ .sp
+-If the arguments is_known and is_running are ommitted then the function returns state data via \fBgearman_return_t\fP.
++If the arguments is_known and is_running are omitted then the function returns state data via \fBgearman_return_t\fP.
+ .SH RETURN VALUE
+ .sp
+ \fBgearman_return_t\fP will be returned. \fBGEARMAN_SUCCESS\fP will be returned upon success of the status being updated.
+--- a/libgearman/client.cc
++++ b/libgearman/client.cc
+@@ -235,7 +235,7 @@
+ 
+   if (gearman_size(function) == 0)
+   {
+-    return gearman_error(client->universal, GEARMAN_INVALID_ARGUMENT, "function arguement was empty");
++    return gearman_error(client->universal, GEARMAN_INVALID_ARGUMENT, "function argument was empty");
+   }
+ 
+   client->_do_handle[0]= 0; // Reset the job_handle we store in client
