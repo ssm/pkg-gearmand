@@ -8,10 +8,6 @@ override_dh_auto_configure:
 	autoreconf -i
 	dh_auto_configure -- --disable-rpath
 
-override_dh_auto_build:
-	dh_auto_build
-	$(MAKE) docs
-
 override_dh_auto_install:
 	chrpath -d bin/gearadmin gearmand/gearmand
 	dh_auto_install

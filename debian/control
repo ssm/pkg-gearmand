@@ -7,7 +7,6 @@ Build-Depends:
  automake,
  chrpath,
  debhelper (>= 7.0.50),
- doxygen,
  lcov,
  libboost-program-options-dev (>= 1.39.0),
  libboost-thread-dev (>= 1.39.0),
