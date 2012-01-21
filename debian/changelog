@@ -1,8 +1,22 @@
 gearmand (0.27-1) unstable; urgency=low
 
-  * New upstream release
+  [Michael Fladischer]
+  * Patch: fix spelling
+  * Patch: remove dependency on googleanalytics
+  * Patch: fix tests
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 15 Jan 2012 14:08:33 +0100
+  [Stig Sandbeck Mathisen]
+  * New upstream release (Closes: #621486) (LP: #682680)
+  * Remove build dependency on drizzle
+    (until it reaches testing again)
+  * Build with support for tokyocabinet
+  * Remove backported ipv6 patch
+  * Patch: disable hostile build tests, they take hours...
+  * Patch: workaround duplicate address issue for tests
+  * Do not build API documentation, the sources are not shipped in
+    upstream tarball
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sat, 21 Jan 2012 16:38:02 +0100
 
 gearmand (0.26-1) unstable; urgency=low
 
