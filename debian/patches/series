@@ -2,3 +2,4 @@ workaround_duplicate_address_in_tests.patch
 debian_patches_fix_spelling.patch
 debian_patches_fix_test_files.patch
 debian_patches_remove_googleanalytics.patch
+disable_hostile_tests.patch
