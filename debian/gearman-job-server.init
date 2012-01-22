@@ -19,6 +19,7 @@
 
 prefix=/usr
 exec_prefix=${prefix}
+NAME=gearmand
 DAEMON=${exec_prefix}/sbin/gearmand
 PIDDIR=/var/run/gearman
 PIDFILE=${PIDDIR}/gearmand.pid
@@ -72,6 +73,11 @@ stop()
   fi
 }
 
+status()
+{
+    status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
+}
+
 case "$1" in
 
   start)
@@ -82,13 +88,17 @@ case "$1" in
     stop
   ;;
 
+  status)
+    status
+  ;;
+
   restart|force-reload)
     stop
     start
   ;;
 
   *)
-    echo "Usage: $0 {start|stop|restart|force-reload}"
+    echo "Usage: $0 {start|stop|restart|force-reload|status}"
   ;;
 
 esac
