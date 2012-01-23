@@ -4,6 +4,8 @@ gearmand (0.27-1) unstable; urgency=low
   * Patch: fix spelling
   * Patch: remove dependency on googleanalytics
   * Patch: fix tests
+  * Use non-authenticating URL for Vcs-Git.
+  * Add "status" action to init script.
 
   [Stig Sandbeck Mathisen]
   * New upstream release (Closes: #621486) (LP: #682680)
@@ -15,8 +17,9 @@ gearmand (0.27-1) unstable; urgency=low
   * Patch: workaround duplicate address issue for tests
   * Do not build API documentation, the sources are not shipped in
     upstream tarball
+  * Update debian/copyright
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Sat, 21 Jan 2012 16:38:02 +0100
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Mon, 23 Jan 2012 11:31:08 +0100
 
 gearmand (0.26-1) unstable; urgency=low
 
