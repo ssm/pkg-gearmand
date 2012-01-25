@@ -3,14 +3,19 @@ libgearman.so.6 libgearman6 #MINVER#
  _Z20client_do_backgroundP17gearman_client_st17gearman_command_tR16gearman_string_tR16gearman_unique_tS3_Pc@Base 0.27
  _Z20gearman_universal_idR20gearman_universal_st@Base 0.27
  _Z21gearman_actions_pausev@Base 0.27
- _Z4makeP17gearman_vector_stPKcmRK18gearman_function_tPv@Base 0.27
- _Z8add_taskR17gearman_client_stP15gearman_task_stPv17gearman_command_tPKcS6_PKvmlP16gearman_return_tRK17gearman_actions_t@Base 0.27
+ (arch=alpha amd64 kfreebsd-amd64 ia64)_Z4makeP17gearman_vector_stPKcmRK18gearman_function_tPv@Base 0.27
+ (arch=!alpha !amd64 !kfreebsd-amd64 !ia64)_Z4makeP17gearman_vector_stPKcjRK18gearman_function_tPv@Base 0.27
+ (arch=alpha amd64 kfreebsd-amd64 ia64)_Z8add_taskR17gearman_client_stP15gearman_task_stPv17gearman_command_tPKcS6_PKvmlP16gearman_return_tRK17gearman_actions_t@Base 0.27
+ (arch=!alpha !amd64 !kfreebsd-amd64 !ia64)_Z8add_taskR17gearman_client_stP15gearman_task_stPv17gearman_command_tPKcS6_PKvjlP16gearman_return_tRK17gearman_actions_t@Base 0.27
  _Z8add_taskR17gearman_client_stP15gearman_task_stPv17gearman_command_tRK16gearman_string_tRK16gearman_unique_tS7_lRK17gearman_actions_t@Base 0.27
  _Z8add_taskR17gearman_client_stPv17gearman_command_tRK16gearman_string_tRK16gearman_unique_tS5_lRK17gearman_actions_t@Base 0.27
- _Z9client_doP17gearman_client_st17gearman_command_tPKcS3_PKvmPmP16gearman_return_t@Base 0.27
+ (arch=alpha amd64 kfreebsd-amd64 ia64)_Z9client_doP17gearman_client_st17gearman_command_tPKcS3_PKvmPmP16gearman_return_t@Base 0.27
+ (arch=!alpha !amd64 !kfreebsd-amd64 !ia64)_Z9client_doP17gearman_client_st17gearman_command_tPKcS3_PKvjPjP16gearman_return_t@Base 0.27
  _ZN10FunctionV18callbackEP14gearman_job_stPv@Base 0.27
- _ZN10FunctionV1C1EPFPvP14gearman_job_stS0_PmP16gearman_return_tES0_@Base 0.27
- _ZN10FunctionV1C2EPFPvP14gearman_job_stS0_PmP16gearman_return_tES0_@Base 0.27
+ (arch=alpha amd64 kfreebsd-amd64 ia64)_ZN10FunctionV1C1EPFPvP14gearman_job_stS0_PmP16gearman_return_tES0_@Base 0.27
+ (arch=!alpha !amd64 !kfreebsd-amd64 !ia64)_ZN10FunctionV1C1EPFPvP14gearman_job_stS0_PjP16gearman_return_tES0_@Base 0.27
+ (arch=alpha amd64 kfreebsd-amd64 ia64)_ZN10FunctionV1C2EPFPvP14gearman_job_stS0_PmP16gearman_return_tES0_@Base 0.27
+ (arch=!alpha !amd64 !kfreebsd-amd64 !ia64)_ZN10FunctionV1C2EPFPvP14gearman_job_stS0_PjP16gearman_return_tES0_@Base 0.27
  _ZN10FunctionV1D0Ev@Base 0.27
  _ZN10FunctionV1D1Ev@Base 0.27
  _ZN10FunctionV1D2Ev@Base 0.27
@@ -22,13 +27,16 @@ libgearman.so.6 libgearman6 #MINVER#
  _ZN10FunctionV2D2Ev@Base 0.27
  _ZN17gearman_result_st5clearEv@Base 0.27
  _ZN17gearman_result_st6stringEv@Base 0.27
- _ZN17gearman_result_stC1Em@Base 0.27
+ (arch=alpha amd64 kfreebsd-amd64 ia64)_ZN17gearman_result_stC1Em@Base 0.27
+ (arch=!alpha !amd64 !kfreebsd-amd64 !ia64)_ZN17gearman_result_stC1Ej@Base 0.27
  _ZN17gearman_result_stC1Ev@Base 0.27
- _ZN17gearman_result_stC2Em@Base 0.27
+ (arch=alpha amd64 kfreebsd-amd64 ia64)_ZN17gearman_result_stC2Em@Base 0.27
+ (arch=!alpha !amd64 !kfreebsd-amd64 !ia64)_ZN17gearman_result_stC2Ej@Base 0.27
  _ZN17gearman_result_stC2Ev@Base 0.27
  _ZN17gearman_result_stD1Ev@Base 0.27
  _ZN17gearman_result_stD2Ev@Base 0.27
- _ZN19_worker_function_st4initEP17gearman_vector_stPKcm@Base 0.27
+ (arch=alpha amd64 kfreebsd-amd64 ia64)_ZN19_worker_function_st4initEP17gearman_vector_stPKcm@Base 0.27
+ (arch=!alpha !amd64 !kfreebsd-amd64 !ia64)_ZN19_worker_function_st4initEP17gearman_vector_stPKcj@Base 0.27
  _ZN19_worker_function_st8_optionsC1Ev@Base 0.27
  _ZN19_worker_function_st8_optionsC2Ev@Base 0.27
  _ZN19_worker_function_stC1EPv@Base 0.27
@@ -39,18 +47,21 @@ libgearman.so.6 libgearman6 #MINVER#
  _ZN21gearman_aggregator_stC1EPv@Base 0.27
  _ZN21gearman_aggregator_stC2EPv@Base 0.27
  _ZN21gearman_connection_st10set_eventsEs@Base 0.27
- _ZN21gearman_connection_st11recv_socketEPvmR16gearman_return_t@Base 0.27
+ (arch=alpha amd64 kfreebsd-amd64 ia64)_ZN21gearman_connection_st11recv_socketEPvmR16gearman_return_t@Base 0.27
+ (arch=!alpha !amd64 !kfreebsd-amd64 !ia64)_ZN21gearman_connection_st11recv_socketEPvjR16gearman_return_t@Base 0.27
  _ZN21gearman_connection_st11send_packetERK17gearman_packet_stb@Base 0.27
  _ZN21gearman_connection_st11set_reventsEs@Base 0.27
  _ZN21gearman_connection_st12close_socketEv@Base 0.27
  _ZN21gearman_connection_st12connect_pollEv@Base 0.27
  _ZN21gearman_connection_st14reset_addrinfoEv@Base 0.27
- _ZN21gearman_connection_st14send_and_flushEPKvmP16gearman_return_t@Base 0.27
+ (arch=alpha amd64 kfreebsd-amd64 ia64)_ZN21gearman_connection_st14send_and_flushEPKvmP16gearman_return_t@Base 0.27
+ (arch=!alpha !amd64 !kfreebsd-amd64 !ia64)_ZN21gearman_connection_st14send_and_flushEPKvjP16gearman_return_t@Base 0.27
  _ZN21gearman_connection_st19free_private_packetEv@Base 0.27
  _ZN21gearman_connection_st5flushEv@Base 0.27
  _ZN21gearman_connection_st6lookupEv@Base 0.27
  _ZN21gearman_connection_st8set_hostEPKct@Base 0.27
- _ZN21gearman_connection_st9receivingEPvmR16gearman_return_t@Base 0.27
+ (arch=alpha amd64 kfreebsd-amd64 ia64)_ZN21gearman_connection_st9receivingEPvmR16gearman_return_t@Base 0.27
+ (arch=!alpha !amd64 !kfreebsd-amd64 !ia64)_ZN21gearman_connection_st9receivingEPvjR16gearman_return_t@Base 0.27
  _ZN21gearman_connection_st9receivingER17gearman_packet_stR16gearman_return_tb@Base 0.27
  _ZN21gearman_connection_stC1ER20gearman_universal_stP28gearman_connection_options_t@Base 0.27
  _ZN21gearman_connection_stC2ER20gearman_universal_stP28gearman_connection_options_t@Base 0.27
