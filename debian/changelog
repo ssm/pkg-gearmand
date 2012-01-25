@@ -1,3 +1,13 @@
+gearmand (0.27-2) UNRELEASED; urgency=low
+
+  [ Stig Sandbeck Mathisen ]
+  * Add missing include/libgearman-1.0 (Closes: #657189)
+
+  [ Michael Fladischer ]
+  * Tag varying symbols by architecture (Closes: #657165)
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Wed, 25 Jan 2012 10:17:53 +0100
+
 gearmand (0.27-1) unstable; urgency=low
 
   [Michael Fladischer]
