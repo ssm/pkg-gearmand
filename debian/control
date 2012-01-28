@@ -24,7 +24,7 @@ Build-Depends:
  pandora-build,
  pkg-config,
  procps,
- systemtap-sdt-dev,
+ systemtap-sdt-dev [linux-any],
  uuid-dev,
 Standards-Version: 3.9.2
 Homepage: http://launchpad.net/gearmand
