@@ -12,6 +12,9 @@ override_dh_auto_install:
 	chrpath -d bin/gearadmin gearmand/gearmand
 	dh_auto_install
 
+override_dh_install:
+	dh_install --list-missing
+
 override_dh_installchangelogs:
 	dh_installchangelogs ChangeLog
 
