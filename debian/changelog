@@ -1,3 +1,10 @@
+gearmand (0.27-4) unstable; urgency=low
+
+  * Use a whitelist for architectures we run build tests for
+    (Closes: #657163)
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sat, 04 Feb 2012 00:48:17 +0100
+
 gearmand (0.27-3) unstable; urgency=low
 
   * Mark systemtap-sdt-dev as a linux specific build dependency
