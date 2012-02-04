@@ -1,3 +1,13 @@
+gearmand (0.27-5~1.gbpa908e2) UNRELEASED; urgency=low
+
+  ** SNAPSHOT build @a908e2a58aed3555e19b9a314a00483c7480aabf **
+
+  * Set priority to "extra" after (repeated) feedback from ftpmaster auto script
+  * Remove the sybols file until the toolchain for handling c++ symbols improves enough
+  * Build depend on libsasl2-dev
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sat, 04 Feb 2012 11:17:29 +0100
+
 gearmand (0.27-4) unstable; urgency=low
 
   * Use a whitelist for architectures we run build tests for
