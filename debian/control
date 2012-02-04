@@ -1,6 +1,6 @@
 Source: gearmand
 Section: misc
-Priority: optional
+Priority: extra
 Maintainer: Stig Sandbeck Mathisen <ssm@debian.org>
 Build-Depends:
  autoconf,
