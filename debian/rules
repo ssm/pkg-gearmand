@@ -9,11 +9,6 @@ BUILD_TEST_ARCH_LIST := amd64 i386 kfreebsd-i386 kfreebsd-amd64 mips mipsel powe
 %:
 	dh $@
 
-override_dh_auto_configure:
-	libtoolize --ltdl -c -f
-	autoreconf -i
-	dh_auto_configure -- --disable-rpath
-
 ifeq ($(filter $(DEB_HOST_ARCH),$(BUILD_TEST_ARCH_LIST)),)
 # Disable automated build tests
 override_dh_auto_test:
