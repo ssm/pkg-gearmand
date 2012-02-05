@@ -142,7 +142,7 @@ Forwarded: no
 @@ -32,7 +32,7 @@
  {
    const char *args[]= { "--check-args",
-     "--queue=libmemcached",
+     "--queue-type=libmemcached",
 -    "--libmemcached-servers=localhost:12555", 
 +    "--libmemcached-servers=127.0.0.1:12555", 
      0 };
