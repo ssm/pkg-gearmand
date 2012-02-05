@@ -13,9 +13,9 @@
 
 #include <libgearman-server/common.h>
 
-#include <string.h>
-#include <errno.h>
-#include <assert.h>
+#include <cstring>
+#include <cerrno>
+#include <cassert>
 
 static gearmand_error_t gearmand_connection_recv_data(gearman_server_con_st *con, void *data, size_t data_size);
 
@@ -359,9 +359,9 @@ static gearmand_error_t _connection_flush(gearman_server_con_st *con)
 
         if (write_size == 0) // detect infinite loop?
         {
-          gearmand_log_info("send() sent zero bytes to peer %s:%s",
-                            connection->context == NULL ? "-" : connection->context->host,
-                            connection->context == NULL ? "-" : connection->context->port);
+          gearmand_log_debug("send() sent zero bytes to peer %s:%s",
+                             connection->context == NULL ? "-" : connection->context->host,
+                             connection->context == NULL ? "-" : connection->context->port);
           continue;
         }
         else if (write_size == -1)
