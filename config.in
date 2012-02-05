@@ -37,6 +37,9 @@
 /* Name of the gearmand binary used in make test */
 #undef GEARMAND_BINARY
 
+/* Define to 1 if is found */
+#undef HAVE_
+
 /* Define to 1 if you have `alloca', as a function or macro. */
 #undef HAVE_ALLOCA
 
@@ -91,15 +94,6 @@
 /* Define to 1 if you have the <errno.h> header file. */
 #undef HAVE_ERRNO_H
 
-/* Define to 1 if you have the `event_base_free' function. */
-#undef HAVE_EVENT_BASE_FREE
-
-/* Define to 1 if you have the `event_base_get_method' function. */
-#undef HAVE_EVENT_BASE_GET_METHOD
-
-/* Define to 1 if you have the `event_base_new' function. */
-#undef HAVE_EVENT_BASE_NEW
-
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
@@ -121,9 +115,6 @@
 /* If Hiredis is available */
 #undef HAVE_HIREDIS
 
-/* Define to 1 if you have the <hiredis/hiredis.h> header file. */
-#undef HAVE_HIREDIS_HIREDIS_H
-
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
@@ -142,13 +133,13 @@
 /* Enable libdrizzle support */
 #undef HAVE_LIBDRIZZLE
 
-/* Define if you have the event library. */
+/* Define to 1 if LIBEVENT is found */
 #undef HAVE_LIBEVENT
 
 /* libgearman support */
 #undef HAVE_LIBGEARMAN
 
-/* Define if you have the hiredis library. */
+/* Define to 1 if LIBHIREDIS is found */
 #undef HAVE_LIBHIREDIS
 
 /* Enable libmemcached support */
@@ -156,12 +147,6 @@
 
 /* Define to 1 if you have the `mtmalloc' library (-lmtmalloc). */
 #undef HAVE_LIBMTMALLOC
-
-/* Define if you have the pq library. */
-#undef HAVE_LIBPQ
-
-/* Define to 1 if you have the <libpq-fe.h> header file. */
-#undef HAVE_LIBPQ_FE_H
 
 /* Have clock_gettime */
 #undef HAVE_LIBRT
@@ -179,13 +164,13 @@
    (-ltcmalloc-minimal). */
 #undef HAVE_LIBTCMALLOC_MINIMAL
 
-/* Enable libtokyocabinet support */
+/* If TokyoCabinet is available */
 #undef HAVE_LIBTOKYOCABINET
 
 /* Define to 1 if you have the `umem' library (-lumem). */
 #undef HAVE_LIBUMEM
 
-/* Define if you have the uuid library. */
+/* Define to 1 if LIBUUID is found */
 #undef HAVE_LIBUUID
 
 /* Define to 1 if you have the <limits.h> header file. */
@@ -233,6 +218,9 @@
 
 /* Define to 1 if you have the <netinet/tcp.h> header file. */
 #undef HAVE_NETINET_TCP_H
+
+/* If libpq is available */
+#undef HAVE_POSTGRESQL
 
 /* Define if you have POSIX threads libraries and header files. */
 #undef HAVE_PTHREAD
@@ -340,9 +328,6 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
-/* Define to 1 if you have the <uuid/uuid.h> header file. */
-#undef HAVE_UUID_UUID_H
-
 /* Add additional valgrind code for testing with valgrind. */
 #undef HAVE_VALGRIND
 
@@ -446,6 +431,9 @@
 	STACK_DIRECTION < 0 => grows toward lower addresses
 	STACK_DIRECTION = 0 => direction of growth unknown */
 #undef STACK_DIRECTION
+
+/* Define if ISO C++ 1998 header files are present. */
+#undef STDCXX_98_HEADERS
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
@@ -568,12 +556,6 @@
 # undef __EXTENSIONS__
 #endif
 
-
-/* Use STDC Constant Macros in C++ */
-#undef __STDC_CONSTANT_MACROS
-
-/* Use STDC Format Macros in C++ */
-#undef __STDC_FORMAT_MACROS
 
 /* Use STDC Limit Macros in C++ */
 #undef __STDC_LIMIT_MACROS

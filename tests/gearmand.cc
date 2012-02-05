@@ -53,6 +53,22 @@ using namespace libtest;
 
 static std::string executable;
 
+static test_return_t postion_TEST(void *)
+{
+  const char *args[]= { "foo", 0 };
+
+  test_compare(EXIT_FAILURE, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t partial_TEST(void *)
+{
+  const char *args[]= { "--log", 0 };
+
+  test_compare(EXIT_FAILURE, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
 static test_return_t check_args_test(void *)
 {
   const char *args[]= { "--check-args", 0 };
@@ -128,6 +144,14 @@ static test_return_t short_help_test(void *)
 static test_return_t long_log_file_test(void *)
 {
   const char *args[]= { "--check-args", "--log-file=\"tmp/foo\"", 0 };
+
+  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t long_log_file_stderr_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--log-file=stderr", 0 };
 
   test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
   return TEST_SUCCESS;
@@ -261,11 +285,83 @@ static test_return_t short_version_test(void *)
   return TEST_SUCCESS;
 }
 
-static test_return_t verbose_test(void *)
+static test_return_t verbose_bad_option_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--verbose=BAD", 0 };
+
+  test_compare(EXIT_FAILURE, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t verbose_DEBUG_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--verbose=DEBUG", 0 };
+
+  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t verbose_ERROR_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--verbose=ERROR", 0 };
+
+  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t verbose_ALERT_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--verbose=ALERT", 0 };
+
+  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t verbose_INFO_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--verbose=INFO", 0 };
+
+  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t verbose_WARNING_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--verbose=WARNING", 0 };
+
+  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t verbose_NOTICE_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--verbose=NOTICE", 0 };
+
+  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t verbose_FATAL_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--verbose=FATAL", 0 };
+
+  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t verbose_CRITICAL_TEST(void *)
+{
+  const char *args[]= { "--check-args", "--verbose=CRITICAL", 0 };
+
+  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  return TEST_SUCCESS;
+}
+
+static test_return_t verbose_deprecated_TEST(void *)
 {
   const char *args[]= { "--check-args", "-vvv", 0 };
 
-  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  test_compare(EXIT_FAILURE, exec_cmdline(gearmand_binary(), args, true));
   return TEST_SUCCESS;
 }
 
@@ -295,7 +391,7 @@ static test_return_t protocol_test(void *)
 
 static test_return_t queue_test(void *)
 {
-  const char *args[]= { "--check-args", "--queue=builtin", 0 };
+  const char *args[]= { "--check-args", "--queue-type=builtin", 0 };
 
   test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
 
@@ -327,6 +423,12 @@ static test_return_t http_port_test(void *)
 }
 
 
+test_st bad_option_TESTS[] ={
+  {"position argument", 0, postion_TEST },
+  {"partial argument", 0, partial_TEST },
+  {0, 0, 0}
+};
+
 test_st gearmand_option_tests[] ={
   {"--check-args", 0, check_args_test},
   {"--backlog=", 0, long_backlog_test},
@@ -338,6 +440,7 @@ test_st gearmand_option_tests[] ={
   {"--help", 0, long_help_test},
   {"-h", 0, short_help_test},
   {"--log-file=", 0, long_log_file_test},
+  {"--log-file=stderr", 0, long_log_file_stderr_TEST},
   {"-l", 0, short_log_file_test},
   {"--listen=", 0, long_listen_test},
   {"-L", 0, short_listen_test},
@@ -354,13 +457,22 @@ test_st gearmand_option_tests[] ={
   {"-u", 0, short_user_test},
   {"--user=", 0, long_user_test},
   {"-u", 0, short_user_test},
-  {"-vvv", 0, verbose_test},
+  {"-vvv", 0, verbose_deprecated_TEST},
+  {"--verbose=FATAL", 0, verbose_FATAL_TEST},
+  {"--verbose=ALERT", 0, verbose_ALERT_TEST},
+  {"--verbose=CRITICAL", 0, verbose_CRITICAL_TEST},
+  {"--verbose=ERROR", 0, verbose_ERROR_TEST},
+  {"--verbose=WARNING", 0, verbose_WARNING_TEST},
+  {"--verbose=NOTICE", 0, verbose_NOTICE_TEST},
+  {"--verbose=INFO", 0, verbose_INFO_TEST},
+  {"--verbose=DEBUG", 0, verbose_DEBUG_TEST},
+  {"--verbose=BAD", 0, verbose_bad_option_TEST},
   {"--version", 0, long_version_test},
   {"-V", 0, short_version_test},
   {"--worker_wakeup=", 0, long_worker_wakeup_test},
   {"-w", 0, short_worker_wakeup_test},
   {"--protocol=", 0, protocol_test},
-  {"--queue=", 0, queue_test},
+  {"--queue-type=", 0, queue_test},
   {"--job-retries=", 0, long_job_retries_test},
   {"-j", 0, short_job_retries_test},
   {0, 0, 0}
@@ -372,8 +484,9 @@ test_st gearmand_httpd_option_tests[] ={
 };
 
 collection_st collection[] ={
-  {"basic options", 0, 0, gearmand_option_tests},
-  {"httpd options", 0, 0, gearmand_httpd_option_tests},
+  { "bad options", 0, 0, bad_option_TESTS },
+  { "basic options", 0, 0, gearmand_option_tests },
+  { "httpd options", 0, 0, gearmand_httpd_option_tests },
   {0, 0, 0, 0}
 };
 

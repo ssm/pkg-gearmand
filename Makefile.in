@@ -546,7 +546,7 @@ DIST_COMMON = README $(am__configure_deps) $(nobase_include_HEADERS) \
 @HAVE_LIBSQLITE3_TRUE@am__append_36 = $(SQLITE3_CFLAGS)
 @HAVE_LIBSQLITE3_TRUE@am__append_37 = $(SQLITE3_LDFLAGS)
 @HAVE_LIBTOKYOCABINET_TRUE@am__append_38 = libgearman-server/plugins/queue/tokyocabinet/queue.cc
-@HAVE_LIBTOKYOCABINET_TRUE@am__append_39 = $(LTLIBTOKYOCABINET)
+@HAVE_LIBTOKYOCABINET_TRUE@am__append_39 = $(LIBTOKYOCABINET_LDFLAGS)
 @TARGET_LINUX_TRUE@am__append_40 = -lm
 @TARGET_LINUX_TRUE@am__append_41 = -lm
 @TARGET_LINUX_TRUE@am__append_42 = tests/hostileworker_test
@@ -556,35 +556,35 @@ DIST_COMMON = README $(am__configure_deps) $(nobase_include_HEADERS) \
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ac_vc_build.m4 \
+	$(top_srcdir)/m4/ax_check_library.m4 \
 	$(top_srcdir)/m4/ax_compare_version.m4 \
+	$(top_srcdir)/m4/ax_cxx_header_stdcxx_98.m4 \
 	$(top_srcdir)/m4/ax_lib_curl.m4 \
+	$(top_srcdir)/m4/ax_lib_postgresql.m4 \
 	$(top_srcdir)/m4/ax_lib_sqlite3.m4 \
 	$(top_srcdir)/m4/ax_path_generic.m4 \
 	$(top_srcdir)/m4/ax_pthread.m4 \
 	$(top_srcdir)/m4/ax_with_prog.m4 $(top_srcdir)/m4/boost.m4 \
-	$(top_srcdir)/m4/extensions.m4 $(top_srcdir)/m4/hiredis.m4 \
-	$(top_srcdir)/m4/lib-ld.m4 $(top_srcdir)/m4/lib-link.m4 \
+	$(top_srcdir)/m4/bottom.m4 $(top_srcdir)/m4/extensions.m4 \
+	$(top_srcdir)/m4/have_cinttypes.m4 \
+	$(top_srcdir)/m4/have_cstdint.m4 \
+	$(top_srcdir)/m4/have_libpq.m4 $(top_srcdir)/m4/hiredis.m4 \
 	$(top_srcdir)/m4/lib-prefix.m4 $(top_srcdir)/m4/libdrizzle.m4 \
 	$(top_srcdir)/m4/libmemcached.m4 $(top_srcdir)/m4/libtool.m4 \
 	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
 	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
-	$(top_srcdir)/m4/pandora_64bit.m4 \
 	$(top_srcdir)/m4/pandora_canonical.m4 \
 	$(top_srcdir)/m4/pandora_check_compiler_version.m4 \
-	$(top_srcdir)/m4/pandora_cinttypes.m4 \
-	$(top_srcdir)/m4/pandora_cstdint.m4 \
 	$(top_srcdir)/m4/pandora_enable_dtrace.m4 \
 	$(top_srcdir)/m4/pandora_extensions.m4 \
 	$(top_srcdir)/m4/pandora_have_better_malloc.m4 \
 	$(top_srcdir)/m4/pandora_have_gcc_atomics.m4 \
-	$(top_srcdir)/m4/pandora_have_libevent.m4 \
-	$(top_srcdir)/m4/pandora_have_libpq.m4 \
 	$(top_srcdir)/m4/pandora_have_libtokyocabinet.m4 \
-	$(top_srcdir)/m4/pandora_have_libuuid.m4 \
 	$(top_srcdir)/m4/pandora_header_assert.m4 \
 	$(top_srcdir)/m4/pandora_optimize.m4 \
 	$(top_srcdir)/m4/pandora_platform.m4 \
 	$(top_srcdir)/m4/pandora_use_pipe.m4 \
+	$(top_srcdir)/m4/pandora_vc_build.m4 \
 	$(top_srcdir)/m4/pandora_version.m4 \
 	$(top_srcdir)/m4/pandora_warnings.m4 \
 	$(top_srcdir)/m4/pandora_with_valgrind.m4 \
@@ -642,13 +642,12 @@ am__v_lt_0 = --silent
 am__DEPENDENCIES_1 =
 @HAVE_LIBDRIZZLE_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 @HAVE_LIBMEMCACHED_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
-@HAVE_LIBPQ_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1)
-@HAVE_LIBSQLITE3_TRUE@am__DEPENDENCIES_5 = $(am__DEPENDENCIES_1)
-@HAVE_LIBTOKYOCABINET_TRUE@am__DEPENDENCIES_6 = $(am__DEPENDENCIES_1)
+@HAVE_LIBSQLITE3_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1)
+@HAVE_LIBTOKYOCABINET_TRUE@am__DEPENDENCIES_5 = $(am__DEPENDENCIES_1)
 libgearman_server_libgearman_server_la_DEPENDENCIES =  \
 	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
-	$(am__DEPENDENCIES_4) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_5) $(am__DEPENDENCIES_6) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_4) $(am__DEPENDENCIES_5) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__libgearman_server_libgearman_server_la_SOURCES_DIST =  \
@@ -787,7 +786,7 @@ am_libhostile_libhostile_la_OBJECTS = libhostile/initialize.lo \
 	$(am__objects_7)
 libhostile_libhostile_la_OBJECTS =  \
 	$(am_libhostile_libhostile_la_OBJECTS)
-@BUILDING_LIBMEMCACHED_FALSE@@HAVE_LIBMEMCACHED_TRUE@am__DEPENDENCIES_7 = $(am__DEPENDENCIES_1)
+@BUILDING_LIBMEMCACHED_FALSE@@HAVE_LIBMEMCACHED_TRUE@am__DEPENDENCIES_6 = $(am__DEPENDENCIES_1)
 am__libtest_libtest_la_SOURCES_DIST = libtest/binaries.cc \
 	libtest/cmdline.cc libtest/core.cc libtest/dream.cc \
 	libtest/framework.cc libtest/has.cc libtest/http.cc \
@@ -907,8 +906,8 @@ docs_libgearman_examples_gearman_execute_partition_DEPENDENCIES =  \
 am_examples_echo_client_OBJECTS =  \
 	examples/examples_echo_client-echo_client.$(OBJEXT)
 examples_echo_client_OBJECTS = $(am_examples_echo_client_OBJECTS)
-am__DEPENDENCIES_8 = $(am__DEPENDENCIES_1) libgearman/libgearman.la
-examples_echo_client_DEPENDENCIES = $(am__DEPENDENCIES_8)
+am__DEPENDENCIES_7 = $(am__DEPENDENCIES_1) libgearman/libgearman.la
+examples_echo_client_DEPENDENCIES = $(am__DEPENDENCIES_7)
 examples_echo_client_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_echo_client_CXXFLAGS) $(CXXFLAGS) \
@@ -916,7 +915,7 @@ examples_echo_client_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 am_examples_echo_worker_OBJECTS =  \
 	examples/examples_echo_worker-echo_worker.$(OBJEXT)
 examples_echo_worker_OBJECTS = $(am_examples_echo_worker_OBJECTS)
-examples_echo_worker_DEPENDENCIES = $(am__DEPENDENCIES_8)
+examples_echo_worker_DEPENDENCIES = $(am__DEPENDENCIES_7)
 examples_echo_worker_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_echo_worker_CXXFLAGS) $(CXXFLAGS) \
@@ -925,7 +924,7 @@ am_examples_reverse_client_OBJECTS =  \
 	examples/examples_reverse_client-reverse_client.$(OBJEXT)
 examples_reverse_client_OBJECTS =  \
 	$(am_examples_reverse_client_OBJECTS)
-examples_reverse_client_DEPENDENCIES = $(am__DEPENDENCIES_8)
+examples_reverse_client_DEPENDENCIES = $(am__DEPENDENCIES_7)
 examples_reverse_client_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_reverse_client_CXXFLAGS) $(CXXFLAGS) \
@@ -933,7 +932,7 @@ examples_reverse_client_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 am_examples_reverse_client_bg_OBJECTS = examples/examples_reverse_client_bg-reverse_client_bg.$(OBJEXT)
 examples_reverse_client_bg_OBJECTS =  \
 	$(am_examples_reverse_client_bg_OBJECTS)
-examples_reverse_client_bg_DEPENDENCIES = $(am__DEPENDENCIES_8)
+examples_reverse_client_bg_DEPENDENCIES = $(am__DEPENDENCIES_7)
 examples_reverse_client_bg_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_reverse_client_bg_CXXFLAGS) $(CXXFLAGS) \
@@ -941,7 +940,7 @@ examples_reverse_client_bg_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 am_examples_reverse_client_cb_OBJECTS = examples/examples_reverse_client_cb-reverse_client_cb.$(OBJEXT)
 examples_reverse_client_cb_OBJECTS =  \
 	$(am_examples_reverse_client_cb_OBJECTS)
-examples_reverse_client_cb_DEPENDENCIES = $(am__DEPENDENCIES_8)
+examples_reverse_client_cb_DEPENDENCIES = $(am__DEPENDENCIES_7)
 examples_reverse_client_cb_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_reverse_client_cb_CXXFLAGS) $(CXXFLAGS) \
@@ -949,7 +948,7 @@ examples_reverse_client_cb_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 am_examples_reverse_client_epoch_OBJECTS = examples/examples_reverse_client_epoch-reverse_client_epoch.$(OBJEXT)
 examples_reverse_client_epoch_OBJECTS =  \
 	$(am_examples_reverse_client_epoch_OBJECTS)
-examples_reverse_client_epoch_DEPENDENCIES = $(am__DEPENDENCIES_8)
+examples_reverse_client_epoch_DEPENDENCIES = $(am__DEPENDENCIES_7)
 examples_reverse_client_epoch_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_reverse_client_epoch_CXXFLAGS) $(CXXFLAGS) \
@@ -958,7 +957,7 @@ am_examples_reverse_worker_OBJECTS =  \
 	examples/examples_reverse_worker-reverse_worker.$(OBJEXT)
 examples_reverse_worker_OBJECTS =  \
 	$(am_examples_reverse_worker_OBJECTS)
-examples_reverse_worker_DEPENDENCIES = $(am__DEPENDENCIES_8)
+examples_reverse_worker_DEPENDENCIES = $(am__DEPENDENCIES_7)
 examples_reverse_worker_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_reverse_worker_CXXFLAGS) $(CXXFLAGS) \
@@ -966,7 +965,7 @@ examples_reverse_worker_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 am_examples_wc_worker_OBJECTS =  \
 	examples/examples_wc_worker-wc_worker.$(OBJEXT)
 examples_wc_worker_OBJECTS = $(am_examples_wc_worker_OBJECTS)
-examples_wc_worker_DEPENDENCIES = $(am__DEPENDENCIES_8)
+examples_wc_worker_DEPENDENCIES = $(am__DEPENDENCIES_7)
 examples_wc_worker_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_wc_worker_CXXFLAGS) $(CXXFLAGS) \
@@ -977,7 +976,6 @@ am_gearmand_gearmand_OBJECTS =  \
 	util/gearmand_gearmand-pidfile.$(OBJEXT)
 gearmand_gearmand_OBJECTS = $(am_gearmand_gearmand_OBJECTS)
 gearmand_gearmand_DEPENDENCIES = $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) libgearman-server/libgearman-server.la \
 	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 gearmand_gearmand_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
@@ -994,10 +992,6 @@ am__objects_12 =  \
 @TARGET_LINUX_TRUE@	$(am__objects_12)
 gearmand_hostile_gearmand_OBJECTS =  \
 	$(am_gearmand_hostile_gearmand_OBJECTS)
-am__DEPENDENCIES_9 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	libgearman-server/libgearman-server.la $(am__DEPENDENCIES_2) \
-	$(am__DEPENDENCIES_3)
 gearmand_hostile_gearmand_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(gearmand_hostile_gearmand_CXXFLAGS) $(CXXFLAGS) \
@@ -1312,11 +1306,6 @@ FGREP = @FGREP@
 GCOV_LIBS = @GCOV_LIBS@
 GEARMAN_LIBRARY_VERSION = @GEARMAN_LIBRARY_VERSION@
 GREP = @GREP@
-HAVE_LIBEVENT = @HAVE_LIBEVENT@
-HAVE_LIBHIREDIS = @HAVE_LIBHIREDIS@
-HAVE_LIBPQ = @HAVE_LIBPQ@
-HAVE_LIBTOKYOCABINET = @HAVE_LIBTOKYOCABINET@
-HAVE_LIBUUID = @HAVE_LIBUUID@
 HAVE_VISIBILITY = @HAVE_VISIBILITY@
 INNOBASE_SKIP_WARNINGS = @INNOBASE_SKIP_WARNINGS@
 INSTALL = @INSTALL@
@@ -1325,36 +1314,26 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTLTOOL_WARNINGS = @INTLTOOL_WARNINGS@
-ISAINFO = @ISAINFO@
 LCOV = @LCOV@
 LCOV_GENHTML = @LCOV_GENHTML@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBC_P = @LIBC_P@
-LIBEVENT = @LIBEVENT@
-LIBEVENT_PREFIX = @LIBEVENT_PREFIX@
-LIBHIREDIS = @LIBHIREDIS@
-LIBHIREDIS_PREFIX = @LIBHIREDIS_PREFIX@
+LIBEVENT_CPPFLAGS = @LIBEVENT_CPPFLAGS@
+LIBEVENT_LDFLAGS = @LIBEVENT_LDFLAGS@
+LIBHIREDIS_CPPFLAGS = @LIBHIREDIS_CPPFLAGS@
+LIBHIREDIS_LDFLAGS = @LIBHIREDIS_LDFLAGS@
 LIBM = @LIBM@
 LIBOBJS = @LIBOBJS@
-LIBPQ = @LIBPQ@
-LIBPQ_PREFIX = @LIBPQ_PREFIX@
 LIBS = @LIBS@
-LIBTOKYOCABINET = @LIBTOKYOCABINET@
-LIBTOKYOCABINET_CFLAGS = @LIBTOKYOCABINET_CFLAGS@
-LIBTOKYOCABINET_LIBS = @LIBTOKYOCABINET_LIBS@
-LIBTOKYOCABINET_PREFIX = @LIBTOKYOCABINET_PREFIX@
+LIBTOKYOCABINET_CPPFLAGS = @LIBTOKYOCABINET_CPPFLAGS@
+LIBTOKYOCABINET_LDFLAGS = @LIBTOKYOCABINET_LDFLAGS@
 LIBTOOL = @LIBTOOL@
-LIBUUID = @LIBUUID@
-LIBUUID_PREFIX = @LIBUUID_PREFIX@
+LIBUUID_CPPFLAGS = @LIBUUID_CPPFLAGS@
+LIBUUID_LDFLAGS = @LIBUUID_LDFLAGS@
 LIPO = @LIPO@
 LN_S = @LN_S@
-LTLIBEVENT = @LTLIBEVENT@
-LTLIBHIREDIS = @LTLIBHIREDIS@
 LTLIBOBJS = @LTLIBOBJS@
-LTLIBPQ = @LTLIBPQ@
-LTLIBTOKYOCABINET = @LTLIBTOKYOCABINET@
-LTLIBUUID = @LTLIBUUID@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
 MEMCACHED_BINARY = @MEMCACHED_BINARY@
@@ -1391,9 +1370,13 @@ PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
 PERMISSIVE_C_WARNINGS = @PERMISSIVE_C_WARNINGS@
 PERMISSIVE_WARNINGS = @PERMISSIVE_WARNINGS@
+PG_CONFIG = @PG_CONFIG@
 PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
+POSTGRESQL_CFLAGS = @POSTGRESQL_CFLAGS@
+POSTGRESQL_LDFLAGS = @POSTGRESQL_LDFLAGS@
+POSTGRESQL_VERSION = @POSTGRESQL_VERSION@
 PROTOSKIP_WARNINGS = @PROTOSKIP_WARNINGS@
 PTHREAD_CC = @PTHREAD_CC@
 PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
@@ -1415,6 +1398,8 @@ TARGET_OSX = @TARGET_OSX@
 TARGET_SOLARIS = @TARGET_SOLARIS@
 TARGET_WINDOWS = @TARGET_WINDOWS@
 VERSION = @VERSION@
+_CPPFLAGS = @_CPPFLAGS@
+_LDFLAGS = @_LDFLAGS@
 _WITH_LIBDRIZZLE_SUPPORT = @_WITH_LIBDRIZZLE_SUPPORT@
 _WITH_LIBGEARMAN_SUPPORT = @_WITH_LIBGEARMAN_SUPPORT@
 _WITH_LIBMEMCACHED_SUPPORT = @_WITH_LIBMEMCACHED_SUPPORT@
@@ -1521,8 +1506,8 @@ noinst_HEADERS = libtest/binaries.h libtest/blobslap_worker.h \
 	libhostile/malloc.h libhostile/realloc.h libhostile/recv.h \
 	libhostile/send.h libhostile/setsockopt.h libhostile/write.h \
 	benchmark/benchmark.h bin/arguments.h bin/error.h \
-	bin/function.h bin/client.h bin/worker.h \
-	libgearman-server/struct/client.h \
+	bin/function.h bin/client.h bin/worker.h gearmand/error.hpp \
+	gearmand/log.hpp libgearman-server/struct/client.h \
 	libgearman-server/struct/connection_list.h \
 	libgearman-server/struct/function.h \
 	libgearman-server/struct/gearmand.h \
@@ -1805,11 +1790,7 @@ EXAMPLES_LDADD = \
 		$(BOOST_PROGRAM_OPTIONS_LIBS) \
 		libgearman/libgearman.la
 
-EXAMPLES_LD_FLAGS = \
-		   $(CLIENT_LDFLAGS) \
-		   $(LTLIBEVENT) \
-		   $(LTLIBUUID)
-
+EXAMPLES_LD_FLAGS = $(CLIENT_LDFLAGS)
 examples_echo_client_SOURCES = examples/echo_client.cc
 examples_echo_client_LDADD = $(EXAMPLES_LDADD)
 examples_echo_client_CXXFLAGS = $(BOOST_CPPFLAGS)
@@ -1842,8 +1823,8 @@ examples_wc_worker_SOURCES = examples/wc_worker.cc
 examples_wc_worker_LDADD = $(EXAMPLES_LDADD)
 examples_wc_worker_CXXFLAGS = $(BOOST_CPPFLAGS)
 examples_wc_worker_LDFLAGS = $(EXAMPLES_LD_FLAGS)
+#gearmand_gearmand_LDADD+= $(PTHREAD_LIBS)
 gearmand_gearmand_LDADD = $(M_LIB) $(BOOST_PROGRAM_OPTIONS_LIBS) \
-	$(PTHREAD_LIBS) ${BETTER_MALLOC_LIBS} \
 	libgearman-server/libgearman-server.la $(am__append_25) \
 	$(am__append_29)
 gearmand_gearmand_LDFLAGS = $(BOOST_PROGRAM_OPTIONS_LDFLAGS)
@@ -1853,22 +1834,24 @@ gearmand_gearmand_SOURCES = \
 			   util/daemon.cc \
 			   util/pidfile.cc
 
-@TARGET_LINUX_TRUE@gearmand_hostile_gearmand_LDADD =  \
-@TARGET_LINUX_TRUE@	$(gearmand_gearmand_LDADD) \
+@TARGET_LINUX_TRUE@gearmand_hostile_gearmand_LDADD = $(M_LIB) \
+@TARGET_LINUX_TRUE@	$(BOOST_PROGRAM_OPTIONS_LIBS) \
+@TARGET_LINUX_TRUE@	$(PTHREAD_LIBS) \
+@TARGET_LINUX_TRUE@	libgearman-server/libgearman-server.la \
 @TARGET_LINUX_TRUE@	libhostile/libhostile.la $(DL_lib)
 @TARGET_LINUX_TRUE@gearmand_hostile_gearmand_LDFLAGS = $(gearmand_gearmand_LDFLAGS)
 @TARGET_LINUX_TRUE@gearmand_hostile_gearmand_CXXFLAGS = $(gearmand_gearmand_CXXFLAGS)
 @TARGET_LINUX_TRUE@gearmand_hostile_gearmand_SOURCES = $(gearmand_gearmand_SOURCES)
 @TARGET_LINUX_TRUE@gearmand_hostile_gearmand_DEPENDENCIES = libhostile/libhostile.la
 libgearman_server_libgearman_server_la_CFLAGS = $(am__append_35) \
-	$(PTHREAD_CFLAGS) -DBUILDING_LIBGEARMAN
+	$(LIBEVENT_CPPFLAGS) $(PTHREAD_CFLAGS) -DBUILDING_LIBGEARMAN
 libgearman_server_libgearman_server_la_CXXFLAGS = $(am__append_24) \
-	$(am__append_27) $(am__append_36) $(PTHREAD_CFLAGS) \
-	-DBUILDING_LIBGEARMAN
+	$(am__append_27) $(am__append_36) $(LIBEVENT_CPPFLAGS) \
+	$(PTHREAD_CFLAGS) -DBUILDING_LIBGEARMAN
 libgearman_server_libgearman_server_la_LDFLAGS = 
 libgearman_server_libgearman_server_la_LIBADD = $(am__append_23) \
 	$(am__append_28) $(am__append_31) $(am__append_33) \
-	$(am__append_37) $(am__append_39) $(LTLIBEVENT) \
+	$(am__append_37) $(am__append_39) $(LIBEVENT_LDFLAGS) \
 	$(PTHREAD_LIBS) $(BOOST_PROGRAM_OPTIONS_LIBS) $(am__append_40)
 libgearman_server_libgearman_server_la_SOURCES =  \
 	libgearman-server/error/strerror.cc \
@@ -1938,7 +1921,7 @@ libgearman_libgearman_la_SOURCES = \
 
 libgearman_libgearman_la_CXXFLAGS = -DBUILDING_LIBGEARMAN
 libgearman_libgearman_la_LDFLAGS = -version-info $(GEARMAN_LIBRARY_VERSION)
-libgearman_libgearman_la_LIBADD = $(LTLIBUUID) $(am__append_41)
+libgearman_libgearman_la_LIBADD = $(LIBUUID_LDFLAGS) $(am__append_41)
 
 # Test linking with C application
 libgearman_1_0_t_c_test_SOURCES = libgearman-1.0/t/c_test.c
@@ -5929,7 +5912,7 @@ rpm-sign: rpm-build
 	@rpm --addsign gearmand-$(VERSION)*.rpm gearmand-devel-$(VERSION)*.rpm gearmand-debuginfo-$(VERSION)*.rpm gearmand-server-$(VERSION)*.rpm
 	@rpm --checksig gearmand-$(VERSION)*.rpm gearmand-devel-$(VERSION)*.rpm gearmand-debuginfo-$(VERSION)*.rpm gearmand-server-$(VERSION)*.rpm
 
-rpm: man distcheck rpm-build
+rpm: support/gearmand.spec man distcheck rpm-build
 
 release: rpm rpm-sign
 	@rpm --addsign gearmand-$(VERSION)*.rpm gearmand-devel-$(VERSION)*.rpm gearmand-debuginfo-$(VERSION)*.rpm gearmand-server-$(VERSION)*.rpm

@@ -46,136 +46,11 @@
 #include <boost/program_options.hpp>
 #include <iostream>
 
+#include "gearmand/error.hpp"
+#include "gearmand/log.hpp"
+
 using namespace datadifferential;
-
-namespace error {
-
-inline void perror(const char *message)
-{
-  char *errmsg_ptr;
-  char errmsg[BUFSIZ];
-  errmsg[0]= 0;
-
-#ifdef STRERROR_R_CHAR_P
-  errmsg_ptr= strerror_r(errno, errmsg, sizeof(errmsg));
-#else
-  strerror_r(errno, errmsg, sizeof(errmsg));
-  errmsg_ptr= errmsg;
-#endif
-  std::cerr << "gearman: " << message << " (" << errmsg_ptr << ")" << std::endl;
-}
-
-inline void message(const char *arg)
-{
-  std::cerr << "gearmand: " << arg << std::endl;
-}
-
-inline void message(const char *arg, const char *arg2)
-{
-  std::cerr << "gearmand: " << arg << " : " << arg2 << std::endl;
-}
-
-inline void message(const std::string &arg, gearmand_error_t rc)
-{
-  std::cerr << "gearmand: " << arg << " : " << gearmand_strerror(rc) << std::endl;
-}
-
-} // namespace error
-
-struct gearmand_log_info_st
-{
-  std::string filename;
-  int fd;
-  bool opt_syslog;
-  bool opt_file;
-  bool init_success;
-
-  gearmand_log_info_st(const std::string &filename_arg, bool syslog_arg) :
-    filename(filename_arg),
-    fd(-1),
-    opt_syslog(syslog_arg),
-    opt_file(false),
-    init_success(false)
-  {
-    if (opt_syslog)
-    {
-      openlog("gearmand", LOG_PID | LOG_NDELAY, LOG_USER);
-    }
-
-    init();
-  }
-
-  void init()
-  {
-    if (filename.size())
-    {
-      fd= open(filename.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0644);
-      if (fd == -1)
-      {
-        if (opt_syslog)
-        {
-          char buffer[1024];
-          getcwd(buffer, sizeof(buffer));
-          syslog(LOG_ERR, "Could not open log file \"%.*s\", from \"%s\", open failed with (%s)", 
-                 int(filename.size()), filename.c_str(), 
-                 buffer,
-                 strerror(errno));
-        }
-        error::perror("Could not open log file for writing.");
-
-        fd= STDERR_FILENO;
-        return;
-      }
-
-      opt_file= true;
-    }
-
-    init_success= true;
-  }
-
-  bool initialized() const
-  {
-    return init_success;
-  }
-
-  int file() const
-  {
-    return fd;
-  }
-
-  void write(gearmand_verbose_t verbose, const char *mesg)
-  {
-    if (opt_file)
-    {
-      char buffer[GEARMAN_MAX_ERROR_SIZE];
-      int buffer_length= snprintf(buffer, GEARMAN_MAX_ERROR_SIZE, "%7s %s\n", gearmand_verbose_name(verbose), mesg);
-      if (::write(file(), buffer, buffer_length) == -1)
-      {
-        error::perror("Could not write to log file.");
-        syslog(LOG_EMERG, "gearmand could not open log file %s, got error %s", filename.c_str(), strerror(errno));
-      }
-
-    }
-
-    if (opt_syslog)
-    {
-      syslog(int(verbose), "%7s %s", gearmand_verbose_name(verbose), mesg);
-    }
-  }
-
-  ~gearmand_log_info_st()
-  {
-    if (fd != -1 and fd != STDERR_FILENO)
-    {
-      close(fd);
-    }
-
-    if (opt_syslog)
-    {
-      closelog();
-    }
-  }
-};
+using namespace gearmand;
 
 static bool _set_fdlimit(rlim_t fds);
 static bool _switch_user(const char *user);
@@ -201,9 +76,7 @@ int main(int argc, char *argv[])
   std::string port;
   std::string protocol;
   std::string queue_type;
-  std::string verbose_string;
-
-  verbose_string.insert(verbose_string.begin(), size_t(GEARMAND_VERBOSE_NOTICE), 'v');
+  std::string verbose_string= "ERROR";
 
   uint32_t threads;
   bool opt_round_robin;
@@ -211,15 +84,11 @@ int main(int argc, char *argv[])
   bool opt_check_args;
   bool opt_syslog;
 
-
   boost::program_options::options_description general("General options");
 
   general.add_options()
   ("backlog,b", boost::program_options::value(&backlog)->default_value(32),
    "Number of backlog connections for listen.")
-
-  ("check-args", boost::program_options::bool_switch(&opt_check_args)->default_value(false),
-   "Check command line and configuration file argments and then exit.")
 
   ("daemon,d", boost::program_options::bool_switch(&opt_daemon)->default_value(false),
    "Daemon, detach and run in the background.")
@@ -233,7 +102,7 @@ int main(int argc, char *argv[])
    "Number of attempts to run the job before the job server removes it. This is helpful to ensure a bad job does not crash all available workers. Default is no limit.")
 
   ("log-file,l", boost::program_options::value(&log_file),
-   "Log file to write errors and information to. Turning this option on also forces the first verbose level to be enabled.")
+   "Log file to write errors and information to. If the log-file paramater is specified as 'stderr', then output will go to stderr")
 
   ("listen,L", boost::program_options::value(&host),
    "Address the server should listen on. Default is INADDR_ANY.")
@@ -253,7 +122,7 @@ int main(int argc, char *argv[])
   ("queue-type,q", boost::program_options::value(&queue_type),
    "Persistent queue type to use.")
 
-  ("syslog", boost::program_options::bool_switch(&opt_syslog)->default_value(true),
+  ("syslog", boost::program_options::bool_switch(&opt_syslog)->default_value(false),
    "Use syslog.")
 
   ("threads,t", boost::program_options::value(&threads)->default_value(4),
@@ -262,8 +131,8 @@ int main(int argc, char *argv[])
   ("user,u", boost::program_options::value(&user),
    "Switch to given user after startup.")
 
-  ("verbose,v", boost::program_options::value(&verbose_string)->default_value(verbose_string),
-   "Increase verbosity level by one.")
+  ("verbose", boost::program_options::value(&verbose_string)->default_value(verbose_string),
+   "Set verbose level (FATAL, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG).")
 
   ("version,V", "Display the version of gearmand and exit.")
   ("worker-wakeup,w", boost::program_options::value(&worker_wakeup)->default_value(0),
@@ -278,15 +147,50 @@ int main(int argc, char *argv[])
 
   gearmand::plugins::initialize(all);
 
+  boost::program_options::positional_options_description positional;
+  positional.add("provided", -1);
+
+  // Now insert all options that we want to make visible to the user
+  boost::program_options::options_description visible("Allowed options");
+  visible.add(all);
+
+  boost::program_options::options_description hidden("Hidden options");
+  hidden.add_options()
+  ("check-args", boost::program_options::bool_switch(&opt_check_args)->default_value(false),
+   "Check command line and configuration file argments and then exit.");
+  all.add(hidden);
+
+  // Disable allow_guessing 
+  int style= boost::program_options::command_line_style::default_style ^ boost::program_options::command_line_style::allow_guessing;
   boost::program_options::variables_map vm;
   try {
-    store(parse_command_line(argc, argv, all), vm);
+    boost::program_options::parsed_options parsed= boost::program_options::command_line_parser(argc, argv)
+      .options(all)
+      .positional(positional)
+      .style(style)
+      .run();
+    store(parsed, vm);
     notify(vm);
   }
 
   catch(std::exception &e)
   {
-    std::cout << e.what() << std::endl;
+    if (e.what() and strncmp("-v", e.what(), 2) == 0)
+    {
+      error::message("Option -v has been deprecated, please use --verbose");
+    }
+    else
+    {
+      error::message(e.what());
+    }
+
+    return EXIT_FAILURE;
+  }
+
+  gearmand_verbose_t verbose= GEARMAND_VERBOSE_ERROR;
+  if (gearmand_verbose_check(verbose_string.c_str(), verbose) == false)
+  {
+    error::message("Invalid value for --verbose supplied");
     return EXIT_FAILURE;
   }
 
@@ -297,14 +201,14 @@ int main(int argc, char *argv[])
 
   if (vm.count("help"))
   {
-    std::cout << all << std::endl;
-    return EXIT_FAILURE;
+    std::cout << visible << std::endl;
+    return EXIT_SUCCESS;
   }
 
   if (vm.count("version"))
   {
     std::cout << std::endl << "gearmand " << gearmand_version() << " - " <<  gearmand_bugreport() << std::endl;
-    return EXIT_FAILURE;
+    return EXIT_SUCCESS;
   }
 
   if (fds > 0 && _set_fdlimit(fds))
@@ -327,16 +231,6 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  gearmand_verbose_t verbose= GEARMAND_VERBOSE_ERROR;
-  if (verbose_string.length() <= int(GEARMAND_VERBOSE_DEBUG))
-  {
-    verbose= static_cast<gearmand_verbose_t>(verbose_string.length());
-  }
-  else
-  {
-    verbose= GEARMAND_VERBOSE_DEBUG;
-  }
-
   util::Pidfile _pid_file(pid_file);
 
   if (not _pid_file.create())
@@ -345,7 +239,7 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  gearmand_log_info_st log_info(log_file, opt_syslog);
+  gearmand::gearmand_log_info_st log_info(log_file, opt_syslog);
 
   if (log_info.initialized() == false)
   {
