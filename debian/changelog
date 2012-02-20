@@ -1,8 +1,16 @@
-gearmand (0.28-1) UNRELEASED; urgency=low
+gearmand (0.28-1) unstable; urgency=low
 
   * New upstream release
+  * Only run build tests on "amd64" (Closes: #659256)
+  * Remove build dependency on tokyocabinet
+  * Remove build dependency on libmemcached
+  * Add install information for systemd service
+  * Set priority to "optional" for libgearman6
+  * Refresh patch debian_patches_fix_test_files.patch
+  * Refresh patch workaround_duplicate_address_in_tests.patch
+  * Update debian/copyright
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 05 Feb 2012 14:24:50 +0100
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Mon, 20 Feb 2012 09:36:11 +0100
 
 gearmand (0.27-5) unstable; urgency=low
 
