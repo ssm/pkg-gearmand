@@ -4,7 +4,7 @@
 DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
 
 # Only run build tests on some architectures
-BUILD_TEST_ARCH_LIST := amd64 i386 kfreebsd-i386 kfreebsd-amd64 mips mipsel powerpc
+BUILD_TEST_ARCH_LIST := amd64
 
 %:
 	dh $@
