@@ -31,6 +31,7 @@ Vcs-Git: git://anonscm.debian.org/collab-maint/gearmand.git
 
 
 Package: libgearman6
+Priority: optional
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Provides: libgearman-server0
