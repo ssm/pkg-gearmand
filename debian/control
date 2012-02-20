@@ -19,7 +19,6 @@ Build-Depends:
  libpq-dev,
  libsasl2-dev,
  libsqlite3-dev,
- libtokyocabinet-dev,
  libtool,
  memcached,
  pandora-build,
