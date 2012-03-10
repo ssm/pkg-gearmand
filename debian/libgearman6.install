@@ -1,1 +1,1 @@
-usr/lib/libgearman.so.*
+/usr/lib/*/libgearman.so.*
