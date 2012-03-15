@@ -36,6 +36,7 @@
  *
  */
 
+#include <config.h>
 #include <libgearman/common.h>
 
 #include <arpa/inet.h>
@@ -116,6 +117,8 @@ static void *_client_do(gearman_client_st *client, gearman_command_t command,
   {
     ret_ptr= &unused;
   }
+
+  universal_reset_error(client->universal);
 
   size_t unused_size;
   if (result_size == NULL)
@@ -232,6 +235,8 @@ static gearman_return_t _client_do_background(gearman_client_st *client,
   {
     return GEARMAN_INVALID_ARGUMENT;
   }
+
+  universal_reset_error(client->universal);
 
   if (gearman_size(function) == 0)
   {
@@ -745,6 +750,8 @@ gearman_return_t gearman_client_job_status(gearman_client_st *client,
     return GEARMAN_INVALID_ARGUMENT;
   }
 
+  universal_reset_error(client->universal);
+
   gearman_task_st do_task;
   gearman_task_st *do_task_ptr= gearman_client_add_task_status(client, &do_task, client,
                                                                job_handle, &ret);
@@ -1066,7 +1073,13 @@ gearman_task_st *gearman_client_add_task_status(gearman_client_st *client,
     ret_ptr= &unused;
   }
 
-  if (not (task= gearman_task_internal_create(client, task)))
+  if (client == NULL)
+  {
+    *ret_ptr= GEARMAN_INVALID_ARGUMENT;
+    return NULL;
+  }
+
+  if ((task= gearman_task_internal_create(client, task)) == NULL)
   {
     *ret_ptr= GEARMAN_MEMORY_ALLOCATION_FAILURE;
     return NULL;
@@ -1235,7 +1248,8 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
           }
 
   case GEARMAN_CLIENT_STATE_NEW:
-          gearman_return_t local_ret= _client_run_task(client, client->task);
+          assert_msg(client == client->task->client, "Programmer error, client and task member client are not the same");
+          gearman_return_t local_ret= _client_run_task(client->task);
           if (gearman_failed(local_ret) and local_ret != GEARMAN_IO_WAIT)
           {
             client->state= GEARMAN_CLIENT_STATE_NEW;
@@ -1271,7 +1285,8 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
             }
 
   case GEARMAN_CLIENT_STATE_SUBMIT:
-            gearman_return_t local_ret= _client_run_task(client, client->task);
+            assert_msg(client == client->task->client, "Programmer error, client and task member client are not the same");
+            gearman_return_t local_ret= _client_run_task(client->task);
             if (local_ret == GEARMAN_COULD_NOT_CONNECT)
             {
               client->state= GEARMAN_CLIENT_STATE_IDLE;
@@ -1398,7 +1413,8 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
 
   case GEARMAN_CLIENT_STATE_PACKET:
           /* Let task process job created or result packet. */
-          gearman_return_t local_ret= _client_run_task(client, client->task);
+          assert_msg(client == client->task->client, "Programmer error, client and task member client are not the same");
+          gearman_return_t local_ret= _client_run_task(client->task);
 
           if (local_ret == GEARMAN_IO_WAIT)
             break;
@@ -1461,7 +1477,7 @@ gearman_return_t gearman_client_run_tasks(gearman_client_st *client)
     return GEARMAN_INVALID_ARGUMENT;
   }
 
-  if (not client->task_list) // We are immediatly successful if all tasks are completed
+  if (client->task_list == NULL) // We are immediatly successful if all tasks are completed
   {
     return GEARMAN_SUCCESS;
   }
@@ -1558,3 +1574,10 @@ void gearman_client_set_namespace(gearman_client_st *self, const char *namespace
 
   gearman_universal_set_namespace(self->universal, namespace_key, namespace_key_size);
 }
+
+gearman_return_t gearman_client_set_identifier(gearman_client_st *client,
+                                               const char *id, size_t id_size)
+{
+  return gearman_set_identifier(client->universal, id, id_size);
+}
+

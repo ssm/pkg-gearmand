@@ -11,8 +11,13 @@
  * @brief Blob slap client utility
  */
 
+#include <config.h>
 #include <benchmark/benchmark.h>
+
 #include <iostream>
+#include <cstdlib>
+#include <cstring>
+#include <cstdio>
 
 #define BLOBSLAP_DEFAULT_NUM_TASKS 10
 #define BLOBSLAP_DEFAULT_BLOB_MIN_SIZE 0
@@ -300,9 +305,13 @@ static gearman_return_t _data(gearman_task_st *task)
   {
     size_t size= gearman_task_recv_data(task, buffer, BLOBSLAP_BUFFER_SIZE, &ret);
     if (gearman_failed(GEARMAN_SUCCESS))
+    {
       return ret;
+    }
     if (size == 0)
+    {
       break;
+    }
   }
 
   if (benchmark->verbose > 2)
@@ -316,18 +325,22 @@ static gearman_return_t _data(gearman_task_st *task)
 static gearman_return_t _complete(gearman_task_st *task)
 {
   char buffer[BLOBSLAP_BUFFER_SIZE];
-  gearman_return_t ret;
 
   gearman_benchmark_st *benchmark= static_cast<gearman_benchmark_st *>(gearman_task_context(task));
 
   while (1)
   {
+    gearman_return_t ret;
     size_t size= gearman_task_recv_data(task, buffer, BLOBSLAP_BUFFER_SIZE, &ret);
     if (gearman_failed(ret))
+    {
       return ret;
+    }
 
     if (size == 0)
+    {
       break;
+    }
   }
 
   if (benchmark->verbose > 0)

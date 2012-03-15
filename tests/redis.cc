@@ -22,8 +22,6 @@ using namespace libtest;
 #include <tests/basic.h>
 #include <tests/context.h>
 
-#include <tests/ports.h>
-
 #define WORKER_FUNCTION "hiredis_queue_test"
 
 #ifndef __INTEL_COMPILER
@@ -46,9 +44,9 @@ static test_return_t collection_init(void *object)
   Context *test= (Context *)object;
   assert(test);
 
-  const char *argv[]= { "test_gearmand", "--queue-type=redis", 0 };
+  const char *argv[]= { "--queue-type=redis", 0 };
 
-  test->initialize(2, argv);
+  test->initialize(1, argv);
 
   return TEST_SUCCESS;
 }
@@ -64,16 +62,7 @@ static test_return_t collection_cleanup(void *object)
 
 static void *world_create(server_startup_st& servers, test_return_t& error)
 {
-  Context *test= new Context(REDIS_PORT, servers);
-  if (not test)
-  {
-    error= TEST_MEMORY_ALLOCATION_FAILURE;
-    return NULL;
-  }
-
-  error= TEST_SUCCESS;
-
-  return test;
+  return new Context(default_port(), servers);
 }
 
 static bool world_destroy(void *object)

@@ -3,8 +3,8 @@
  * @brief Redis Queue Storage Definitions
  */
 
+#include <config.h>
 #include <libgearman-server/common.h>
-#include <inttypes.h>
 
 #include <libgearman-server/plugins/queue/redis/queue.h>
 #include <libgearman-server/plugins/queue/base.h>
@@ -76,7 +76,8 @@ Hiredis::~Hiredis()
 
 gearmand_error_t Hiredis::initialize()
 {
-  if ((_redis= redisConnect("127.0.0.1", 6379)) == NULL)
+  int service_port= atoi(service.c_str());
+  if ((_redis= redisConnect("127.0.0.1", service_port)) == NULL)
   {
     return gearmand_gerror("Could not connect to redis server", GEARMAN_QUEUE_ERROR);
   }

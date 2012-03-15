@@ -6,7 +6,7 @@
 # Use and distribution licensed under the BSD license.  See
 # the COPYING file in this directory for full text.
 
-AC_INIT([gearmand],[0.28],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+AC_INIT([gearmand],[0.29],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
 
 AC_CONFIG_AUX_DIR(config)
 
@@ -17,7 +17,7 @@ AM_INIT_AUTOMAKE(-Wall -Werror -Wno-portability subdir-objects foreign tar-ustar
 AC_CANONICAL_HOST
 AC_CANONICAL_BUILD
 
-AC_PREREQ([2.61])
+AC_PREREQ([2.63])
 
 AC_CONFIG_MACRO_DIR(m4)
 
@@ -102,6 +102,9 @@ AS_IF([test "x${WANT_SQLITE3}" = "xyes"],
       ])
 AM_CONDITIONAL(HAVE_LIBSQLITE3, test "x${WANT_SQLITE3}" = "xyes")
 
+AC_DEFINE([HAVE_MEMCACHED_LIGHT_BINARY], [0], [Support for memcached_light])
+AC_DEFINE([MEMCACHED_LIGHT_BINARY], [""], [Support for memcached_light])
+
 
 PANDORA_HAVE_BETTER_MALLOC
 AX_HAVE_LIBPQ
@@ -110,11 +113,22 @@ AC_FUNC_STRERROR_R
 SOCKET_SEND_FLAGS
 AX_HAVE_LIBHIREDIS
 
+AX_LIB_MYSQL([5.0])
+AM_CONDITIONAL(HAVE_MYSQL, test "x${HAVE_MYSQL}" = "x1")
+AS_IF([test "x${HAVE_MYSQL}" = "xyes"],
+      [
+       AC_DEFINE([HAVE_MYSQL_BUILD], [1], [Define to 1 if MySQL libraries are available])
+      ],
+      [
+       AC_DEFINE([HAVE_MYSQL_BUILD], [0], [Define to 1 if MySQL libraries are available])
+      ])
+
 # Checks for programs.
 AC_PROG_AWK
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
+AC_CHECK_PROGS([VALGRIND], ['valgrind'])
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -184,16 +198,18 @@ AC_CHECK_LIB([rt], [clock_gettime],
 # Check for -lm
 AC_CHECK_LIB([m], [floor], 
              [
-              M_LIB="-lrt"
+              M_LIB="-lm"
               AC_SUBST(M_LIB)
-              AC_DEFINE([HAVE_LIBRT], [ 1 ], [Have clock_gettime])
+              AC_DEFINE([HAVE_LIBM], [ 1 ], [Have math library])
               ], 
              [
-              AC_DEFINE([HAVE_LIBRT], [ 0 ], [Have clock_gettime])
+              AC_DEFINE([HAVE_LIBM], [ 0 ], [Have math library])
               ])
 
 AC_CHECK_FUNC(setsockopt, [], [AC_CHECK_LIB(socket, setsockopt)])
 AC_CHECK_FUNC(bind, [], [AC_CHECK_LIB(bind, bind)])
+
+AC_DEFINE([GEARMAND_BLOBSLAP_WORKER], [ 1 ], [Have Gearman Blobslap Worker])
 
 AC_TEST_FOR_REPOSITORY
 
@@ -212,7 +228,7 @@ AX_CHECK_LIBRARY([LIBUUID], [uuid/uuid.h], [uuid],
                   LIBUUID_LDFLAGS="-luuid"
                   ],
                  [
-                  AC_MSG_ERROR([Unable to find libuuid])
+                  AC_MSG_WARN([Unable to find libuuid])
                   ])
 
 
@@ -244,5 +260,6 @@ echo "   * Building with libdrizzle   $ac_enable_libdrizzle"
 echo "   * Building with libmemcached $ac_enable_libmemcached"
 echo "   * Building with libpq        $ac_cv_libpq"
 echo "   * Building with tokyocabinet $ac_enable_libtokyocabinet"
+echo "   * Building with libmysql     $found_mysql"
 echo ""
 echo "---"

@@ -22,8 +22,6 @@ using namespace libtest;
 #include <tests/basic.h>
 #include <tests/context.h>
 
-#include <tests/ports.h>
-
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
@@ -44,7 +42,7 @@ static test_return_t gearmand_basic_option_test(void *)
 
 static test_return_t collection_init(void *object)
 {
-  const char *argv[]= { "test_gearmand",
+  const char *argv[]= {
     "--libtokyocabinet-file=var/tmp/gearman.tcb",
     "--queue-type=libtokyocabinet",
     0 };
@@ -54,7 +52,7 @@ static test_return_t collection_init(void *object)
   Context *test= (Context *)object;
   assert(test);
 
-  test_truth(test->initialize(3, argv));
+  test_truth(test->initialize(2, argv));
 
   return TEST_SUCCESS;
 }
@@ -77,15 +75,8 @@ static void *world_create(server_startup_st& servers, test_return_t& error)
     return NULL;
   }
 
-  Context *test= new Context(TOKYOCABINET_TEST_PORT, servers);
-  if (not test)
-  {
-    error= TEST_MEMORY_ALLOCATION_FAILURE;
-    return NULL;
-  }
   unlink("var/tmp/gearman.tcb");
-
-  return test;
+  return new Context(libtest::default_port(), servers);
 }
 
 static bool world_destroy(void *object)

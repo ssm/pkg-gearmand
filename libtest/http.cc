@@ -19,6 +19,8 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
+
 #include <libtest/common.h>
 
 #if defined(HAVE_CURL_CURL_H) && HAVE_CURL_CURL_H
@@ -26,6 +28,39 @@
 #else
 class CURL;
 #endif
+
+
+static void cleanup_curl(void)
+{
+#if defined(HAVE_CURL_CURL_H) && HAVE_CURL_CURL_H
+  curl_global_cleanup();
+#endif
+}
+
+static void initialize_curl_startup()
+{
+#if defined(HAVE_CURL_CURL_H) && HAVE_CURL_CURL_H
+  if (curl_global_init(CURL_GLOBAL_ALL))
+  {
+    fatal_message("curl_global_init(CURL_GLOBAL_ALL) failed");
+  }
+#endif
+
+  if (atexit(cleanup_curl))
+  {
+    fatal_message("atexit() failed");
+  }
+}
+
+static pthread_once_t start_key_once= PTHREAD_ONCE_INIT;
+void initialize_curl(void)
+{
+  int ret;
+  if (pthread_once(&start_key_once, initialize_curl_startup) != 0)
+  {
+    fatal_message(strerror(ret));
+  }
+}
 
 namespace libtest {
 namespace http {
@@ -39,10 +74,10 @@ extern "C" size_t
 
     vchar_t *_body= (vchar_t*)data;
 
-    _body->get().resize(size * nmemb);
-    memcpy(&(_body)[0], ptr, _body->get().size());
+    _body->resize(size * nmemb);
+    memcpy(&_body[0], ptr, _body->size());
 
-    return _body->get().size();
+    return _body->size();
   }
 
 
@@ -56,6 +91,13 @@ static void init(CURL *curl, const std::string& url)
     curl_easy_setopt(curl, CURLOPT_USERAGENT, YATL_USERAGENT);
 #endif
   }
+}
+
+HTTP::HTTP(const std::string& url_arg) :
+  _url(url_arg),
+  _response(0)
+{
+  initialize_curl();
 }
 
 bool GET::execute()
@@ -91,8 +133,8 @@ bool POST::execute()
 
     init(curl, url());
 
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, _body.get().size());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)&_body);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, _body.size());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)&_body[0]);
 
     CURLcode retref= curl_easy_perform(curl);
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, _response);
@@ -115,7 +157,7 @@ bool TRACE::execute()
 
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "TRACE");
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, http_get_result_callback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&_body);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&_body[0]);
 
     CURLcode retref= curl_easy_perform(curl);
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, _response);

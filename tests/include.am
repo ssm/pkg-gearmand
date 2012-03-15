@@ -17,7 +17,6 @@ noinst_HEADERS+= \
 		 tests/gearman_client_do_job_handle.h \
 		 tests/gearman_execute_partition.h \
 		 tests/limits.h \
-		 tests/ports.h \
 		 tests/protocol.h \
 		 tests/regression.h \
 		 tests/server_options.h \
@@ -30,9 +29,10 @@ noinst_HEADERS+= \
 
 noinst_LTLIBRARIES+= tests/libstartworker.la
 tests_libstartworker_la_CXXFLAGS=
+tests_libstartworker_la_LIBADD=
 tests_libstartworker_la_CXXFLAGS+= $(PTHREAD_CFLAGS)
 tests_libstartworker_la_CXXFLAGS+= $(BOOST_CPPFLAGS)
-tests_libstartworker_la_LIBADD= $(PTHREAD_LIBS)
+tests_libstartworker_la_LIBADD+= $(BOOST_THREAD_LDFLAGS)
 tests_libstartworker_la_LIBADD+= $(BOOST_THREAD_LIBS)
 tests_libstartworker_la_LIBADD+= libgearman/libgearman.la
 tests_libstartworker_la_SOURCES= tests/start_worker.cc
@@ -43,12 +43,6 @@ CLIENT_LDADD= \
 	      libgearman/libgearman.la \
 	      libtest/libtest.la \
 	      tests/libstartworker.la
-
-tests_killall_SOURCES= tests/killall.cc
-tests_killall_DEPENDENCIES= ${CLIENT_LDADD} gearmand/gearmand bin/gearadmin
-tests_killall_LDADD= ${CLIENT_LDADD}
-check_PROGRAMS+=tests/killall
-noinst_PROGRAMS+=tests/killall
 
 tests_cycle_SOURCES= tests/cycle.cc
 tests_cycle_DEPENDENCIES= ${CLIENT_LDADD} gearmand/gearmand
@@ -82,20 +76,32 @@ tests_round_robin_test_LDADD= ${CLIENT_LDADD} libgearman/libgearmancore.la
 check_PROGRAMS+= tests/round_robin_test
 noinst_PROGRAMS+= tests/round_robin_test
 
+
+tests_hostileworker_test_SOURCES=
+tests_hostileworker_test_DEPENDENCIES=
+tests_hostileworker_test_CXXFLAGS=
+tests_hostileworker_test_LDADD=
+
 if TARGET_LINUX
-tests_hostileworker_test_SOURCES= tests/stress_worker.cc
-tests_hostileworker_test_SOURCES+= tests/libgearman-1.0/workers.cc
-tests_hostileworker_test_DEPENDENCIES= ${CLIENT_LDADD} libhostile/libhostile.la gearmand/gearmand
-tests_hostileworker_test_LDADD= ${CLIENT_LDADD}
+tests_hostileworker_test_CXXFLAGS+= -DHAVE_LIBHOSTILE=1
+tests_hostileworker_test_DEPENDENCIES+= libhostile/libhostile.la
 tests_hostileworker_test_LDADD+= libhostile/libhostile.la
 tests_hostileworker_test_LDADD+= $(DL_LIB)
 tests_hostileworker_test_LDADD+= $(RT_LIB)
+endif
+
+tests_hostileworker_test_SOURCES+= tests/stress_worker.cc
+tests_hostileworker_test_SOURCES+= tests/libgearman-1.0/workers.cc
+tests_hostileworker_test_DEPENDENCIES+= ${CLIENT_LDADD} gearmand/gearmand
+tests_hostileworker_test_LDADD+= ${CLIENT_LDADD}
 check_PROGRAMS+=tests/hostileworker_test
 noinst_PROGRAMS+=tests/hostileworker_test
 
-valgrind-hostileworker: tests/hostileworker_test gearmand/gearmand
-	@$(VALGRIND_COMMAND) tests/hostileworker_test
-endif
+test-hostile: tests/hostileworker_test gearmand/gearmand
+	@tests/hostileworker_test
+
+gdb-hostile: tests/hostileworker_test gearmand/gearmand
+	@$(GDB_COMMAND) tests/hostileworker_test
 
 # Test linking with C++ application
 tests_cpp_test_SOURCES= tests/cpp_test.cc

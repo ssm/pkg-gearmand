@@ -22,20 +22,16 @@ using namespace libtest;
 #include <tests/basic.h>
 #include <tests/context.h>
 
-#include <tests/ports.h>
-
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
 
 static test_return_t collection_init(void *object)
 {
-  const char *argv[]= { "test_gearmand", 0 };
-
   Context *test= (Context *)object;
   assert(test);
 
-  test_truth(test->initialize(1, argv));
+  test_truth(test->initialize(0, NULL));
 
   return TEST_SUCCESS;
 }
@@ -51,14 +47,7 @@ static test_return_t collection_cleanup(void *object)
 
 static void *world_create(server_startup_st& servers, test_return_t& error)
 {
-  Context *test= new Context(EPHEMERAL_PORT, servers);
-  if (test == NULL)
-  {
-    error= TEST_MEMORY_ALLOCATION_FAILURE;
-    return NULL;
-  }
-
-  return test;
+  return new Context(default_port(), servers);
 }
 
 static bool world_destroy(void *object)

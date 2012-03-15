@@ -62,7 +62,7 @@ gearmand_error_t gearmand_log_gerror(const char *position, const char *function,
 
 GEARMAN_INTERNAL_API
 gearmand_error_t gearmand_log_gerror_warn(const char *position, const char *function, const gearmand_error_t rc, const char *format, ...);
-#define gearmand_gerror_warn(_mesg, _gearmand_errot_t) gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, (_gearmand_errot_t), (_mesg))
+#define gearmand_gerror_warn(_mesg, _gearmand_errot_t) gearmand_log_gerror_warn(GEARMAN_DEFAULT_LOG_PARAM, (_gearmand_errot_t), (_mesg))
 
 GEARMAN_INTERNAL_API
 gearmand_error_t gearmand_log_gai_error(const char *position, const char *function, const int rc, const char *message);
@@ -96,14 +96,6 @@ void gearmand_log_warning(const char *position, const char *function, const char
 GEARMAN_INTERNAL_API
 void gearmand_log_debug(const char *position, const char *function, const char *format, ...);
 #define gearmand_debug(_mesg) gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, (_mesg))
-
-
-/**
- * Log a crazy message, see gearmand_log() for argument details.
- */
-GEARMAN_INTERNAL_API
-void gearmand_log_crazy(const char *position, const char *function, const char *format, ...);
-#define gearmand_crazy(_mesg) gearmand_log_crazy(GEARMAN_DEFAULT_LOG_PARAM, (_mesg))
 
 #ifdef __cplusplus
 }

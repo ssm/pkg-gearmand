@@ -11,7 +11,6 @@
 
 using namespace libtest;
 
-#include <cassert>
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
@@ -23,11 +22,26 @@ using namespace libtest;
 
 #include <libhostile/hostile.h>
 
-#include <tests/ports.h>
 #include <tests/start_worker.h>
 #include <tests/workers.h>
 
 #define WORKER_FUNCTION_NAME "foo"
+
+struct client_thread_context_st
+{
+  size_t count;
+  size_t payload_size;
+
+  client_thread_context_st() :
+    count(0),
+    payload_size(0)
+  { }
+
+  void increment()
+  {
+    count++;
+  }
+};
 
 extern "C" {
 
@@ -41,8 +55,9 @@ extern "C" {
 
   static void *client_thread(void *object)
   {
-    size_t *success= (size_t *)object;
-    assert(*success == 0);
+    client_thread_context_st *success= (client_thread_context_st *)object;
+    fatal_assert(success);
+    fatal_assert(success->count == 0);
 
     gearman_return_t rc;
     gearman_client_st *client;
@@ -55,7 +70,7 @@ extern "C" {
       {
         pthread_exit(0);
       }
-      rc= gearman_client_add_server(client, NULL, STRESS_WORKER_PORT);
+      rc= gearman_client_add_server(client, NULL, libtest::default_port());
       pthread_setcanceltype(oldstate, NULL);
     }
 
@@ -64,16 +79,26 @@ extern "C" {
     if (gearman_success(rc))
     {
       gearman_client_set_timeout(client, 400);
-      for (size_t x= 0; x < 10; x++)
+      for (size_t x= 0; x < 100; x++)
       {
         int oldstate;
         pthread_setcanceltype(PTHREAD_CANCEL_DISABLE, &oldstate);
-        (void)gearman_client_do(client, WORKER_FUNCTION_NAME, NULL, NULL, 0, NULL, &rc);
+        libtest::vchar_t payload;
+        payload.resize(success->payload_size);
+        void *value= gearman_client_do(client, WORKER_FUNCTION_NAME,
+                                       NULL,
+                                       &payload[0], payload.size(),
+                                       NULL, &rc);
         pthread_setcanceltype(oldstate, NULL);
 
         if (gearman_success(rc))
         {
-          *success= *success +1;
+          success->increment();
+        }
+
+        if (value)
+        {
+          free(value);
         }
       }
     }
@@ -83,25 +108,23 @@ extern "C" {
   }
 }
 
-#define CLIENT_CHILDREN 100
-static test_return_t worker_ramp_TEST(void *)
+static test_return_t worker_ramp_exec(const size_t payload_size)
 {
   std::vector<pthread_t> children;
-  children.resize(CLIENT_CHILDREN);
+  children.resize(number_of_cpus());
 
-  std::vector<size_t>  success;
+  std::vector<client_thread_context_st>  success;
   success.resize(children.size());
-
-  set_recv_close(true, 20, 20);
 
   for (size_t x= 0; x < children.size(); x++)
   {
+    success[x].payload_size= payload_size;
     pthread_create(&children[x], NULL, client_thread, &success[x]);
   }
   
   for (size_t x= 0; x < children.size(); x++)
   {
-#if _GNU_SOURCE
+#if _GNU_SOURCE && defined(TARGET_OS_LINUX) && TARGET_OS_LINUX 
     {
       struct timespec ts;
 
@@ -136,9 +159,22 @@ static test_return_t worker_ramp_TEST(void *)
 #endif
   }
 
-  set_recv_close(true, 0, 0);
-
   return TEST_SUCCESS;
+}
+
+static test_return_t worker_ramp_TEST(void *)
+{
+  return worker_ramp_exec(0);
+}
+
+static test_return_t worker_ramp_1K_TEST(void *)
+{
+  return worker_ramp_exec(1024);
+}
+
+static test_return_t worker_ramp_10K_TEST(void *)
+{
+  return worker_ramp_exec(1024*10);
 }
 
 static test_return_t pre_recv(void *)
@@ -180,14 +216,13 @@ static void *world_create(server_startup_st& servers, test_return_t& error)
     return NULL;
   }
 
-  // Assume we are running under valgrind, and bail 
-  if (getenv("YATL_RUN_MASSIVE_TESTS") == NULL) 
+  if (bool(getenv("YATL_RUN_MASSIVE_TESTS")) == false) 
   {
     error= TEST_SKIPPED;
     return NULL;
   }
 
-  if (server_startup(servers, "gearmand", STRESS_WORKER_PORT, 0, NULL) == false)
+  if (server_startup(servers, "gearmand", libtest::default_port(), 0, NULL) == false)
   {
     error= TEST_FAILURE;
     return NULL;
@@ -197,7 +232,7 @@ static void *world_create(server_startup_st& servers, test_return_t& error)
 
   for (uint32_t x= 0; x < 100; x++)
   {
-    if (test_worker_start(STRESS_WORKER_PORT, NULL, WORKER_FUNCTION_NAME, echo_react_fn, NULL, gearman_worker_options_t()) == NULL)
+    if (test_worker_start(libtest::default_port(), NULL, WORKER_FUNCTION_NAME, echo_react_fn, NULL, gearman_worker_options_t()) == NULL)
     {
       error= TEST_FAILURE;
       return NULL;
@@ -210,6 +245,8 @@ static void *world_create(server_startup_st& servers, test_return_t& error)
 test_st tests[] ={
   {"first pass", 0, worker_ramp_TEST },
   {"second pass", 0, worker_ramp_TEST },
+  {"first pass 1K jobs", 0, worker_ramp_1K_TEST },
+  {"first pass 10K jobs", 0, worker_ramp_10K_TEST },
   {0, 0, 0}
 };
 

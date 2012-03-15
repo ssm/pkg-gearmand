@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <config.h>
-
 #include <libgearman-server/gearmand.h>
 #include <libgearman-server/byteorder.h>
 
@@ -148,4 +146,16 @@ extern "C" {
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef NI_MAXHOST
+#define GEARMAND_NI_MAXHOST NI_MAXHOST
+#else
+#define GEARMAND_NI_MAXHOST 1025
+#endif
+
+#ifdef NI_MAXSERV
+#define GEARMAND_NI_MAXSERV NI_MAXSERV
+#else
+#define GEARMAND_NI_MAXSERV 32
 #endif
