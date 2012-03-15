@@ -39,8 +39,6 @@
 
 #pragma once
 
-#include <config.h>
-
 #include <libgearman/assert.hpp>
 
 #include <libgearman-1.0/gearman.h>
@@ -65,3 +63,4 @@
 #include <libgearman/is.hpp>
 #include <libgearman/string.hpp>
 #include <libgearman/command.h>
+#include <libgearman/task.hpp>

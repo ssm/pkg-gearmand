@@ -1,8 +1,9 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
  * 
- *  Kill all Gearmand servers that we might use during testing (i.e. cleanup previous runs)
+ *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
+ *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -34,34 +35,26 @@
  *
  */
 
+#pragma once
 
-/*
-  Test that we are cycling the servers we are creating during testing.
-*/
+/**
+ * Initialize a task structure.
+ *
+ * @param[in] client Structure previously initialized with
+ *  gearman_client_create() or gearman_client_clone().
+ * @param[in] task Caller allocated structure, or NULL to allocate one.
+ * @return On success, a pointer to the (possibly allocated) structure. On
+ *  failure this will be NULL.
+ */
+gearman_task_st *gearman_task_internal_create(gearman_client_st *client,
+                                              gearman_task_st *task);
 
-#include <config.h>
-#include <libtest/test.hpp>
+const char *gearman_task_strstate(gearman_task_st *self);
 
-using namespace libtest;
-#include <libgearman/gearman.h>
+void gearman_task_clear_fn(gearman_task_st *task);
 
-#include <tests/ports.h>
+bool gearman_task_is_active(const gearman_task_st *self);
 
-static void *world_create(server_startup_st&, test_return_t&)
-{
-  for (int port= GEARMAN_BASE_TEST_PORT; port <= int(GEARMAN_MAX_TEST_PORT); port++)
-  {
-    char buffer[1024];
-    snprintf(buffer, sizeof(buffer), "%d", port);
-    const char *args[]= { "--port", buffer, "--shutdown", 0 };
+gearman_result_st *gearman_task_mutable_result(gearman_task_st *task);
 
-    exec_cmdline("bin/gearadmin", args, true);
-  }
-
-  return NULL;
-}
-
-void get_world(Framework *world)
-{
-  world->_create= world_create;
-}
+void gearman_task_free_result(gearman_task_st *task);

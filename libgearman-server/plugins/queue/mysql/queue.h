@@ -1,5 +1,4 @@
-/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
+/*  
  *  Gearmand client and server library.
  *
  *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
@@ -35,24 +34,15 @@
  *
  */
 
-
 #pragma once
 
-#define GEARMAN_BASE_TEST_PORT 32143
-#define BURNIN_TEST_PORT GEARMAN_BASE_TEST_PORT +1
-#define CLIENT_TEST_PORT GEARMAN_BASE_TEST_PORT +2
-#define DRIZZLE_TEST_PORT GEARMAN_BASE_TEST_PORT +3
-#define INTERNAL_TEST_PORT GEARMAN_BASE_TEST_PORT +4
-#define MEMCACHED_TEST_PORT GEARMAN_BASE_TEST_PORT +5
-#define ROUND_ROBIN_WORKER_TEST_PORT GEARMAN_BASE_TEST_PORT +6
-#define SQLITE_TEST_PORT GEARMAN_BASE_TEST_PORT +7
-#define TOKYOCABINET_TEST_PORT GEARMAN_BASE_TEST_PORT +8
-#define WORKER_TEST_PORT GEARMAN_BASE_TEST_PORT +9
-#define CYCLE_TEST_PORT GEARMAN_BASE_TEST_PORT +10
-#define GEARADMIN_TEST_PORT GEARMAN_BASE_TEST_PORT +11
-#define BLOBSLAP_CLIENT_TEST_PORT GEARMAN_BASE_TEST_PORT +12
-#define STRESS_WORKER_PORT GEARMAN_BASE_TEST_PORT +13
-#define EPHEMERAL_PORT GEARMAN_BASE_TEST_PORT +14
-#define REDIS_PORT GEARMAN_BASE_TEST_PORT +15
-#define HTTPD_PORT GEARMAN_BASE_TEST_PORT +16
-#define GEARMAN_MAX_TEST_PORT HTTPD_PORT
+
+namespace gearmand {
+namespace plugins {
+namespace queue {
+
+void initialize_mysql();
+
+} // namespace queue
+} // namespace plugin
+} // namespace gearmand

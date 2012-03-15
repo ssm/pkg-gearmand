@@ -19,35 +19,10 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
 #include <libtest/common.h>
 
 namespace libtest {
-
-bool vchar_t::operator!=(const vchar_t& right) const
-{
-  if (_vchar.size() == (*right).size())
-  {
-    if (::memcmp(&_vchar[0], &(*right)[0], _vchar.size()) == 0)
-    {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool vchar_t::operator==(const vchar_t& right) const
-{ 
-  if (_vchar.size() == (*right).size())
-  {
-    if (::memcmp(&_vchar[0], &(*right)[0], _vchar.size()) == 0)
-    {
-      return true;
-    }
-  }
-
-  return false;
-}
 
 static std::string printer(const char *str, size_t length)
 {
@@ -67,10 +42,16 @@ static std::string printer(const char *str, size_t length)
   return buf.str();
 }
 
+void make_vector(libtest::vchar_t& arg, const char *str, size_t length)
+{
+  arg.resize(length);
+  memcpy(&arg[0], str, length);
+}
+
 std::ostream& operator<<(std::ostream& output, const libtest::vchar_t& arg)
 {
-  std::string tmp= libtest::printer(&(*arg)[0], (*arg).size());
-  output << tmp <<  "[" << (*arg).size() << "]";
+  std::string tmp= libtest::printer(&arg[0], arg.size());
+  output << tmp <<  "[" << arg.size() << "]";
 
   return output;
 }

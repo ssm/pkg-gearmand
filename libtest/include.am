@@ -21,7 +21,8 @@
 # 
 
 LIBTOOL_COMMAND= ${abs_top_builddir}/libtool --mode=execute
-VALGRIND_COMMAND= $(LIBTOOL_COMMAND) valgrind --error-exitcode=1 --leak-check=yes --show-reachable=yes --track-fds=yes --malloc-fill=A5 --free-fill=DE
+VALGRIND_EXEC_COMMAND= $(LIBTOOL_COMMAND) valgrind --error-exitcode=1 --leak-check=yes --show-reachable=yes --track-fds=yes --malloc-fill=A5 --free-fill=DE
+VALGRIND_COMMAND= TESTS_ENVIRONMENT="valgrind" $(VALGRIND_EXEC_COMMAND)
 HELGRIND_COMMAND= $(LIBTOOL_COMMAND) valgrind --tool=helgrind --read-var-info=yes --error-exitcode=1 --read-var-info=yes
 DRD_COMMAND= $(LIBTOOL_COMMAND) valgrind --tool=drd
 GDB_COMMAND= $(LIBTOOL_COMMAND) gdb -f -x libtest/run.gdb
@@ -33,7 +34,7 @@ export DRD_COMMAND
 export GDB_COMMAND
 
 valgrind:
-	@echo make check TESTS_ENVIRONMENT="\"$(VALGRIND_COMMAND)\""
+	@echo make check TESTS_ENVIRONMENT="\"$(VALGRIND_EXEC_COMMAND)\""
 
 gdb:
 	@echo make check TESTS_ENVIRONMENT="\"$(GDB_COMMAND)\""
@@ -57,6 +58,7 @@ distclean-libtest-check:
 
 noinst_HEADERS+= \
 		 libtest/binaries.h \
+		 libtest/cpu.hpp \
 		 libtest/blobslap_worker.h \
 		 libtest/callbacks.h \
 		 libtest/cmdline.h \
@@ -67,6 +69,7 @@ noinst_HEADERS+= \
 		 libtest/dream.h \
 		 libtest/error.h \
 		 libtest/failed.h \
+		 libtest/fatal.hpp \
 		 libtest/framework.h \
 		 libtest/gearmand.h \
 		 libtest/get.h \
@@ -77,8 +80,8 @@ noinst_HEADERS+= \
 		 libtest/killpid.h \
 		 libtest/libtool.hpp \
 		 libtest/memcached.h \
-		 libtest/runner.h \
 		 libtest/port.h \
+		 libtest/runner.h \
 		 libtest/server.h \
 		 libtest/server_container.h \
 		 libtest/signal.h \
@@ -89,6 +92,7 @@ noinst_HEADERS+= \
 		 libtest/string.hpp \
 		 libtest/test.h \
 		 libtest/test.hpp \
+		 libtest/tmpfile.hpp \
 		 libtest/vchar.hpp \
 		 libtest/visibility.h \
 		 libtest/wait.h
@@ -97,8 +101,11 @@ noinst_LTLIBRARIES+= libtest/libtest.la
 libtest_libtest_la_SOURCES= \
 			    libtest/binaries.cc \
 			    libtest/cmdline.cc \
+			    libtest/comparison.cc \
 			    libtest/core.cc \
+			    libtest/cpu.cc \
 			    libtest/dream.cc \
+			    libtest/fatal.cc \
 			    libtest/framework.cc \
 			    libtest/has.cc \
 			    libtest/http.cc \
@@ -113,6 +120,7 @@ libtest_libtest_la_SOURCES= \
 			    libtest/socket.cc \
 			    libtest/strerror.cc \
 			    libtest/test.cc \
+			    libtest/tmpfile.cc \
 			    libtest/vchar.cc
 
 libtest_libtest_la_CXXFLAGS=
@@ -195,7 +203,7 @@ tmp_chroot/var/run: tmp_chroot/var
 	@$(mkdir_p) tmp_chroot/var/run
 
 
-libtest_unittest_DEPENDENCIES+= libtest/libtest.la libtest_tmp_dir
+libtest_unittest_DEPENDENCIES+= libtest/libtest.la libtest_tmp_dir libtest/abort libtest/wait
 libtest_unittest_LDADD+= libtest/libtest.la
 libtest_unittest_SOURCES= libtest/unittest.cc
 check_PROGRAMS+= libtest/unittest
@@ -204,7 +212,7 @@ test-unittest: libtest/unittest
 	@libtest/unittest
 
 valgrind-unittest: libtest/unittest
-	@$(VALGRIND_COMMAND) libtest/unittest
+	@$(VALGRIND_COMMAND) libtest/unittest TESTS_ENVIRONMENT="valgrind"
 
 gdb-unittest: libtest/unittest
 	@$(GDB_COMMAND) libtest/unittest
@@ -220,5 +228,10 @@ libtest_skiptest_SOURCES= libtest/skiptest.cc
 check_PROGRAMS+= libtest/skiptest
 noinst_PROGRAMS+= libtest/skiptest
 
-libtest_wait_SOURCES= libtest/wait.cc
+libtest_wait_SOURCES=
+libtest_wait_SOURCES+= libtest/wait.cc
+libtest_wait_SOURCES+= libtest/dream.cc
 noinst_PROGRAMS+= libtest/wait
+
+libtest_abort_SOURCES= libtest/abort.cc
+noinst_PROGRAMS+= libtest/abort

@@ -19,6 +19,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
 #include <libtest/common.h>
 
 namespace libtest { 
@@ -32,17 +33,11 @@ const char *test_strerror(test_return_t code)
   case TEST_FAILURE:
     return "failed";
 
-  case TEST_MEMORY_ALLOCATION_FAILURE:
-    return "memory allocation";
-
   case TEST_SKIPPED:
     return "skipped";
-
-  case TEST_FATAL:
-    break;
   }
 
-  return "failed";
+  throw fatal_message("No port could be found");
 }
 
 } // namespace libtest

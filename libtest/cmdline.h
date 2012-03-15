@@ -80,7 +80,7 @@ public:
 
   size_t stdout_result_length() const
   {
-    return (*_stdout_buffer).size();
+    return _stdout_buffer.size();
   }
 
   libtest::vchar_t stderr_result() const
@@ -90,10 +90,27 @@ public:
 
   size_t stderr_result_length() const
   {
-    return (*_stderr_buffer).size();
+    return _stderr_buffer.size();
   }
 
   std::string print();
+
+  void use_valgrind(bool arg= true)
+  {
+    _use_valgrind= arg;
+  }
+
+  void use_gdb(bool arg= true)
+  {
+    _use_gdb= arg;
+  }
+
+  std::string arguments();
+
+  std::string gdb_filename()
+  {
+    return  _gdb_filename;
+  }
 
 private:
   void create_argv(const char *args[]);
@@ -101,9 +118,13 @@ private:
 
 private:
   const bool _use_libtool;
+  bool _use_valgrind;
+  bool _use_gdb;
   size_t _argc;
+  std::string _exectuble_name;
   std::string _exectuble;
   std::string _exectuble_with_path;
+  std::string _gdb_filename;
   Options _options;
   Pipe stdin_fd;
   Pipe stdout_fd;
@@ -129,6 +150,9 @@ static inline std::ostream& operator<<(std::ostream& output, const enum Applicat
     case Application::INVALID:
       output << "127";
       break;
+
+    default:
+      output << "EXIT_UNKNOWN";
   }
 
   return output;

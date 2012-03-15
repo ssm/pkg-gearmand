@@ -19,6 +19,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
 #include <libtest/common.h>
 
 #include <cassert>
@@ -120,10 +121,25 @@ void server_startup_st::restart()
   }
 }
 
+#define MAGIC_MEMORY 123575
+server_startup_st::server_startup_st() :
+  _magic(MAGIC_MEMORY),
+  _socket(false),
+  _sasl(false),
+  _count(5),
+  udp(0)
+{ }
+
 server_startup_st::~server_startup_st()
 {
   shutdown_and_remove();
 }
+
+bool server_startup_st::validate()
+{
+  return _magic == MAGIC_MEMORY;
+}
+
 
 bool server_startup_st::is_debug() const
 {
@@ -144,23 +160,9 @@ bool server_startup_st::is_helgrind() const
 bool server_startup(server_startup_st& construct, const std::string& server_type, in_port_t try_port, int argc, const char *argv[])
 {
   Outn();
-  (void)try_port;
-
-  set_max_port(try_port);
-
-  // Look to see if we are being provided ports to use
+  if (try_port <= 0)
   {
-    char variable_buffer[1024];
-    snprintf(variable_buffer, sizeof(variable_buffer), "LIBTEST_PORT_%lu", (unsigned long)construct.count());
-
-    char *var;
-    if ((var= getenv(variable_buffer)))
-    {
-      in_port_t tmp= in_port_t(atoi(var));
-
-      if (tmp > 0)
-        try_port= tmp;
-    }
+    libtest::fatal(LIBYATL_DEFAULT_PARAM, "was passed the invalid port number %d", int(try_port));
   }
 
   libtest::Server *server= NULL;
@@ -174,32 +176,19 @@ bool server_startup(server_startup_st& construct, const std::string& server_type
       {
         server= build_gearmand("localhost", try_port);
       }
-      else
-      {
-        Error << "Libgearman was not found";
-      }
-    } 
-    else
-    {
-      Error << "No gearmand binary is available";
     }
   }
   else if (server_type.compare("blobslap_worker") == 0)
   {
     if (GEARMAND_BINARY)
     {
-      if (HAVE_LIBGEARMAN)
+      if (GEARMAND_BLOBSLAP_WORKER)
       {
-        server= build_blobslap_worker(try_port);
+        if (HAVE_LIBGEARMAN)
+        {
+          server= build_blobslap_worker(try_port);
+        }
       }
-      else
-      {
-        Error << "Libgearman was not found";
-      }
-    }
-    else
-    {
-      Error << "No gearmand binary is available";
     }
   }
   else if (server_type.compare("memcached-sasl") == 0)
@@ -210,14 +199,6 @@ bool server_startup(server_startup_st& construct, const std::string& server_type
       {
         server= build_memcached_sasl("localhost", try_port, construct.username(), construct.password());
       }
-      else
-      {
-        Error << "Libmemcached was not found";
-      }
-    }
-    else
-    {
-      Error << "No memcached binary that was compiled with sasl is available";
     }
   }
   else if (server_type.compare("memcached") == 0)
@@ -228,31 +209,28 @@ bool server_startup(server_startup_st& construct, const std::string& server_type
       {
         server= build_memcached("localhost", try_port);
       }
-      else
-      {
-        Error << "Libmemcached was not found";
-      }
-    }
-    else
-    {
-      Error << "No memcached binary is available";
     }
   }
-  else
+  else if (server_type.compare("memcached-light") == 0)
   {
-    Error << "Failed to start " << server_type << ", no support was found to be compiled in for it.";
+    if (MEMCACHED_LIGHT_BINARY)
+    {
+      if (HAVE_LIBMEMCACHED)
+      {
+        server= build_memcached_light("localhost", try_port);
+      }
+    }
   }
 
   if (server == NULL)
   {
-    Error << "Failure occured while creating server: " <<  server_type;
-    return false;
+    fatal_message("Launching of an unknown server was attempted");
   }
 
   /*
     We will now cycle the server we have created.
   */
-  if (not server->cycle())
+  if (server->cycle() == false)
   {
     Error << "Could not start up server " << *server;
     delete server;
@@ -266,12 +244,13 @@ bool server_startup(server_startup_st& construct, const std::string& server_type
     Out << "Pausing for startup, hit return when ready.";
     std::string gdb_command= server->base_command();
     std::string options;
+#if 0
     Out << "run " << server->args(options);
+#endif
     getchar();
   }
   else if (server->start() == false)
   {
-    Error << "Failed to start " << *server;
     delete server;
     return false;
   }
@@ -281,12 +260,6 @@ bool server_startup(server_startup_st& construct, const std::string& server_type
   }
 
   construct.push_server(server);
-
-  if (default_port() == 0)
-  {
-    assert(server->has_port());
-    set_default_port(server->port());
-  }
 
   Outn();
 
@@ -355,7 +328,7 @@ bool server_startup_st::start_socket_server(const std::string& server_type, cons
   /*
     We will now cycle the server we have created.
   */
-  if (not server->cycle())
+  if (server->cycle() == false)
   {
     Error << "Could not start up server " << *server;
     delete server;
@@ -369,7 +342,9 @@ bool server_startup_st::start_socket_server(const std::string& server_type, cons
     Out << "Pausing for startup, hit return when ready.";
     std::string gdb_command= server->base_command();
     std::string options;
+#if 0
     Out << "run " << server->args(options);
+#endif
     getchar();
   }
   else if (not server->start())

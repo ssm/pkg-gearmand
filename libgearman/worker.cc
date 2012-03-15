@@ -36,6 +36,7 @@
  *
  */
 
+#include <config.h>
 #include <libgearman/common.h>
 #include <libgearman/function/base.hpp>
 #include <libgearman/function/make.hpp>
@@ -432,9 +433,14 @@ void gearman_worker_set_workload_free_fn(gearman_worker_st *worker,
 gearman_return_t gearman_worker_add_server(gearman_worker_st *worker,
                                            const char *host, in_port_t port)
 {
+  if (worker == NULL)
+  {
+    return GEARMAN_INVALID_ARGUMENT;
+  }
+
   if (gearman_connection_create_args(worker->universal, host, port) == NULL)
   {
-    return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+    return gearman_universal_error_code(worker->universal);
   }
 
   return GEARMAN_SUCCESS;
@@ -1345,4 +1351,10 @@ gearman_id_t gearman_worker_id(gearman_worker_st *self)
 gearman_worker_st *gearman_job_clone_worker(gearman_job_st *job)
 {
   return gearman_worker_clone(NULL, job->worker);
+}
+
+gearman_return_t gearman_worker_set_identifier(gearman_worker_st *worker,
+                                               const char *id, size_t id_size)
+{
+  return gearman_set_identifier(worker->universal, id, id_size);
 }

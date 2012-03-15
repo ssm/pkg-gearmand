@@ -20,6 +20,7 @@
  */
 
 
+#include <config.h>
 #include <libtest/common.h>
 
 #include <cassert>
@@ -41,42 +42,6 @@ static inline std::string &rtrim(std::string &s)
 #include <libtest/server.h>
 #include <libtest/stream.h>
 #include <libtest/killpid.h>
-
-extern "C" {
-  static bool exited_successfully(int status, const std::string &command)
-  {
-    if (status == 0)
-    {
-      return true;
-    }
-
-    if (WIFEXITED(status) == true)
-    {
-      int ret= WEXITSTATUS(status);
-
-      if (ret == 0)
-      {
-        return true;
-      }
-      else if (ret == EXIT_FAILURE)
-      {
-        libtest::Error << "Command executed, but returned EXIT_FAILURE: " << command;
-      }
-      else
-      {
-        libtest::Error << "Command executed, but returned " << ret;
-      }
-    }
-    else if (WIFSIGNALED(status) == true)
-    {
-      int ret_signal= WTERMSIG(status);
-      libtest::Error << "Died from signal " << strsignal(ret_signal);
-    }
-
-    return false;
-  }
-}
-
 
 namespace libtest {
 
@@ -101,16 +66,18 @@ std::ostream& operator<<(std::ostream& output, const Server &arg)
     output << " Socket:" <<  arg.socket();
   }
 
-  if (not arg.running().empty())
+  if (arg.running().empty() == false)
   {
     output << " Exec:" <<  arg.running();
   }
 
-
   return output;  // for multiple << operators
 }
 
+#define MAGIC_MEMORY 123570
+
 Server::Server(const std::string& host_arg, const in_port_t port_arg, bool is_socket_arg) :
+  _magic(MAGIC_MEMORY),
   _is_socket(is_socket_arg),
   _pid(-1),
   _port(port_arg),
@@ -126,6 +93,11 @@ Server::~Server()
   }
 }
 
+bool Server::validate()
+{
+  return _magic == MAGIC_MEMORY;
+}
+
 // If the server exists, kill it
 bool Server::cycle()
 {
@@ -133,7 +105,8 @@ bool Server::cycle()
 
   // Try to ping, and kill the server #limit number of times
   pid_t current_pid;
-  while (--limit and is_pid_valid(current_pid= get_pid()))
+  while (--limit and 
+         is_pid_valid(current_pid= get_pid()))
   {
     if (kill(current_pid))
     {
@@ -153,21 +126,6 @@ bool Server::cycle()
   return true;
 }
 
-// Grab a one off command
-bool Server::command(std::string& command_arg)
-{
-  rebuild_base_command();
-
-  command_arg+= _base_command;
-
-  if (args(command_arg))
-  {
-    return true;
-  }
-
-  return false;
-}
-
 bool Server::wait_for_pidfile() const
 {
   Wait wait(pid_file(), 4);
@@ -183,25 +141,43 @@ bool Server::start()
     Error << "Could not kill() existing server during start() pid:" << _pid;
     return false;
   }
-  assert(not has_pid());
 
-  _running.clear();
-  if (command(_running) == false)
+  if (has_pid() == false)
+  {
+    fatal_message("has_pid() failed, programer error");
+  }
+
+  Application app(executable(), is_libtool());
+
+  if (is_debug())
+  {
+    app.use_gdb();
+  }
+  else if (getenv("TESTS_ENVIRONMENT"))
+  {
+    if (strstr(getenv("TESTS_ENVIRONMENT"), "gdb"))
+    {
+      app.use_gdb();
+    }
+  }
+
+  if (args(app) == false)
   {
     Error << "Could not build command()";
     return false;
   }
 
-  if (is_valgrind() or is_helgrind())
+  Application::error_t ret;
+  if (Application::SUCCESS !=  (ret= app.run()))
   {
-    _running+= " &";
+    Error << "Application::run() " << ret;
+    return false;
   }
+  _running= app.print();
 
-  int ret= system(_running.c_str());
-  if (exited_successfully(ret, _running) == false)
+  if (Application::SUCCESS !=  (ret= app.wait()))
   {
-    Error << "system(" << _running << ") failed: " << strerror(errno);
-    _running.clear();
+    Error << "Application::wait() " << _running << " " << ret;
     return false;
   }
 
@@ -210,33 +186,56 @@ bool Server::start()
     dream(5, 50000);
   }
 
-  if (pid_file_option() and pid_file().empty() == false)
+  if (pid_file().empty() == false)
   {
     Wait wait(pid_file(), 8);
 
-    if (not wait.successful())
+    if (wait.successful() == false)
     {
-      Error << "Unable to open pidfile for: " << _running;
+      libtest::fatal(LIBYATL_DEFAULT_PARAM,
+                     "Unable to open pidfile for: %s",
+                     _running.c_str());
     }
   }
 
-  int counter= 0;
   bool pinged= false;
-  while ((pinged= ping()) == false and
-         counter < (is_helgrind() or is_valgrind() ? 20 : 5))
   {
-    dream(counter++, 50000);
+    uint32_t timeout= 20; // This number should be high enough for valgrind startup (which is slow)
+    uint32_t waited;
+    uint32_t this_wait;
+    uint32_t retry;
+
+    for (waited= 0, retry= 1; ; retry++, waited+= this_wait)
+    {
+      if ((pinged= ping()) == true)
+      {
+        break;
+      }
+      else if (waited >= timeout)
+      {
+        break;
+      }
+
+      this_wait= retry * retry / 3 + 1;
+      libtest::dream(this_wait, 0);
+    }
   }
 
   if (pinged == false)
   {
     // If we happen to have a pid file, lets try to kill it
-    if (pid_file_option() and pid_file().empty() == false)
+    if (pid_file().empty() == false)
     {
-      Error << "We are going to kill it off";
-      kill_file(pid_file());
+      if (kill_file(pid_file()) == false)
+      {
+        fatal_message("Failed to kill off server after startup occurred, when pinging failed");
+      }
+      Error << "Failed to ping() server started, having pid_file. exec:" << _running;
     }
-    Error << "Failed to ping() server started with:" << _running;
+    else
+    {
+      Error << "Failed to ping() server started. exec:" << _running;
+    }
     _running.clear();
     return false;
   }
@@ -257,6 +256,16 @@ void Server::reset_pid()
 pid_t Server::pid()
 {
   return _pid;
+}
+
+void Server::add_option(const std::string& arg)
+{
+  _options.push_back(std::make_pair(arg, std::string()));
+}
+
+void Server::add_option(const std::string& name, const std::string& value)
+{
+  _options.push_back(std::make_pair(name, value));
 }
 
 bool Server::set_socket_file()
@@ -324,8 +333,7 @@ bool Server::set_log_file()
   int fd;
   if ((fd= mkstemp(file_buffer)) == -1)
   {
-    perror(file_buffer);
-    return false;
+    libtest::fatal(LIBYATL_DEFAULT_PARAM, "mkstemp() failed on %s with %s", file_buffer, strerror(errno));
   }
   close(fd);
 
@@ -334,106 +342,62 @@ bool Server::set_log_file()
   return true;
 }
 
-void Server::rebuild_base_command()
+bool Server::args(Application& app)
 {
-  _base_command.clear();
-  if (is_libtool())
-  {
-    _base_command+= libtool();
-    _base_command+= " --mode=execute ";
-  }
-
-  if (is_debug() and getenv("GDB_COMMAND"))
-  {
-    _base_command+= getenv("GDB_COMMAND");
-    _base_command+= " ";
-  }
-  else if (is_valgrind() and getenv("VALGRIND_COMMAND"))
-  {
-    _base_command+= getenv("VALGRIND_COMMAND");
-    _base_command+= " ";
-  }
-  else if (is_helgrind() and getenv("HELGRIND_COMMAND"))
-  {
-    _base_command+= getenv("HELGRIND_COMMAND");
-    _base_command+= " ";
-  }
-
-  if (is_libtool())
-  {
-    if (getenv("PWD"))
-    {
-      _base_command+= getenv("PWD");
-      _base_command+= "/";
-    }
-  }
-
-  _base_command+= executable();
-}
-
-void Server::set_extra_args(const std::string &arg)
-{
-  _extra_args= arg;
-}
-
-bool Server::args(std::string& options)
-{
-  std::stringstream arg_buffer;
 
   // Set a log file if it was requested (and we can)
-  if (getenv("LIBTEST_LOG") and log_file_option())
+  if (has_log_file_option())
   {
-    if (not set_log_file())
-    {
-      return false;
-    }
-
-    arg_buffer << " " << log_file_option() << _log_file;
+    set_log_file();
+    log_file_option(app, _log_file);
   }
 
   if (getenv("LIBTEST_SYSLOG") and has_syslog())
   {
-    arg_buffer << " --syslog";
+    app.add_option("--syslog");
   }
 
   // Update pid_file
-  if (pid_file_option())
   {
     if (_pid_file.empty() and set_pid_file() == false)
     {
       return false;
     }
 
-    arg_buffer << " " << pid_file_option() << pid_file(); 
+    pid_file_option(app, pid_file());
   }
 
   assert(daemon_file_option());
   if (daemon_file_option() and not is_valgrind() and not is_helgrind())
   {
-    arg_buffer << " " << daemon_file_option();
+    app.add_option(daemon_file_option());
   }
 
-  if (_is_socket and socket_file_option())
+  if (has_socket_file_option())
   {
-    if (not set_socket_file())
+    if (set_socket_file() == false)
     {
       return false;
     }
 
-    arg_buffer << " " << socket_file_option() << "\"" <<  _socket << "\"";
+    socket_file_option(app, _socket);
   }
 
-  assert(port_option());
-  if (port_option() and _port > 0)
+  if (has_port_option())
   {
-    arg_buffer << " " << port_option() << _port;
+    port_option(app, _port);
   }
 
-  options+= arg_buffer.str();
-
-  if (not _extra_args.empty())
+  for (Options::const_iterator iter= _options.begin(); iter != _options.end(); iter++)
   {
-    options+= _extra_args;
+    if ((*iter).second.empty() == false)
+    {
+      app.add_option((*iter).first, (*iter).second);
+    }
+    else
+    {
+      app.add_option((*iter).first);
+    }
   }
 
   return true;

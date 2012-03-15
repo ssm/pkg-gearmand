@@ -23,19 +23,34 @@ using namespace libtest;
 
 #include <tests/start_worker.h>
 
-#include <tests/ports.h>
-
 #define DEFAULT_WORKER_NAME "burnin"
 
 struct client_test_st {
   gearman_client_st client;
   pid_t gearmand_pid;
-  struct worker_handle_st *handle;
+  worker_handle_st *handle;
 
   client_test_st():
     gearmand_pid(-1),
     handle(NULL)
-  { }
+  {
+    if (gearman_client_create(&client) == NULL)
+    {
+      fatal_message("gearman_client_create() failed");
+    }
+
+    if (gearman_failed(gearman_client_add_server(&client, NULL, libtest::default_port())))
+    {
+      fatal_message("gearman_client_add_server()");
+    }
+
+  }
+
+  ~client_test_st()
+  {
+    gearman_client_free(&client);
+    delete handle;
+  }
 };
 
 struct client_context_st {
@@ -174,48 +189,23 @@ static void *worker_fn(gearman_job_st *, void *,
 static void *world_create(server_startup_st& servers, test_return_t& error)
 {
   /**
-   *  @TODO We cast this to char ** below, which is evil. We need to do the
-   *  right thing
-   */
-  const char *argv[1]= { "client_gearmand" };
-
-  client_test_st *test= new client_test_st;
-  if (not test)
-  {
-    error= TEST_MEMORY_ALLOCATION_FAILURE;
-    return NULL;
-  }
-
-  /**
     We start up everything before we allocate so that we don't have to track memory in the forked process.
   */
-  if (server_startup(servers, "gearmand", BURNIN_TEST_PORT, 1, argv) == false)
+  if (server_startup(servers, "gearmand", libtest::default_port(), 0, NULL) == false)
   {
     error= TEST_FAILURE;
     return NULL;
   }
 
+  client_test_st *test= new client_test_st;
   gearman_function_t func_arg= gearman_function_create_v1(worker_fn);
-  test->handle= test_worker_start(BURNIN_TEST_PORT, NULL, DEFAULT_WORKER_NAME, func_arg, NULL, gearman_worker_options_t());
-  if (not test->handle)
+  test->handle= test_worker_start(libtest::default_port(), NULL, DEFAULT_WORKER_NAME, func_arg, NULL, gearman_worker_options_t());
+  if (test->handle == NULL)
   {
     error= TEST_FAILURE;
+    delete test;
     return NULL;
   }
-
-  if (not gearman_client_create(&(test->client)))
-  {
-    error= TEST_FAILURE;
-    return NULL;
-  }
-
-  if (gearman_failed(gearman_client_add_server(&(test->client), NULL, BURNIN_TEST_PORT)))
-  {
-    error= TEST_FAILURE;
-    return NULL;
-  }
-
-  error= TEST_SUCCESS;
 
   return (void *)test;
 }
@@ -223,8 +213,6 @@ static void *world_create(server_startup_st& servers, test_return_t& error)
 static bool world_destroy(void *object)
 {
   client_test_st *test= (client_test_st *)object;
-  gearman_client_free(&(test->client));
-  delete test->handle;
 
   delete test;
 

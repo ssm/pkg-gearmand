@@ -19,15 +19,20 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
 #include <libtest/common.h>
 
-static char global_socket[1024];
+static char global_socket[1024]= { 0 };
 
 namespace libtest {
 
 const char *default_socket()
 {
-  assert(global_socket[0]);
+  if (global_socket[0] == 0)
+  {
+    return NULL;
+  }
+
   return global_socket;
 }
 

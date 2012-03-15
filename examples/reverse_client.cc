@@ -55,12 +55,14 @@ int main(int args, char *argv[])
   in_port_t port;
   std::string text_to_echo;
   std::string host;
+  std::string identifier;
   int timeout;
 
   boost::program_options::options_description desc("Options");
   desc.add_options()
     ("help", "Options related to the program.")
     ("host,h", boost::program_options::value<std::string>(&host)->default_value("localhost"),"Connect to the host")
+    ("identifier", boost::program_options::value<std::string>(&identifier),"Assign identifier")
     ("port,p", boost::program_options::value<in_port_t>(&port)->default_value(GEARMAN_DEFAULT_TCP_PORT), "Port number use for connection")
     ("timeout,u", boost::program_options::value<int>(&timeout)->default_value(-1), "Timeout in milliseconds")
     ("text", boost::program_options::value<std::string>(&text_to_echo), "Text used for echo")
@@ -114,15 +116,26 @@ int main(int args, char *argv[])
   }
 
   if (timeout >= 0)
+  {
     gearman_client_set_timeout(&client, timeout);
+  }
 
-  gearman_return_t ret;
-  ret= gearman_client_add_server(&client, host.c_str(), port);
+  gearman_return_t ret= gearman_client_add_server(&client, host.c_str(), port);
   if (ret != GEARMAN_SUCCESS)
   {
     std::cerr << gearman_client_error(&client) << std::endl;
     return EXIT_FAILURE;
   }
+
+  if (identifier.empty() == false)
+  {
+    if (gearman_failed(gearman_client_set_identifier(&client, identifier.c_str(), identifier.size())))
+    {
+      std::cerr << gearman_client_error(&client) << std::endl;
+      return EXIT_FAILURE;
+    }
+  }
+
 
   int exit_code= EXIT_SUCCESS;
   while (1)

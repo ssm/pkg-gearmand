@@ -51,7 +51,6 @@ using namespace libtest;
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif
 
-#include <tests/ports.h>
 #include <tests/workers.h>
 #include <tests/start_worker.h>
 
@@ -296,8 +295,7 @@ collection_st collection[] ={
 
 static void *world_create(server_startup_st& servers, test_return_t& error)
 {
-  const char *argv[1]= { "gearman_gearmand" };
-  if (server_startup(servers, "gearmand", GEARADMIN_TEST_PORT, 1, argv) == false)
+  if (server_startup(servers, "gearmand", default_port(), 0, NULL) == false)
   {
     error= TEST_FAILURE;
     return NULL;
