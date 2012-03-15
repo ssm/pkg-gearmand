@@ -7,7 +7,7 @@ Forwarded: no
 
 --- a/libgearman-server/job.c
 +++ b/libgearman-server/job.c
-@@ -189,7 +189,7 @@
+@@ -190,7 +190,7 @@
                               (int)unique_size, unique);
      if (checked_length >= GEARMAN_UNIQUE_SIZE || checked_length < 0)
      {
@@ -16,17 +16,6 @@ Forwarded: no
      }
  
      server->job_handle_count++;
---- a/libgearman-server/packet.cc
-+++ b/libgearman-server/packet.cc
-@@ -523,7 +523,7 @@
-       ptr= (uint8_t *)memchr(((uint8_t *)data) + used_size, 0, data_size - used_size);
-       if (not ptr)
-       {
--        gearmand_log_crazy(GEARMAN_DEFAULT_LOG_PARAM, "Possible protocol error for %s, recieved only %u args", gearman_command_info(packet->command)->name, packet->argc);
-+        gearmand_log_crazy(GEARMAN_DEFAULT_LOG_PARAM, "Possible protocol error for %s, received only %u args", gearman_command_info(packet->command)->name, packet->argc);
-         *ret_ptr= GEARMAN_IO_WAIT;
-         return used_size;
-       }
 --- a/docs/man/gearman_task_context.3
 +++ b/docs/man/gearman_task_context.3
 @@ -117,7 +117,7 @@
@@ -260,7 +249,7 @@ Forwarded: no
  \fBgearman_return_t\fP will be returned. \fBGEARMAN_SUCCESS\fP will be returned upon success of the status being updated.
 --- a/libgearman/client.cc
 +++ b/libgearman/client.cc
-@@ -235,7 +235,7 @@
+@@ -240,7 +240,7 @@
  
    if (gearman_size(function) == 0)
    {
@@ -269,3 +258,14 @@ Forwarded: no
    }
  
    client->_do_handle[0]= 0; // Reset the job_handle we store in client
+--- a/libgearman-server/packet.cc
++++ b/libgearman-server/packet.cc
+@@ -524,7 +524,7 @@
+       ptr= (uint8_t *)memchr(((uint8_t *)data) + used_size, 0, data_size - used_size);
+       if (not ptr)
+       {
+-        gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Possible protocol error for %s, recieved only %u args", gearman_command_info(packet->command)->name, packet->argc);
++        gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Possible protocol error for %s, received only %u args", gearman_command_info(packet->command)->name, packet->argc);
+         *ret_ptr= GEARMAN_IO_WAIT;
+         return used_size;
+       }
