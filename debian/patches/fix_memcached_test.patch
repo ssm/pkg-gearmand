@@ -3,7 +3,7 @@ Description: Use correct port number for memcached during tests
  memcached port to match gearmand arguments.
 Author: Stig Sandbeck Mathisen <ssm@debian.org>
 Last-Update: 2012-03-16
-Forwarded: yes
+Forwarded: https://bugs.launchpad.net/gearmand/+bug/956596
 --- a/tests/memcached_test.cc
 +++ b/tests/memcached_test.cc
 @@ -70,7 +70,7 @@

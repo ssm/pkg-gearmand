@@ -3,7 +3,7 @@ Description: Fix spellig errors discovered by lintian
  patch fixes all of them.
 Author: Michael Fladischer <FladischerMichael@fladi.at>
 Last-Update: 2012-01-14
-Forwarded: no
+Forwarded: https://bugs.launchpad.net/gearmand/+bug/956600
 
 --- a/libgearman-server/job.c
 +++ b/libgearman-server/job.c
