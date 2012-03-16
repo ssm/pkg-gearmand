@@ -1,4 +1,4 @@
-gearmand (0.29-1) UNRELEASED; urgency=low
+gearmand (0.29-1) unstable; urgency=low
 
   * New upstream release
   * Update watch file, use https
@@ -6,7 +6,7 @@ gearmand (0.29-1) UNRELEASED; urgency=low
   * Bump standards version (no changes)
   * Bump debhelper compatibility level to 9 (multiarch)
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Fri, 16 Mar 2012 00:03:19 +0100
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Fri, 16 Mar 2012 01:31:03 +0100
 
 gearmand (0.28-1) unstable; urgency=low
 
