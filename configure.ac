@@ -6,7 +6,7 @@
 # Use and distribution licensed under the BSD license.  See
 # the COPYING file in this directory for full text.
 
-AC_INIT([gearmand],[0.29],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+AC_INIT([gearmand],[0.31],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
 
 AC_CONFIG_AUX_DIR(config)
 
@@ -138,6 +138,10 @@ AC_CHECK_HEADERS(errno.h getopt.h pwd.h signal.h)
 AC_CHECK_HEADERS(stdarg.h stddef.h stdio.h)
 AC_CHECK_HEADERS(sys/resource.h sys/stat.h)
 AC_CHECK_HEADERS(sys/socket.h sys/types.h sys/utsname.h strings.h)
+AC_CHECK_HEADERS([execinfo.h])
+AC_CHECK_HEADERS([cxxabi.h], 
+                 AC_DEFINE([HAVE_CXXABI_H], [1], [Have cxxabi.h]),
+                 AC_DEFINE([HAVE_CXXABI_H], [0], [Have cxxabi.h]))
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL

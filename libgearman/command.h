@@ -52,8 +52,7 @@ struct gearman_command_info_st
 extern "C" {
 #endif
 
-GEARMAN_LOCAL
-  struct gearman_command_info_st *gearman_command_info(gearman_command_t command);
+struct gearman_command_info_st *gearman_command_info(gearman_command_t command);
 
 #ifdef __cplusplus
 }

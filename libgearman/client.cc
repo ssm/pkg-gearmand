@@ -37,7 +37,9 @@
  */
 
 #include <config.h>
+
 #include <libgearman/common.h>
+#include <libgearman/log.hpp>
 
 #include <arpa/inet.h>
 #include <cassert>
@@ -64,7 +66,9 @@ static gearman_client_st *_client_allocate(gearman_client_st *client, bool is_cl
   {
     client= new (std::nothrow) gearman_client_st;
     if (client == NULL)
+    {
       return NULL;
+    }
 
     client->options.allocated= true;
   }
@@ -85,7 +89,7 @@ static gearman_client_st *_client_allocate(gearman_client_st *client, bool is_cl
   client->task_context_free_fn= NULL;
   gearman_client_clear_fn(client);
 
-  if (not is_clone)
+  if (is_clone == false)
   {
     gearman_universal_initialize(client->universal);
   }
@@ -240,7 +244,7 @@ static gearman_return_t _client_do_background(gearman_client_st *client,
 
   if (gearman_size(function) == 0)
   {
-    return gearman_error(client->universal, GEARMAN_INVALID_ARGUMENT, "function arguement was empty");
+    return gearman_error(client->universal, GEARMAN_INVALID_ARGUMENT, "function argument was empty");
   }
 
   client->_do_handle[0]= 0; // Reset the job_handle we store in client
@@ -383,7 +387,9 @@ bool gearman_client_has_option(gearman_client_st *client,
                                 gearman_client_options_t option)
 {
   if (client == NULL)
+  {
     return false;
+  }
 
   switch (option)
   {
@@ -492,7 +498,9 @@ int gearman_client_timeout(gearman_client_st *client)
 void gearman_client_set_timeout(gearman_client_st *client, int timeout)
 {
   if (client == NULL)
+  {
     return;
+  }
 
   gearman_universal_set_timeout(client->universal, timeout);
 }
@@ -500,7 +508,9 @@ void gearman_client_set_timeout(gearman_client_st *client, int timeout)
 void *gearman_client_context(const gearman_client_st *client)
 {
   if (client == NULL)
+  {
     return NULL;
+  }
 
   return const_cast<void *>(client->context);
 }
@@ -508,7 +518,9 @@ void *gearman_client_context(const gearman_client_st *client)
 void gearman_client_set_context(gearman_client_st *client, void *context)
 {
   if (client == NULL)
+  {
     return;
+  }
 
   client->context= context;
 }
@@ -518,7 +530,9 @@ void gearman_client_set_log_fn(gearman_client_st *client,
                                gearman_verbose_t verbose)
 {
   if (client == NULL)
+  {
     return;
+  }
 
   gearman_set_log_fn(client->universal, function, context, verbose);
 }
@@ -528,7 +542,9 @@ void gearman_client_set_workload_malloc_fn(gearman_client_st *client,
                                            void *context)
 {
   if (client == NULL)
+  {
     return;
+  }
 
   gearman_set_workload_malloc_fn(client->universal, function, context);
 }
@@ -536,7 +552,9 @@ void gearman_client_set_workload_malloc_fn(gearman_client_st *client,
 void gearman_client_set_workload_free_fn(gearman_client_st *client, gearman_free_fn *function, void *context)
 {
   if (client == NULL)
+  {
     return;
+  }
 
   gearman_set_workload_free_fn(client->universal, function, context);
 }
@@ -810,13 +828,19 @@ gearman_return_t gearman_client_job_status(gearman_client_st *client,
     }
 
     if (is_running)
+    {
       *is_running= false;
+    }
 
     if (numerator)
+    {
       *numerator= 0;
+    }
 
     if (denominator)
+    {
       *denominator= 0;
+    }
   }
   gearman_task_free(do_task_ptr);
 
@@ -1248,6 +1272,12 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
           }
 
   case GEARMAN_CLIENT_STATE_NEW:
+          if (client->task == NULL)
+          {
+            client->state= GEARMAN_CLIENT_STATE_IDLE;
+            break;
+          }
+
           assert_msg(client == client->task->client, "Programmer error, client and task member client are not the same");
           gearman_return_t local_ret= _client_run_task(client->task);
           if (gearman_failed(local_ret) and local_ret != GEARMAN_IO_WAIT)
@@ -1285,6 +1315,11 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
             }
 
   case GEARMAN_CLIENT_STATE_SUBMIT:
+            if (client->task == NULL)
+            {
+              client->state= GEARMAN_CLIENT_STATE_IDLE;
+              break;
+            }
             assert_msg(client == client->task->client, "Programmer error, client and task member client are not the same");
             gearman_return_t local_ret= _client_run_task(client->task);
             if (local_ret == GEARMAN_COULD_NOT_CONNECT)
@@ -1298,10 +1333,21 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
               return local_ret;
             }
           }
+
+          /* Connection errors are fatal. */
+          if (client->con->revents & (POLLERR | POLLHUP | POLLNVAL))
+          {
+            gearman_error(client->universal, GEARMAN_LOST_CONNECTION, "detected lost connection in _client_run_tasks()");
+            client->con->close_socket();
+            client->state= GEARMAN_CLIENT_STATE_IDLE;
+            return GEARMAN_LOST_CONNECTION;
+          }
         }
 
-        if (not (client->con->revents & POLLIN))
+        if ((client->con->revents & POLLIN) == 0)
+        {
           continue;
+        }
 
         /* Socket is ready for reading. */
         while (1)
@@ -1352,7 +1398,9 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
             if (gearman_failed(ret))
             {
               if (ret == GEARMAN_IO_WAIT)
+              {
                 break;
+              }
 
               client->state= GEARMAN_CLIENT_STATE_IDLE;
               return ret;
@@ -1365,12 +1413,17 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
                  client->task= client->task->next)
             {
               if (client->task->con != client->con)
+              {
                 continue;
+              }
 
+              gearman_log_debug(&client->universal, "Got %s", gearman_strcommand(client->con->_packet.command));
               if (client->con->_packet.command == GEARMAN_COMMAND_JOB_CREATED)
               {
                 if (client->task->created_id != client->con->created_id)
+                {
                   continue;
+                }
 
                 /* New job created, drop through below and notify task. */
                 client->con->created_id++;
@@ -1382,6 +1435,17 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
                                             static_cast<char *>(client->con->_packet.arg[0]),
                                             int(client->con->_packet.arg_size[1]),
                                             static_cast<char *>(client->con->_packet.arg[1]));
+
+                /* 
+                  Packet cleanup copied from "Clean up the packet" below, and must
+                  remain in sync with its reference.
+                */
+                gearman_packet_free(&(client->con->_packet));
+                client->con->options.packet_in_use= false;
+
+                /* This step copied from _client_run_tasks() above: */
+                /* Increment this value because new job created then failed. */
+                client->con->created_id++;
 
                 return GEARMAN_SERVER_ERROR;
               }
@@ -1417,7 +1481,9 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
           gearman_return_t local_ret= _client_run_task(client->task);
 
           if (local_ret == GEARMAN_IO_WAIT)
+          {
             break;
+          }
 
           if (gearman_failed(local_ret))
           {
@@ -1430,7 +1496,9 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
 
           /* If all tasks are done, return. */
           if (client->running_tasks == 0)
+          {
             break;
+          }
         }
       }
 
@@ -1440,8 +1508,10 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
         break;
       }
 
-      if (client->new_tasks > 0 && ! (client->options.no_new))
+      if (client->new_tasks > 0 and ! (client->options.no_new))
+      {
         continue;
+      }
 
       if (client->options.non_blocking)
       {

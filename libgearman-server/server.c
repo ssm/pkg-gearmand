@@ -400,8 +400,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
   case GEARMAN_COMMAND_CAN_DO_TIMEOUT:
     if (gearman_server_worker_add(server_con, (char *)(packet->arg[0]),
                                   packet->arg_size[0] - 1,
-                                  (in_port_t)atoi((char *)(packet->arg[1])))
-         == NULL)
+                                  0) == NULL)
     {
       return GEARMAN_MEMORY_ALLOCATION_FAILURE;
     }
@@ -422,6 +421,8 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
     if (server_job == NULL)
     {
       server_con->is_sleeping= true;
+      /* Remove any timeouts while sleeping */
+      gearman_server_con_delete_timeout(server_con);
     }
     else
     {
@@ -519,10 +520,19 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       gearmand_gerror("gearman_server_io_packet_add", ret);
 
       if (server_job)
+      {
         return gearman_server_job_queue(server_job);
+      }
 
       return ret;
     }
+
+    /* Since job is assigned, we should respect function timeout */
+    if (server_job != NULL)
+    {
+      gearman_server_con_add_job_timeout(server_con, server_job);
+    }
+
 
     break;
 
@@ -818,18 +828,9 @@ static gearmand_error_t _server_error_packet(gearman_server_con_st *server_con,
 static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
                                          gearmand_packet_st *packet)
 {
-  char *data;
-  char *new_data;
-  size_t size;
   size_t total;
-  int max_queue_size;
-  gearman_server_thread_st *thread;
-  gearman_server_con_st *con;
-  gearman_server_worker_st *worker;
-  gearman_server_packet_st *server_packet;
-  int checked_length;
 
-  data= (char *)(char *)malloc(GEARMAN_TEXT_RESPONSE_SIZE);
+  char *data= (char *)(char *)malloc(GEARMAN_TEXT_RESPONSE_SIZE);
   if (data == NULL)
   {
     gearmand_perror("malloc");
@@ -847,28 +848,33 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
   {
     snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_UNKNOWN_COMMAND, 4, "NULL");
   }
-  else if (!strcasecmp("workers", (char *)(packet->arg[0])))
+  else if (strcasecmp("workers", (char *)(packet->arg[0])) == 0)
   {
-    size= 0;
+    size_t size= 0;
 
-    for (thread= Server->thread_list; thread != NULL;
+    for (gearman_server_thread_st *thread= Server->thread_list;
+         thread != NULL;
          thread= thread->next)
     {
       int error;
       if (! (error= pthread_mutex_lock(&thread->lock)))
       {
-        for (con= thread->con_list; con != NULL; con= con->next)
+        for (gearman_server_con_st *con= thread->con_list; con != NULL; con= con->next)
         {
           if (con->_host == NULL)
+          {
             continue;
+          }
 
           if (size > total)
+          {
             size= total;
+          }
 
           /* Make sure we have at least GEARMAN_TEXT_RESPONSE_SIZE bytes. */
           if (size + GEARMAN_TEXT_RESPONSE_SIZE > total)
           {
-            new_data= (char *)realloc(data, total + GEARMAN_TEXT_RESPONSE_SIZE);
+            char *new_data= (char *)realloc(data, total + GEARMAN_TEXT_RESPONSE_SIZE);
             if (new_data == NULL)
             {
               (void) pthread_mutex_unlock(&thread->lock);
@@ -882,10 +888,10 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
             total+= GEARMAN_TEXT_RESPONSE_SIZE;
           }
 
-          checked_length= snprintf(data + size, total - size, "%d %s %s :",
-                                   con->con.fd, con->_host, con->id);
+          int sn_checked_length= snprintf(data + size, total - size, "%d %s %s :",
+                                          con->con.fd, con->_host, con->id);
 
-          if ((size_t)checked_length > total - size || checked_length < 0)
+          if ((size_t)sn_checked_length > total - size || sn_checked_length < 0)
           {
             (void) pthread_mutex_unlock(&thread->lock);
             gearmand_debug("free");
@@ -894,13 +900,15 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
             return GEARMAN_MEMORY_ALLOCATION_FAILURE;
           }
 
-          size+= (size_t)checked_length;
+          size+= (size_t)sn_checked_length;
           if (size > total)
-            continue;
-
-          for (worker= con->worker_list; worker != NULL; worker= worker->con_next)
           {
-            checked_length= snprintf(data + size, total - size, " %.*s",
+            continue;
+          }
+
+          for (gearman_server_worker_st *worker= con->worker_list; worker != NULL; worker= worker->con_next)
+          {
+            int checked_length= snprintf(data + size, total - size, " %.*s",
                                      (int)(worker->function->function_name_size),
                                      worker->function->function_name);
 
@@ -919,9 +927,11 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
           }
 
           if (size > total)
+          {
             continue;
+          }
 
-          checked_length= snprintf(data + size, total - size, "\n");
+          int checked_length= snprintf(data + size, total - size, "\n");
           if ((size_t)checked_length > total - size || checked_length < 0)
           {
             (void) pthread_mutex_unlock(&thread->lock);
@@ -945,7 +955,7 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
 
     if (size < total)
     {
-      checked_length= snprintf(data + size, total - size, ".\n");
+      int checked_length= snprintf(data + size, total - size, ".\n");
       if ((size_t)checked_length > total - size || checked_length < 0)
       {
         gearmand_perror("snprintf");
@@ -953,9 +963,9 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
       }
     }
   }
-  else if (!strcasecmp("status", (char *)(packet->arg[0])))
+  else if (strcasecmp("status", (char *)(packet->arg[0])) == 0)
   {
-    size= 0;
+    size_t size= 0;
 
     gearman_server_function_st *function;
     for (function= Server->function_list; function != NULL;
@@ -963,7 +973,7 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
     {
       if (size + GEARMAN_TEXT_RESPONSE_SIZE > total)
       {
-        new_data= (char *)realloc(data, total + GEARMAN_TEXT_RESPONSE_SIZE);
+        char *new_data= (char *)realloc(data, total + GEARMAN_TEXT_RESPONSE_SIZE);
         if (new_data == NULL)
         {
           gearmand_perror("realloc");
@@ -976,10 +986,10 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
         total+= GEARMAN_TEXT_RESPONSE_SIZE;
       }
 
-      checked_length= snprintf(data + size, total - size, "%.*s\t%u\t%u\t%u\n",
-                               (int)(function->function_name_size),
-                               function->function_name, function->job_total,
-                               function->job_running, function->worker_count);
+      int checked_length= snprintf(data + size, total - size, "%.*s\t%u\t%u\t%u\n",
+                                   (int)(function->function_name_size),
+                                   function->function_name, function->job_total,
+                                   function->job_running, function->worker_count);
 
       if ((size_t)checked_length > total - size || checked_length < 0)
       {
@@ -991,12 +1001,14 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
 
       size+= (size_t)checked_length;
       if (size > total)
+      {
         size= total;
+      }
     }
 
     if (size < total)
     {
-      checked_length= snprintf(data + size, total - size, ".\n");
+      int checked_length= snprintf(data + size, total - size, ".\n");
       if ((size_t)checked_length > total - size || checked_length < 0)
       {
         gearmand_perror("snprintf");
@@ -1006,7 +1018,7 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
       }
     }
   }
-  else if (!strcasecmp("create", (char *)(packet->arg[0])))
+  else if (strcasecmp("create", (char *)(packet->arg[0])) == 0)
   {
     if (packet->argc == 3 && !strcasecmp("function", (char *)(packet->arg[1])))
     {
@@ -1029,7 +1041,7 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
       snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_ARGS, (int)packet->arg_size[0], (char *)(packet->arg[0]));
     }
   }
-  else if (! strcasecmp("drop", (char *)(packet->arg[0])))
+  else if (strcasecmp("drop", (char *)(packet->arg[0])) == 0)
   {
     if (packet->argc == 3 && !strcasecmp("function", (char *)(packet->arg[1])))
     {
@@ -1064,7 +1076,7 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
       snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_ARGS, (int)packet->arg_size[0], (char *)(packet->arg[0]));
     }
   }
-  else if (!strcasecmp("maxqueue", (char *)(packet->arg[0])))
+  else if (strcasecmp("maxqueue", (char *)(packet->arg[0])) == 0)
   {
     if (packet->argc == 1)
     {
@@ -1072,24 +1084,48 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
     }
     else
     {
-      if (packet->argc == 2)
-        max_queue_size= GEARMAN_DEFAULT_MAX_QUEUE_SIZE;
-      else
+      uint32_t max_queue_size[GEARMAND_JOB_PRIORITY_MAX];
+
+      for (int priority= 0; priority < GEARMAND_JOB_PRIORITY_MAX; ++priority)
       {
-        max_queue_size= atoi((char *)(packet->arg[2]));
-        if (max_queue_size < 0)
-          max_queue_size= 0;
+        const int argc= priority +2;
+        if (packet->argc > argc)
+        {
+          const int parameter= atoi((char *)(packet->arg[argc]));
+          if (parameter < 0)
+          {
+            max_queue_size[priority]= 0;
+          }
+          else
+          {
+            max_queue_size[priority]= (uint32_t)parameter;
+          }
+        }
+        else
+        {
+          max_queue_size[priority]= GEARMAN_DEFAULT_MAX_QUEUE_SIZE;
+        }
       }
 
-      gearman_server_function_st *function;
-      for (function= Server->function_list;
-           function != NULL; function= function->next)
+      /* 
+        To preserve the existing behavior of maxqueue, ensure that the
+         one-parameter invocation is applied to all priorities.
+      */
+      if (packet->argc <= 3)
+      {
+        for (int priority= 1; priority < GEARMAND_JOB_PRIORITY_MAX; ++priority)
+        {
+          max_queue_size[priority]= max_queue_size[0];
+        }
+      }
+       
+      for (gearman_server_function_st *function= Server->function_list; function != NULL; function= function->next)
       {
         if (strlen((char *)(packet->arg[1])) == function->function_name_size &&
-            !memcmp(packet->arg[1], function->function_name,
-                    function->function_name_size))
+            (memcmp(packet->arg[1], function->function_name, function->function_name_size) == 0))
         {
-          function->max_queue_size= (uint32_t)max_queue_size;
+          gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Applying queue limits to %s", function->function_name);
+          memcpy(function->max_queue_size, max_queue_size, sizeof(uint32_t) * GEARMAND_JOB_PRIORITY_MAX);
         }
       }
 
@@ -1100,7 +1136,7 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
   {
     snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, "OK %d\n", (int)getpid());
   }
-  else if (!strcasecmp("shutdown", (char *)(packet->arg[0])))
+  else if (strcasecmp("shutdown", (char *)(packet->arg[0])) == 0)
   {
     if (packet->argc == 1)
     {
@@ -1108,7 +1144,7 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
       snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_SUCCESS);
     }
     else if (packet->argc == 2 &&
-             !strcasecmp("graceful", (char *)(packet->arg[1])))
+             strcasecmp("graceful", (char *)(packet->arg[1])) == 0)
     {
       Server->shutdown_graceful= true;
       snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_SUCCESS);
@@ -1119,11 +1155,11 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
       snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_ARGS, (int)packet->arg_size[0], (char *)(packet->arg[0]));
     }
   }
-  else if (!strcasecmp("verbose", (char *)(packet->arg[0])))
+  else if (strcasecmp("verbose", (char *)(packet->arg[0])) == 0)
   {
     snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, "OK %s\n", gearmand_verbose_name(Gearmand()->verbose));
   }
-  else if (!strcasecmp("version", (char *)(packet->arg[0])))
+  else if (strcasecmp("version", (char *)(packet->arg[0])) == 0)
   {
     snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, "OK %s\n", PACKAGE_VERSION);
   }
@@ -1134,7 +1170,7 @@ static gearmand_error_t _server_run_text(gearman_server_con_st *server_con,
     snprintf(data, GEARMAN_TEXT_RESPONSE_SIZE, TEXT_ERROR_UNKNOWN_COMMAND, (int)packet->arg_size[0], (char *)(packet->arg[0]));
   }
 
-  server_packet= gearman_server_packet_create(server_con->thread, false);
+  gearman_server_packet_st *server_packet= gearman_server_packet_create(server_con->thread, false);
   if (server_packet == NULL)
   {
     gearmand_debug("free");
