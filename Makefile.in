@@ -831,9 +831,9 @@ am__libtest_libtest_la_SOURCES_DIST = libtest/binaries.cc \
 	libtest/cpu.cc libtest/dream.cc libtest/fatal.cc \
 	libtest/framework.cc libtest/has.cc libtest/http.cc \
 	libtest/is_local.cc libtest/killpid.cc libtest/libtool.cc \
-	libtest/port.cc libtest/runner.cc libtest/server.cc \
-	libtest/server_container.cc libtest/signal.cc \
-	libtest/socket.cc libtest/strerror.cc libtest/test.cc \
+	libtest/main.cc libtest/port.cc libtest/runner.cc \
+	libtest/server.cc libtest/server_container.cc \
+	libtest/signal.cc libtest/socket.cc libtest/strerror.cc \
 	libtest/tmpfile.cc libtest/vchar.cc libtest/memcached.cc \
 	libtest/blobslap_worker.cc libtest/gearmand.cc \
 	util/instance.cc util/operation.cc
@@ -861,6 +861,7 @@ am_libtest_libtest_la_OBJECTS =  \
 	libtest/libtest_libtest_la-is_local.lo \
 	libtest/libtest_libtest_la-killpid.lo \
 	libtest/libtest_libtest_la-libtool.lo \
+	libtest/libtest_libtest_la-main.lo \
 	libtest/libtest_libtest_la-port.lo \
 	libtest/libtest_libtest_la-runner.lo \
 	libtest/libtest_libtest_la-server.lo \
@@ -868,7 +869,6 @@ am_libtest_libtest_la_OBJECTS =  \
 	libtest/libtest_libtest_la-signal.lo \
 	libtest/libtest_libtest_la-socket.lo \
 	libtest/libtest_libtest_la-strerror.lo \
-	libtest/libtest_libtest_la-test.lo \
 	libtest/libtest_libtest_la-tmpfile.lo \
 	libtest/libtest_libtest_la-vchar.lo $(am__objects_9) \
 	$(am__objects_10) $(am__objects_11) $(am__objects_12)
@@ -1638,9 +1638,10 @@ noinst_HEADERS = libtest/binaries.h libtest/cpu.hpp \
 	tests/context.h tests/do.h tests/do_background.h \
 	tests/execute.h tests/gearman_client_do_job_handle.h \
 	tests/gearman_execute_partition.h tests/limits.h \
-	tests/protocol.h tests/regression.h tests/server_options.h \
-	tests/start_worker.h tests/task.h tests/unique.h \
-	tests/worker.h tests/workers.h tests/workers_v1.h
+	tests/protocol.h tests/regression.h tests/runner.h \
+	tests/server_options.h tests/start_worker.h tests/task.h \
+	tests/unique.h tests/worker.h tests/workers.h \
+	tests/workers_v1.h
 man1_MANS = docs/man/gearadmin.1 docs/man/gearman.1
 man3_MANS = docs/man/gearman_allocator_t.3 \
 	docs/man/gearman_client_set_memory_allocators.3 \
@@ -1785,16 +1786,6 @@ HELGRIND_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=helgrind --read-var-info=y
 DRD_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=drd
 GDB_COMMAND = $(LIBTOOL_COMMAND) gdb -f -x libtest/run.gdb
 PTRCHECK_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=exp-ptrcheck --error-exitcode=1
-libtest_libtest_la_SOURCES = libtest/binaries.cc libtest/cmdline.cc \
-	libtest/comparison.cc libtest/core.cc libtest/cpu.cc \
-	libtest/dream.cc libtest/fatal.cc libtest/framework.cc \
-	libtest/has.cc libtest/http.cc libtest/is_local.cc \
-	libtest/killpid.cc libtest/libtool.cc libtest/port.cc \
-	libtest/runner.cc libtest/server.cc \
-	libtest/server_container.cc libtest/signal.cc \
-	libtest/socket.cc libtest/strerror.cc libtest/test.cc \
-	libtest/tmpfile.cc libtest/vchar.cc $(am__append_3) \
-	$(am__append_9) $(am__append_14) $(am__append_19)
 libtest_libtest_la_CXXFLAGS = ${NO_CONVERSION} -DBUILDING_LIBTEST \
 	$(PTHREAD_CFLAGS) -DLIBTEST_TEMP="\"tmp_chroot\"" \
 	$(CURL_CFLAGS) $(am__append_4) $(am__append_10)
@@ -1803,6 +1794,16 @@ libtest_libtest_la_DEPENDENCIES = libtest_tmp_dir libtest/abort \
 libtest_libtest_la_LIBADD = $(PTHREAD_LIBS) $(CURL_LIBS) \
 	$(am__append_2) $(am__append_8) $(am__append_13) \
 	$(am__append_18)
+libtest_libtest_la_SOURCES = libtest/binaries.cc libtest/cmdline.cc \
+	libtest/comparison.cc libtest/core.cc libtest/cpu.cc \
+	libtest/dream.cc libtest/fatal.cc libtest/framework.cc \
+	libtest/has.cc libtest/http.cc libtest/is_local.cc \
+	libtest/killpid.cc libtest/libtool.cc libtest/main.cc \
+	libtest/port.cc libtest/runner.cc libtest/server.cc \
+	libtest/server_container.cc libtest/signal.cc \
+	libtest/socket.cc libtest/strerror.cc libtest/tmpfile.cc \
+	libtest/vchar.cc $(am__append_3) $(am__append_9) \
+	$(am__append_14) $(am__append_19)
 
 # Declare unittest so that we can append to it
 libtest_unittest_CXXFLAGS = $(am__append_5) $(am__append_11)
@@ -2644,6 +2645,8 @@ libtest/libtest_libtest_la-killpid.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-libtool.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
+libtest/libtest_libtest_la-main.lo: libtest/$(am__dirstamp) \
+	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-port.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-runner.lo: libtest/$(am__dirstamp) \
@@ -2657,8 +2660,6 @@ libtest/libtest_libtest_la-signal.lo: libtest/$(am__dirstamp) \
 libtest/libtest_libtest_la-socket.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-strerror.lo: libtest/$(am__dirstamp) \
-	libtest/$(DEPDIR)/$(am__dirstamp)
-libtest/libtest_libtest_la-test.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-tmpfile.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
@@ -3380,6 +3381,8 @@ mostlyclean-compile:
 	-rm -f libtest/libtest_libtest_la-killpid.lo
 	-rm -f libtest/libtest_libtest_la-libtool.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-libtool.lo
+	-rm -f libtest/libtest_libtest_la-main.$(OBJEXT)
+	-rm -f libtest/libtest_libtest_la-main.lo
 	-rm -f libtest/libtest_libtest_la-memcached.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-memcached.lo
 	-rm -f libtest/libtest_libtest_la-port.$(OBJEXT)
@@ -3396,8 +3399,6 @@ mostlyclean-compile:
 	-rm -f libtest/libtest_libtest_la-socket.lo
 	-rm -f libtest/libtest_libtest_la-strerror.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-strerror.lo
-	-rm -f libtest/libtest_libtest_la-test.$(OBJEXT)
-	-rm -f libtest/libtest_libtest_la-test.lo
 	-rm -f libtest/libtest_libtest_la-tmpfile.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-tmpfile.lo
 	-rm -f libtest/libtest_libtest_la-vchar.$(OBJEXT)
@@ -3599,6 +3600,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-is_local.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-killpid.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-libtool.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-main.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-memcached.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-port.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-runner.Plo@am__quote@
@@ -3607,7 +3609,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-signal.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-socket.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-strerror.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-test.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-tmpfile.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-vchar.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_unittest-unittest.Po@am__quote@
@@ -4532,6 +4533,14 @@ libtest/libtest_libtest_la-libtool.lo: libtest/libtool.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-libtool.lo `test -f 'libtest/libtool.cc' || echo '$(srcdir)/'`libtest/libtool.cc
 
+libtest/libtest_libtest_la-main.lo: libtest/main.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-main.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-main.Tpo -c -o libtest/libtest_libtest_la-main.lo `test -f 'libtest/main.cc' || echo '$(srcdir)/'`libtest/main.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-main.Tpo libtest/$(DEPDIR)/libtest_libtest_la-main.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libtest/main.cc' object='libtest/libtest_libtest_la-main.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-main.lo `test -f 'libtest/main.cc' || echo '$(srcdir)/'`libtest/main.cc
+
 libtest/libtest_libtest_la-port.lo: libtest/port.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-port.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-port.Tpo -c -o libtest/libtest_libtest_la-port.lo `test -f 'libtest/port.cc' || echo '$(srcdir)/'`libtest/port.cc
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-port.Tpo libtest/$(DEPDIR)/libtest_libtest_la-port.Plo
@@ -4587,14 +4596,6 @@ libtest/libtest_libtest_la-strerror.lo: libtest/strerror.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libtest/strerror.cc' object='libtest/libtest_libtest_la-strerror.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-strerror.lo `test -f 'libtest/strerror.cc' || echo '$(srcdir)/'`libtest/strerror.cc
-
-libtest/libtest_libtest_la-test.lo: libtest/test.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-test.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-test.Tpo -c -o libtest/libtest_libtest_la-test.lo `test -f 'libtest/test.cc' || echo '$(srcdir)/'`libtest/test.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-test.Tpo libtest/$(DEPDIR)/libtest_libtest_la-test.Plo
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libtest/test.cc' object='libtest/libtest_libtest_la-test.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-test.lo `test -f 'libtest/test.cc' || echo '$(srcdir)/'`libtest/test.cc
 
 libtest/libtest_libtest_la-tmpfile.lo: libtest/tmpfile.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-tmpfile.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-tmpfile.Tpo -c -o libtest/libtest_libtest_la-tmpfile.lo `test -f 'libtest/tmpfile.cc' || echo '$(srcdir)/'`libtest/tmpfile.cc
