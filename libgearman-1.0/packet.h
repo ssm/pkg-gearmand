@@ -68,4 +68,7 @@ struct gearman_packet_st
   char *arg[GEARMAN_MAX_COMMAND_ARGS];
   size_t arg_size[GEARMAN_MAX_COMMAND_ARGS];
   char args_buffer[GEARMAN_ARGS_BUFFER_SIZE];
+#ifdef GEARMAN_PACKET_TRACE
+  uint32_t _id;
+#endif
 };

@@ -6,7 +6,7 @@
 # Use and distribution licensed under the BSD license.  See
 # the COPYING file in this directory for full text.
 
-AC_INIT([gearmand],[0.29],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+AC_INIT([gearmand],[0.32],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
 
 AC_CONFIG_AUX_DIR(config)
 
@@ -138,6 +138,10 @@ AC_CHECK_HEADERS(errno.h getopt.h pwd.h signal.h)
 AC_CHECK_HEADERS(stdarg.h stddef.h stdio.h)
 AC_CHECK_HEADERS(sys/resource.h sys/stat.h)
 AC_CHECK_HEADERS(sys/socket.h sys/types.h sys/utsname.h strings.h)
+AC_CHECK_HEADERS([execinfo.h])
+AC_CHECK_HEADERS([cxxabi.h], 
+                 AC_DEFINE([HAVE_CXXABI_H], [1], [Have cxxabi.h]),
+                 AC_DEFINE([HAVE_CXXABI_H], [0], [Have cxxabi.h]))
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -168,6 +172,7 @@ AC_FUNC_REALLOC
 AC_FUNC_STRERROR_R
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([dup2 gettimeofday memchr memmove memset socket strcasecmp strdup strerror strncasecmp uname])
+AC_CHECK_FUNCS([pipe2])
 AC_CHECK_FUNCS([select])
 AC_CHECK_FUNCS([setenv])
 AC_CHECK_FUNCS([strtol])

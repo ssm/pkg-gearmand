@@ -39,27 +39,28 @@ public:
 
   class Pipe {
   public:
-    Pipe();
+    Pipe(int);
     ~Pipe();
 
-    int* fd()
-    {
-      return _fd;
-    }
+    int fd();
 
     enum close_t {
-      READ,
-      WRITE
+      READ= 0,
+      WRITE= 1
     };
 
     void reset();
     void close(const close_t& arg);
     void dup_for_spawn(const close_t& arg,
-                       posix_spawn_file_actions_t& file_actions,
-                       const int newfildes);
+                       posix_spawn_file_actions_t& file_actions);
+
+    void nonblock();
+    void cloexec();
+    bool read(libtest::vchar_t&);
 
   private:
-    int _fd[2];
+    const int _std_fd;
+    int _pipe_fd[2];
     bool _open[2];
   };
 
@@ -70,8 +71,9 @@ public:
 
   void add_option(const std::string&);
   void add_option(const std::string&, const std::string&);
+  void add_long_option(const std::string& option_name, const std::string& option_value);
   error_t run(const char *args[]= NULL);
-  error_t wait();
+  error_t wait(bool nohang= true);
 
   libtest::vchar_t stdout_result() const
   {
@@ -88,6 +90,11 @@ public:
     return _stderr_buffer;
   }
 
+  const char* stderr_c_str() const
+  {
+    return &_stderr_buffer[0];
+  }
+
   size_t stderr_result_length() const
   {
     return _stderr_buffer.size();
@@ -100,9 +107,19 @@ public:
     _use_valgrind= arg;
   }
 
+  bool check() const;
+
+  bool slurp();
+  void murder();
+
   void use_gdb(bool arg= true)
   {
     _use_gdb= arg;
+  }
+
+  void use_ptrcheck(bool arg= true)
+  {
+    _use_ptrcheck= arg;
   }
 
   std::string arguments();
@@ -110,6 +127,11 @@ public:
   std::string gdb_filename()
   {
     return  _gdb_filename;
+  }
+
+  pid_t pid() const
+  {
+    return _pid;
   }
 
 private:
@@ -120,6 +142,7 @@ private:
   const bool _use_libtool;
   bool _use_valgrind;
   bool _use_gdb;
+  bool _use_ptrcheck;
   size_t _argc;
   std::string _exectuble_name;
   std::string _exectuble;

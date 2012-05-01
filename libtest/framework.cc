@@ -33,8 +33,6 @@ static test_return_t _default_callback(void *p)
   return TEST_SUCCESS;
 }
 
-static Runner defualt_runners;
-
 Framework::Framework() :
   collections(NULL),
   _create(NULL),
@@ -56,6 +54,8 @@ Framework::~Framework()
   }
 
   _servers.shutdown();
+
+  delete _runner;
 }
 
 test_return_t Framework::Item::pre(void *arg)
@@ -120,7 +120,13 @@ test_return_t Framework::Item::startup(void* arg)
 
 libtest::Runner *Framework::runner()
 {
-  return _runner ? _runner : &defualt_runners;
+  if (_runner == NULL)
+  {
+    _runner= new Runner;
+  }
+  _runner->set_servers(_servers);
+
+  return _runner;
 }
 
 void* Framework::create(test_return_t& arg)

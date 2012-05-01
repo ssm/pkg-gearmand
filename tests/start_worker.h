@@ -53,6 +53,7 @@ public:
   void set_shutdown();
   bool is_shutdown();
   bool shutdown();
+  void kill();
 
   void set_worker_id(gearman_worker_st*);
 
@@ -71,6 +72,22 @@ private:
   boost::barrier _sync_point;
 };
 
+struct worker_handles_st
+{
+  worker_handles_st();
+  ~worker_handles_st();
+
+  // Warning, this will not clean up memory
+  void kill_all();
+
+  void reset();
+
+  void push(worker_handle_st *arg);
+
+private:
+  std::vector<worker_handle_st *> _workers;
+};
+
 #pragma once
 
 LIBTEST_API
@@ -79,7 +96,8 @@ LIBTEST_API
 					     const char *function_name,
 					     gearman_function_t &worker_fn,
 					     void *context,
-					     gearman_worker_options_t options);
+					     gearman_worker_options_t options,
+               int timeout= 0);
 
 LIBTEST_API
 bool test_worker_stop(struct worker_handle_st *);

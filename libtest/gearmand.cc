@@ -49,40 +49,6 @@ using namespace libtest;
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
 
-class GetPid : public util::Instance::Finish
-{
-private:
-  pid_t _pid;
-
-public:
-  GetPid() :
-    _pid(-1)
-  { }
-
-  pid_t pid()
-  {
-    return _pid;
-  }
-
-
-  bool call(const bool success, const std::string &response)
-  {
-    _pid= -1;
-    if (success and response.size())
-    {
-      _pid= atoi(response.c_str());
-    }
-
-    if (is_pid_valid(_pid) == false)
-    {
-      _pid= -1;
-      return false;
-    }
-
-    return true;
-  }
-};
-
 using namespace libtest;
 
 class Gearmand : public libtest::Server
@@ -90,36 +56,9 @@ class Gearmand : public libtest::Server
 private:
 public:
   Gearmand(const std::string& host_arg, in_port_t port_arg) :
-    libtest::Server(host_arg, port_arg)
+    libtest::Server(host_arg, port_arg, GEARMAND_BINARY, true)
   {
     set_pid_file();
-  }
-
-  pid_t get_pid(bool error_is_ok)
-  {
-    if (pid_file().empty() == false)
-    {
-      Wait wait(pid_file(), 0);
-
-      if (error_is_ok and not wait.successful())
-      {
-        Error << "Pidfile was not found:" << pid_file();
-        return -1;
-      }
-    }
-
-    GetPid *get_instance_pid;
-    util::Instance instance(hostname(), port());
-    instance.set_finish(get_instance_pid= new GetPid);
-
-    instance.push(new util::Operation(test_literal_param("getpid\r\n"), true));
-
-    if (error_is_ok and instance.run() == false)
-    {
-      Error << "Failed to obtain pid of server";
-    }
-
-    return get_instance_pid->pid();
   }
 
   bool ping()
@@ -160,16 +99,6 @@ public:
     return "gearmand";
   };
 
-  const char *executable()
-  {
-    return GEARMAND_BINARY;
-  }
-
-  const char *daemon_file_option()
-  {
-    return "--daemon";
-  }
-
   void log_file_option(Application& app, const std::string& arg)
   {
     if (arg.empty() == false)
@@ -206,8 +135,6 @@ public:
 
 bool Gearmand::build(size_t argc, const char *argv[])
 {
-  std::stringstream arg_buffer;
-
   if (getuid() == 0 or geteuid() == 0)
   {
     add_option("-u", "root");

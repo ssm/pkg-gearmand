@@ -34,6 +34,13 @@
 
 namespace libtest {
 
+LIBTEST_API
+bool gdb_is_caller(void);
+
+LIBTEST_API
+bool valgrind_is_caller(void);
+
+LIBTEST_API
 bool _in_valgrind(const char *file, int line, const char *func);
 
 template <class T_comparable, class T_hint>
@@ -92,6 +99,22 @@ template <class T1_comparable, class T2_comparable, class T_hint>
 bool _compare_hint(const char *file, int line, const char *func, T1_comparable __expected, T2_comparable __actual, T_hint __hint, bool io_error= true)
 {
   if (__expected != __actual)
+  {
+    if (io_error)
+    {
+      libtest::stream::make_cerr(file, line, func) << "Expected \"" << __expected << "\" got \"" << __actual << "\"" << " Additionally: \"" << __hint << "\"";
+    }
+
+    return false;
+  }
+
+  return true;
+}
+
+template <class T1_comparable, class T2_comparable, class T_hint>
+bool _ne_compare_hint(const char *file, int line, const char *func, T1_comparable __expected, T2_comparable __actual, T_hint __hint, bool io_error= true)
+{
+  if (__expected == __actual)
   {
     if (io_error)
     {

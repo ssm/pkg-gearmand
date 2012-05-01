@@ -75,6 +75,7 @@ struct context_st {
   std::string function_name;
   void *context;
   int magic;
+  int _timeout;
   boost::barrier* _sync_point;
 
   context_st(worker_handle_st* handle_arg,
@@ -83,7 +84,8 @@ struct context_st {
              const std::string& namespace_key_arg,
              const std::string& function_name_arg,
              void *context_arg,
-             gearman_worker_options_t& options_arg) :
+             gearman_worker_options_t& options_arg,
+             int timeout_arg) :
     port(port_arg),
     handle(handle_arg),
     options(options_arg),
@@ -92,7 +94,8 @@ struct context_st {
     function_name(function_name_arg),
     context(context_arg),
     _sync_point(handle_arg->sync_point()),
-    magic(CONTEXT_MAGIC_MARKER)
+    magic(CONTEXT_MAGIC_MARKER),
+    _timeout(timeout_arg)
   {
   }
 
@@ -125,6 +128,7 @@ static void thread_runner(context_st* con)
   if (context.get() == NULL)
   {
     Error << "context_st passed to function was NULL";
+    context->fail();
     return;
   }
 
@@ -132,6 +136,7 @@ static void thread_runner(context_st* con)
   if (context->magic != CONTEXT_MAGIC_MARKER)
   {
     Error << "context_st had bad magic";
+    context->fail();
     return;
   }
 
@@ -146,6 +151,7 @@ static void thread_runner(context_st* con)
   if (context->handle == NULL)
   {
     Error << "Progammer error, no handle found";
+    context->fail();
     return;
   }
   context->handle->set_worker_id(&worker);
@@ -158,6 +164,7 @@ static void thread_runner(context_st* con)
   if (gearman_failed(gearman_worker_add_server(&worker, NULL, context->port)))
   {
     Error << "gearman_worker_add_server()";
+    context->fail();
     return;
   }
 
@@ -173,6 +180,7 @@ static void thread_runner(context_st* con)
     if (success == false)
     {
       Error << "gearman_worker_set_server_option() failed";
+      context->fail();
       return;
     }
   }
@@ -180,10 +188,11 @@ static void thread_runner(context_st* con)
   if (gearman_failed(gearman_worker_define_function(&worker,
                                                     context->function_name.c_str(), context->function_name.length(),
                                                     context->worker_fn,
-                                                    0, 
+                                                    context->_timeout, 
                                                     context->context)))
   {
     Error << "Failed to add function " << context->function_name << "(" << gearman_worker_error(&worker) << ")";
+    context->fail();
     return;
   }
 
@@ -207,7 +216,8 @@ worker_handle_st *test_worker_start(in_port_t port,
                                     const char *function_name,
                                     gearman_function_t &worker_fn,
                                     void *context_arg,
-                                    gearman_worker_options_t options)
+                                    gearman_worker_options_t options,
+                                    int timeout)
 {
   worker_handle_st *handle= new worker_handle_st();
   fatal_assert(handle);
@@ -215,7 +225,7 @@ worker_handle_st *test_worker_start(in_port_t port,
   context_st *context= new context_st(handle, worker_fn, port,
                                       namespace_key ? namespace_key : "",
                                       function_name,
-                                      context_arg, options);
+                                      context_arg, options, timeout);
   fatal_assert(context);
 
   handle->_thread= new boost::thread(thread_runner, context);
@@ -293,4 +303,34 @@ bool worker_handle_st::shutdown()
   delete _thread;
 
   return true;
+}
+
+worker_handles_st::worker_handles_st()
+{
+}
+
+worker_handles_st::~worker_handles_st()
+{
+  reset();
+}
+
+// Warning, this will not clean up memory
+void worker_handles_st::kill_all()
+{
+  assert(libtest::valgrind_is_caller() == false);
+  _workers.clear();
+}
+
+void worker_handles_st::reset()
+{
+  for (std::vector<worker_handle_st *>::iterator iter= _workers.begin(); iter != _workers.end(); iter++)
+  {
+    delete *iter;
+  }
+  _workers.clear();
+}
+
+void worker_handles_st::push(worker_handle_st *arg)
+{
+  _workers.push_back(arg);
 }

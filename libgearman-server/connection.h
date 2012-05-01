@@ -18,6 +18,8 @@
 
 #include <libgearman-server/struct/io.h>
 
+struct gearman_server_job_st;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,7 +48,13 @@ gearman_server_con_st *gearman_server_con_add(gearman_server_thread_st *thread, 
                                               gearmand_error_t *ret);
 
 /**
- * Free a server connection structure.
+ * Attempt to free a server connection structure.
+ */
+GEARMAN_API
+void gearman_server_con_attempt_free(gearman_server_con_st *con);
+
+/**
+ * Actually free a server connection structure.
  */
 GEARMAN_API
 void gearman_server_con_free(gearman_server_con_st *con);
@@ -91,6 +99,19 @@ GEARMAN_API
 void gearman_server_con_free_workers(gearman_server_con_st *con);
 
 /**
+ * Add connection to the to_be_freed thread list.
+ */
+GEARMAN_API
+void gearman_server_con_to_be_freed_add(gearman_server_con_st *con);
+
+/**
+ * Pick out the next connection to free
+ */
+GEARMAN_API
+gearman_server_con_st *
+gearman_server_con_to_be_freed_next(gearman_server_thread_st *thread);
+
+/**
  * Add connection to the io thread list.
  */
 GEARMAN_API
@@ -130,6 +151,7 @@ gearman_server_con_proc_next(gearman_server_thread_st *thread);
 
 /**
  * Set protocol context pointer.
+ * Add worker timeout for a connection tied to a job
  */
 GEARMAN_INTERNAL_API
 void gearmand_connection_set_protocol(gearman_server_con_st *connection, 
@@ -138,8 +160,21 @@ void gearmand_connection_set_protocol(gearman_server_con_st *connection,
                                       gearmand_packet_pack_fn *pack,
                                       gearmand_packet_unpack_fn *unpack);
 
+/**
+ * Set protocol context pointer.
+ * Add worker timeout for a connection tied to a job
+ */
+GEARMAN_API
+gearmand_error_t gearman_server_con_add_job_timeout(gearman_server_con_st *con, gearman_server_job_st *job);
+
 GEARMAN_INTERNAL_API
 void *gearmand_connection_protocol_context(const gearman_server_con_st *connection);
+
+/**
+ * Delete timeout event for a server con
+ */
+GEARMAN_API
+void gearman_server_con_delete_timeout(gearman_server_con_st *con);
 
 /** @} */
 
