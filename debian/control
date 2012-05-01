@@ -14,7 +14,6 @@ Build-Depends:
  libcloog-ppl-dev,
  libcurl4-gnutls-dev,
  libevent-dev,
- libevent-dev,
  libltdl-dev,
  libmemcached-dev (>= 0.30),
  libsasl2-dev,
@@ -64,7 +63,6 @@ Description: Development files for the Gearman Library
 
 Package: libgearman-dbg
 Section: debug
-Priority: extra
 Architecture: any
 Depends: libgearman6 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: Debug symbols for the Gearman Client Library
