@@ -1,3 +1,9 @@
+gearmand (0.32-1) UNRELEASED; urgency=low
+
+  * Imported Upstream version 0.32
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Tue, 01 May 2012 18:44:20 +0200
+
 gearmand (0.29-2) unstable; urgency=low
 
   * Adjust architectures for systemtap-std-dev build dependency
