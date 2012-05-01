@@ -26,9 +26,7 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
 
 gearman_server_con_st *gearman_server_con_add(gearman_server_thread_st *thread, gearmand_con_st *dcon, gearmand_error_t *ret)
 {
-  gearman_server_con_st *con;
-
-  con= _server_con_create(thread, dcon, ret);
+  gearman_server_con_st *con= _server_con_create(thread, dcon, ret);
   if (con == NULL)
   {
     return NULL;
@@ -71,8 +69,9 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
       return NULL;
     }
   }
+
   assert(con);
-  if (!con)
+  if (con == NULL)
   {
     gearmand_error("Neigther an allocated gearman_server_con_st() or free listed could be found");
     *ret= GEARMAN_MEMORY_ALLOCATION_FAILURE;
@@ -87,11 +86,13 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
   con->is_sleeping= false;
   con->is_exceptions= false;
   con->is_dead= false;
+  con->is_cleaned_up = false;
   con->is_noop_sent= false;
 
   con->ret= 0;
   con->io_list= false;
   con->proc_list= false;
+  con->to_be_freed_list= false;
   con->proc_removed= false;
   con->io_packet_count= 0;
   con->proc_packet_count= 0;
@@ -107,11 +108,14 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
   con->io_prev= NULL;
   con->proc_next= NULL;
   con->proc_prev= NULL;
+  con->to_be_freed_next= NULL;
+  con->to_be_freed_prev= NULL;
   con->worker_list= NULL;
   con->client_list= NULL;
   con->_host= dcon->host;
   con->_port= dcon->port;
   strcpy(con->id, "-");
+  con->timeout_event= NULL;
 
   con->protocol.context= NULL;
   con->protocol.context_free_fn= NULL;
@@ -138,40 +142,49 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
   return con;
 }
 
+void gearman_server_con_attempt_free(gearman_server_con_st *con)
+{
+  con->_host= NULL;
+  con->_port= NULL;
+
+  if (Server->flags.threaded)
+  {
+    if (!(con->proc_removed) && !(Server->proc_shutdown))
+    {
+      gearman_server_con_delete_timeout(con);
+      con->is_dead= true;
+      con->is_sleeping= false;
+      con->is_exceptions= false;
+      con->is_noop_sent= false;
+      gearman_server_con_proc_add(con);
+    }
+  }
+  else
+  {
+    gearman_server_con_free(con); 
+  }
+}
+
 void gearman_server_con_free(gearman_server_con_st *con)
 {
   gearman_server_thread_st *thread= con->thread;
   gearman_server_packet_st *packet;
-
   con->_host= NULL;
   con->_port= NULL;
 
-  if (Server->flags.threaded && !(con->proc_removed) && !(Server->proc_shutdown))
+  gearman_server_con_delete_timeout(con);
+
+  if (con->is_cleaned_up)
   {
-    con->is_dead= true;
-    con->is_sleeping= false;
-    con->is_exceptions= false;
-    con->is_noop_sent= false;
-    gearman_server_con_proc_add(con);
+    gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "con %llu is already cleaned-up. returning", con);
     return;
   }
-
+  
   gearmand_io_free(&(con->con));
 
   if (con->protocol.context != NULL && con->protocol.context_free_fn != NULL)
   {
     con->protocol.context_free_fn(con, (void *)con->protocol.context);
-  }
-
-
-  if (con->proc_list)
-  {
-    gearman_server_con_proc_remove(con);
-  }
-
-  if (con->io_list)
-  {
-    gearman_server_con_io_remove(con);
   }
 
   if (con->packet != NULL)
@@ -203,6 +216,21 @@ void gearman_server_con_free(gearman_server_con_st *con)
     gearman_server_client_free(con->client_list);
   }
 
+  if (con->timeout_event != NULL)
+  {
+    event_del(con->timeout_event);
+  }
+
+  if (con->proc_list)
+  {
+    gearman_server_con_proc_remove(con);
+  }
+
+  if (con->io_list)
+  {
+    gearman_server_con_io_remove(con);
+  }
+  
   (void) pthread_mutex_lock(&thread->lock);
   GEARMAN_LIST_DEL(con->thread->con, con,)
   (void) pthread_mutex_unlock(&thread->lock);
@@ -216,6 +244,7 @@ void gearman_server_con_free(gearman_server_con_st *con)
     gearmand_debug("free");
     free(con);
   }
+  con->is_cleaned_up = true;
 }
 
 gearmand_io_st *gearman_server_con_con(gearman_server_con_st *con)
@@ -237,7 +266,9 @@ void gearman_server_con_set_id(gearman_server_con_st *con, char *id,
                                size_t size)
 {
   if (size >= GEARMAN_SERVER_CON_ID_SIZE)
+  {
     size= GEARMAN_SERVER_CON_ID_SIZE - 1;
+  }
 
   memcpy(con->id, id, size);
   con->id[size]= 0;
@@ -260,9 +291,13 @@ void gearman_server_con_free_worker(gearman_server_con_st *con,
 
       /* Set worker to the last kept worker, or the beginning of the list. */
       if (prev_worker == NULL)
+      {
         worker= con->worker_list;
+      }
       else
+      {
         worker= prev_worker;
+      }
     }
     else
     {
@@ -276,13 +311,68 @@ void gearman_server_con_free_worker(gearman_server_con_st *con,
 void gearman_server_con_free_workers(gearman_server_con_st *con)
 {
   while (con->worker_list != NULL)
+  {
     gearman_server_worker_free(con->worker_list);
+  }
+}
+
+void gearman_server_con_to_be_freed_add(gearman_server_con_st *con)
+{
+  (void) pthread_mutex_lock(&con->thread->lock);
+  if (con->to_be_freed_list)
+  {
+    (void) pthread_mutex_unlock(&con->thread->lock);
+    return;
+  }
+
+  GEARMAN_LIST_ADD(con->thread->to_be_freed, con, to_be_freed_)
+  con->to_be_freed_list = true;
+
+  /* Looks funny, but need to check to_be_freed_count locked, but call run unlocked. */
+  if (con->thread->to_be_freed_count == 1 && con->thread->run_fn)
+  {
+    (void) pthread_mutex_unlock(&con->thread->lock);
+    (*con->thread->run_fn)(con->thread, con->thread->run_fn_arg);
+  }
+  else
+  {
+    (void) pthread_mutex_unlock(&con->thread->lock);
+  }
+}
+
+gearman_server_con_st *
+gearman_server_con_to_be_freed_next(gearman_server_thread_st *thread)
+{
+  gearman_server_con_st *con;
+
+  if (thread->to_be_freed_list == NULL)
+    return NULL;
+
+  (void) pthread_mutex_lock(&thread->lock);
+
+  con= thread->to_be_freed_list;
+  while (con != NULL)
+  {
+    GEARMAN_LIST_DEL(thread->to_be_freed, con, to_be_freed_)
+    if (con->to_be_freed_list)
+    {
+      con->to_be_freed_list= false;
+      break;
+    }
+    con= thread->to_be_freed_list;
+  }
+
+  (void) pthread_mutex_unlock(&thread->lock);
+
+  return con;
 }
 
 void gearman_server_con_io_add(gearman_server_con_st *con)
 {
   if (con->io_list)
+  {
     return;
+  }
 
   (void) pthread_mutex_lock(&con->thread->lock);
 
@@ -318,7 +408,9 @@ gearman_server_con_io_next(gearman_server_thread_st *thread)
   gearman_server_con_st *con= thread->io_list;
 
   if (con == NULL)
+  {
     return NULL;
+  }
 
   gearman_server_con_io_remove(con);
 
@@ -328,7 +420,9 @@ gearman_server_con_io_next(gearman_server_thread_st *thread)
 void gearman_server_con_proc_add(gearman_server_con_st *con)
 {
   if (con->proc_list)
+  {
     return;
+  }
 
   (void) pthread_mutex_lock(&con->thread->lock);
   GEARMAN_LIST_ADD(con->thread->proc, con, proc_)
@@ -359,20 +453,22 @@ void gearman_server_con_proc_remove(gearman_server_con_st *con)
 gearman_server_con_st *
 gearman_server_con_proc_next(gearman_server_thread_st *thread)
 {
-  gearman_server_con_st *con;
-
   if (thread->proc_list == NULL)
+  {
     return NULL;
+  }
 
   (void) pthread_mutex_lock(&thread->lock);
 
-  con= thread->proc_list;
+  gearman_server_con_st *con= thread->proc_list;
   while (con != NULL)
   {
     GEARMAN_LIST_DEL(thread->proc, con, proc_)
     con->proc_list= false;
     if (!(con->proc_removed))
+    {
       break;
+    }
     con= thread->proc_list;
   }
 
@@ -397,5 +493,81 @@ void *gearmand_connection_protocol_context(const gearman_server_con_st *connecti
   return connection->protocol.context;
 }
 
+static void _server_job_timeout(int fd, short event, void *arg)
+{
+  gearman_server_job_st *job= (gearman_server_job_st *)arg;
 
+  fd= fd;
+  event= event;
 
+  /* A timeout has ocurred on a job, re-queue it */
+  gearmand_log_warning(GEARMAN_DEFAULT_LOG_PARAM,
+                       "Worker timeout reached on job, requeueing: %s %s",
+                       job->job_handle, job->unique);
+
+  gearmand_error_t ret= gearman_server_job_queue(job);
+  if (ret != GEARMAN_SUCCESS)
+  {
+    gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM,
+                       "Failed trying to requeue job after timeout, job lost: %s %s",
+                       job->job_handle, job->unique);
+    gearman_server_job_free(job);
+  }
+}
+
+gearmand_error_t gearman_server_con_add_job_timeout(gearman_server_con_st *con, gearman_server_job_st *job)
+{
+  if (job)
+  {
+    gearman_server_worker_st *worker;
+    for (worker= con->worker_list; worker != NULL; worker= worker->con_next)
+    {
+      /* Assumes the functions are always fetched from the same server structure */
+      if (worker->function == job->function)
+      {
+        break;
+      }
+    }
+
+    /* It makes no sense to add a timeout to a connection that has no workers for a job */
+    assert(worker);
+    if (worker && worker->timeout)
+    {
+      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Adding timeout on %s for %s (%d)",
+                         job->function->function_name,
+                         job->job_handle,
+                         worker->timeout);
+
+      if (con->timeout_event == NULL)
+      {
+        gearmand_con_st *dcon= con->con.context;
+        con->timeout_event= (struct event *)malloc(sizeof(struct event));
+        if (con->timeout_event == NULL)
+        {
+          return gearmand_gerror("creating timeout event", GEARMAN_MEMORY_ALLOCATION_FAILURE);
+        }
+        timeout_set(con->timeout_event, _server_job_timeout, job);
+        event_base_set(dcon->thread->base, con->timeout_event);
+      }
+
+      /* XXX Right now, if a worker has diff timeouts for functions I think
+        this will overwrite any existing timeouts on that event. One
+        solution to that would be to record the timeout from last time,
+        and only set this one if it is longer than that one. */
+
+      struct timeval timeout_tv = { 0 , 0 };
+      timeout_tv.tv_sec= worker->timeout;
+      timeout_add(con->timeout_event, &timeout_tv);
+    }
+  }
+  return GEARMAN_SUCCESS;
+}
+
+void gearman_server_con_delete_timeout(gearman_server_con_st *con)
+{
+  if (con->timeout_event)
+  {
+    timeout_del(con->timeout_event);
+    con->timeout_event= NULL;
+  }
+}

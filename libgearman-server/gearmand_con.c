@@ -165,7 +165,7 @@ void gearmand_con_free(gearmand_con_st *dcon)
   // connection.
   if (dcon->server_con)
   {
-    gearman_server_con_free(dcon->server_con);
+    gearman_server_con_attempt_free(dcon->server_con);
   }
 
   GEARMAN_LIST_DEL(dcon->thread->dcon, dcon,)
@@ -311,7 +311,7 @@ static void _con_ready(int fd __attribute__ ((unused)), short events,
   }
 
   gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, 
-                     "%15:%5 Ready     %6s %s",
+                     "%15s:%5s Ready     %6s %s",
                      dcon->host, dcon->port,
                      revents & POLLIN ? "POLLIN" : "",
                      revents & POLLOUT ? "POLLOUT" : "");

@@ -14,7 +14,6 @@
 #include <config.h>
 #include <libgearman-server/common.h>
 
-#define GEARMAN_CORE
 #include <libgearman/command.h>
 
 #include <libgearman-server/fifo.h>
@@ -524,7 +523,7 @@ size_t gearmand_packet_unpack(gearmand_packet_st *packet,
       ptr= (uint8_t *)memchr(((uint8_t *)data) + used_size, 0, data_size - used_size);
       if (not ptr)
       {
-        gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Possible protocol error for %s, recieved only %u args", gearman_command_info(packet->command)->name, packet->argc);
+        gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Possible protocol error for %s, received only %u args", gearman_command_info(packet->command)->name, packet->argc);
         *ret_ptr= GEARMAN_IO_WAIT;
         return used_size;
       }

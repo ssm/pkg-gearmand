@@ -9,6 +9,7 @@
 
 noinst_HEADERS+= \
 		 tests/basic.h \
+		 tests/burnin.h \
 		 tests/client.h \
 		 tests/context.h \
 		 tests/do.h \
@@ -19,6 +20,7 @@ noinst_HEADERS+= \
 		 tests/limits.h \
 		 tests/protocol.h \
 		 tests/regression.h \
+		 tests/runner.h \
 		 tests/server_options.h \
 		 tests/start_worker.h \
 		 tests/task.h \
@@ -34,6 +36,7 @@ tests_libstartworker_la_CXXFLAGS+= $(PTHREAD_CFLAGS)
 tests_libstartworker_la_CXXFLAGS+= $(BOOST_CPPFLAGS)
 tests_libstartworker_la_LIBADD+= $(BOOST_THREAD_LDFLAGS)
 tests_libstartworker_la_LIBADD+= $(BOOST_THREAD_LIBS)
+tests_libstartworker_la_LIBADD+= libtest/libtest.la
 tests_libstartworker_la_LIBADD+= libgearman/libgearman.la
 tests_libstartworker_la_SOURCES= tests/start_worker.cc
 tests_libstartworker_la_SOURCES+= util/instance.cc
@@ -45,25 +48,35 @@ CLIENT_LDADD= \
 	      tests/libstartworker.la
 
 tests_cycle_SOURCES= tests/cycle.cc
-tests_cycle_DEPENDENCIES= ${CLIENT_LDADD} gearmand/gearmand
+tests_cycle_DEPENDENCIES=
+tests_cycle_DEPENDENCIES+= ${CLIENT_LDADD}
+tests_cycle_DEPENDENCIES+= gearmand/gearmand
 tests_cycle_LDADD= ${CLIENT_LDADD}
 check_PROGRAMS+=tests/cycle
 noinst_PROGRAMS+=tests/cycle
 
 tests_blobslap_client_SOURCES= tests/blobslap_client.cc
-tests_blobslap_client_DEPENDENCIES= ${CLIENT_LDADD} gearmand/gearmand
+tests_blobslap_client_DEPENDENCIES=
+tests_blobslap_client_DEPENDENCIES+= ${CLIENT_LDADD}
+tests_blobslap_client_DEPENDENCIES+= gearmand/gearmand
 tests_blobslap_client_LDADD= ${CLIENT_LDADD}
 noinst_PROGRAMS+= tests/blobslap_client
 
 tests_cli_SOURCES= tests/cli.cc
 tests_cli_SOURCES+= tests/libgearman-1.0/workers.cc
-tests_cli_DEPENDENCIES= ${CLIENT_LDADD} gearmand/gearmand bin/gearman bin/gearadmin
+tests_cli_DEPENDENCIES=
+tests_cli_DEPENDENCIES+= ${CLIENT_LDADD}
+tests_cli_DEPENDENCIES+= gearmand/gearmand
+tests_cli_DEPENDENCIES+= bin/gearman
+tests_cli_DEPENDENCIES+= bin/gearadmin
 tests_cli_LDADD= ${CLIENT_LDADD}
 check_PROGRAMS+= tests/cli
 noinst_PROGRAMS+= tests/cli
 
 tests_gearmand_SOURCES= tests/gearmand.cc
-tests_gearmand_DEPENDENCIES= ${CLIENT_LDADD} gearmand/gearmand
+tests_gearmand_DEPENDENCIES=
+tests_gearmand_DEPENDENCIES+= ${CLIENT_LDADD}
+tests_gearmand_DEPENDENCIES+= gearmand/gearmand
 tests_gearmand_LDADD= ${CLIENT_LDADD}
 check_PROGRAMS+= tests/gearmand
 noinst_PROGRAMS+= tests/gearmand
@@ -71,7 +84,10 @@ noinst_PROGRAMS+= tests/gearmand
 include tests/libgearman-1.0/include.am
 
 tests_round_robin_test_SOURCES= tests/round_robin.cc
-tests_round_robin_test_DEPENDENCIES= ${CLIENT_LDADD} libgearman/libgearmancore.la gearmand/gearmand
+tests_round_robin_test_DEPENDENCIES=
+tests_round_robin_test_DEPENDENCIES+= ${CLIENT_LDADD}
+tests_round_robin_test_DEPENDENCIES+= libgearman/libgearmancore.la
+tests_round_robin_test_DEPENDENCIES+= gearmand/gearmand
 tests_round_robin_test_LDADD= ${CLIENT_LDADD} libgearman/libgearmancore.la
 check_PROGRAMS+= tests/round_robin_test
 noinst_PROGRAMS+= tests/round_robin_test
@@ -91,8 +107,10 @@ tests_hostileworker_test_LDADD+= $(RT_LIB)
 endif
 
 tests_hostileworker_test_SOURCES+= tests/stress_worker.cc
+tests_hostileworker_test_SOURCES+= tests/burnin.cc
 tests_hostileworker_test_SOURCES+= tests/libgearman-1.0/workers.cc
-tests_hostileworker_test_DEPENDENCIES+= ${CLIENT_LDADD} gearmand/gearmand
+tests_hostileworker_test_DEPENDENCIES+= ${CLIENT_LDADD}
+tests_hostileworker_test_DEPENDENCIES+= gearmand/gearmand
 tests_hostileworker_test_LDADD+= ${CLIENT_LDADD}
 check_PROGRAMS+=tests/hostileworker_test
 noinst_PROGRAMS+=tests/hostileworker_test
@@ -100,31 +118,29 @@ noinst_PROGRAMS+=tests/hostileworker_test
 test-hostile: tests/hostileworker_test gearmand/gearmand
 	@tests/hostileworker_test
 
+valgrind-hostile: tests/hostileworker_test gearmand/gearmand
+	@$(VALGRIND_COMMAND) tests/hostileworker_test
+
 gdb-hostile: tests/hostileworker_test gearmand/gearmand
 	@$(GDB_COMMAND) tests/hostileworker_test
 
 # Test linking with C++ application
 tests_cpp_test_SOURCES= tests/cpp_test.cc
-tests_cpp_test_DEPENDENCIES= ${CLIENT_LDADD} gearmand/gearmand
+tests_cpp_test_DEPENDENCIES=
+tests_cpp_test_DEPENDENCIES+= ${CLIENT_LDADD}
+tests_cpp_test_DEPENDENCIES+= gearmand/gearmand
 tests_cpp_test_LDADD= ${CLIENT_LDADD}
 check_PROGRAMS+=tests/cpp_test
 noinst_PROGRAMS+=tests/cpp_test
 
 # Test linking with C application
 tests_c_test_SOURCES= tests/c_test.c
-tests_c_test_DEPENDENCIES= ${CLIENT_LDADD} gearmand/gearmand
+tests_c_test_DEPENDENCIES=
+tests_c_test_DEPENDENCIES+= ${CLIENT_LDADD}
+tests_c_test_DEPENDENCIES+= gearmand/gearmand
 tests_c_test_LDADD= ${CLIENT_LDADD}
 check_PROGRAMS+=tests/c_test
 noinst_PROGRAMS+=tests/c_test
-
-tests_burnin_test_SOURCES= tests/burnin.cc
-tests_burnin_test_DEPENDENCIES= ${CLIENT_LDADD} gearmand/gearmand
-tests_burnin_test_LDADD= ${CLIENT_LDADD}
-check_PROGRAMS+=tests/burnin_test
-noinst_PROGRAMS+=tests/burnin_test
-
-test-burnin: tests/burnin_test gearmand/gearmand
-	@tests/burnin_test
 
 test-cycle: tests/cycle gearmand/gearmand
 	@tests/cycle
@@ -141,16 +157,10 @@ tests-blobslap_client: tests/blobslap_client gearmand/gearmand
 test-round-robin: tests/round_robin_test gearmand/gearmand
 	@tests/round_robin_test
 
-test-worker: tests/worker_test gearmand/gearmand
-	@tests/worker_test
-
 check-local:
 
 gdb-round-robin: tests/round_robin_test gearmand/gearmand
 	@$(GDB_COMMAND) tests/round_robin_test
-
-gdb-burnin: tests/burnin_test gearmand/gearmand
-	@$(GDB_COMMAND) tests/burnin_test
 
 gdb-cli: tests/cli gearmand/gearmand
 	@$(GDB_COMMAND) tests/cli
@@ -161,14 +171,14 @@ gdb-blobslap_client: tests/blobslap_client gearmand/gearmand
 gdb-cycle: tests/cycle gearmand/gearmand
 	@$(GDB_COMMAND) tests/cycle
 
+gdb-gearmand: tests/gearmand gearmand/gearmand
+	@$(GDB_COMMAND) tests/gearmand
+
 valgrind-cli: tests/cli gearmand/gearmand
 	@$(VALGRIND_COMMAND) tests/cli gearmand/gearmand
 
 valgrind-round-robin: tests/round_robin_test gearmand/gearmand
 	@$(VALGRIND_COMMAND) tests/round_robin_test
-
-valgrind-worker: tests/worker_test gearmand/gearmand
-	@$(VALGRIND_COMMAND) tests/worker_test
 
 valgrind-burnin: tests/burnin_test gearmand/gearmand
 	@$(VALGRIND_COMMAND) tests/burnin_test
@@ -176,14 +186,14 @@ valgrind-burnin: tests/burnin_test gearmand/gearmand
 valgrind-cycle: tests/cycle gearmand/gearmand
 	@$(VALGRIND_COMMAND) tests/cycle
 
+valgrind-gearmand: tests/gearmand gearmand/gearmand
+	@$(VALGRIND_COMMAND) tests/gearmand
+
 helgrind-client: tests/client_test gearmand/gearmand
 	@$(HELGRIND_COMMAND) tests/client_test
 
 helgrind-round-robin: tests/round_robin_test gearmand/gearmand
 	@$(HELGRIND_COMMAND) tests/round_robin_test
-
-helgrind-worker: tests/worker_test gearmand/gearmand
-	@$(HELGRIND_COMMAND) tests/worker_test
 
 helgrind-burnin: tests/burnin_test gearmand/gearmand
 	@$(HELGRIND_COMMAND) tests/burnin_test
