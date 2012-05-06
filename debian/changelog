@@ -1,3 +1,9 @@
+gearmand (0.32-2) unstable; urgency=low
+
+  * Add O_CLOEXEC patch (Closes: #671158)
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 06 May 2012 14:21:47 +0200
+
 gearmand (0.32-1) unstable; urgency=low
 
   * Imported Upstream version 0.32
