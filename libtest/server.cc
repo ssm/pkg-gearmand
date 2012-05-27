@@ -1,24 +1,38 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  libtest
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Data Differential YATL (i.e. libtest)  library
  *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 3 of the License, or (at your option) any later version.
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
  *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
-
 
 #include <config.h>
 #include <libtest/common.h>
@@ -150,7 +164,9 @@ bool Server::start()
   // If we find that we already have a pid then kill it.
   if (has_pid() == true)
   {
+#if 0
     fatal_message("has_pid() failed, programer error");
+#endif
   }
 
   // This needs more work.
@@ -201,6 +217,7 @@ bool Server::start()
       {
         if (_app.check())
         {
+          _app.slurp();
           continue;
         }
 
@@ -247,24 +264,29 @@ bool Server::start()
       if (kill_file(pid_file()) == false)
       {
         throw libtest::fatal(LIBYATL_DEFAULT_PARAM,
-                             "Failed to kill off server, waited: %u after startup occurred, when pinging failed: %s stderr:%s",
+                             "Failed to kill off server, waited: %u after startup occurred, when pinging failed: %.*s stderr:%.*s",
                              this_wait,
-                             pid_file().c_str(),
-                             _app.stderr_c_str());
+                             int(_running.size()), _running.c_str(),
+                             int(_app.stderr_result_length()), _app.stderr_c_str());
       }
 
       throw libtest::fatal(LIBYATL_DEFAULT_PARAM, 
-                           "Failed to ping(), waited: %u server started, having pid_file. exec: %s stderr:%s",
-                           this_wait, _running.c_str(), 
-                           _app.stderr_c_str());
+                           "Failed native ping(), pid: %d is alive: %s waited: %u server started, having pid_file. exec: %.*s stderr:%.*s",
+                           int(_app.pid()),
+                           _app.check() ? "true" : "false",
+                           this_wait,
+                           int(_running.size()), _running.c_str(),
+                           int(_app.stderr_result_length()), _app.stderr_c_str());
     }
     else
     {
       throw libtest::fatal(LIBYATL_DEFAULT_PARAM,
-                           "Failed to ping(), waited: %u server started. exec: %s stderr:%s",
+                           "Failed native ping(), pid: %d is alive: %s waited: %u server started. exec: %.*s stderr:%.*s",
+                           int(_app.pid()),
+                           _app.check() ? "true" : "false",
                            this_wait,
-                           _running.c_str(),
-                           _app.stderr_c_str());
+                           int(_running.size()), _running.c_str(),
+                           int(_app.stderr_result_length()), _app.stderr_c_str());
     }
     _running.clear();
     return false;
@@ -371,7 +393,7 @@ bool Server::args(Application& app)
 {
 
   // Set a log file if it was requested (and we can)
-  if (false and has_log_file_option())
+  if (has_log_file_option())
   {
     set_log_file();
     log_file_option(app, _log_file);

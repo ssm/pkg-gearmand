@@ -190,6 +190,9 @@ Drizzle::Drizzle () :
   drizzle =drizzle_create(NULL);
   con= drizzle_con_create(drizzle, NULL);
   insert_con= drizzle_con_create(drizzle, NULL);
+
+  drizzle_set_timeout(drizzle, -1);
+  assert(drizzle_timeout(drizzle) == -1);
 }
 
 Drizzle::~Drizzle()
@@ -213,6 +216,47 @@ void initialize_drizzle()
 } // namespace plugins
 } // namespace gearmand
 
+/*
+ * thin wrapper around drizzle_query to handle the server going away
+ * this happens usually because of a low wait_timeout value
+ * we attempt to connect back only once
+ */
+static drizzle_result_st *_libdrizzle_query_with_retry(drizzle_con_st *con,
+                                                       drizzle_result_st *result,
+                                                       const char *query, size_t query_size,
+                                                       drizzle_return_t *ret_ptr)
+{
+  drizzle_result_st *query_result= NULL;
+  *ret_ptr= DRIZZLE_RETURN_LOST_CONNECTION;
+  for (int retry= 0; ((*ret_ptr) == DRIZZLE_RETURN_LOST_CONNECTION) && (retry < 2); ++retry)
+  {
+    query_result= drizzle_query(con, result, query, query_size, ret_ptr);
+  }
+
+  if (libdrizzle_failed(*ret_ptr))
+  {
+    if ((*ret_ptr) == DRIZZLE_RETURN_COULD_NOT_CONNECT)
+    {
+      gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM,
+                        "Failed to connect to database instance. host: %s:%d user: %s schema: %s (%s)",
+                         drizzle_con_host(con),
+                         (int)(drizzle_con_port(con)),
+                         drizzle_con_user(con),
+                         drizzle_con_db(con),
+                         drizzle_error(con->drizzle));
+    }
+    else
+    {
+      gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM,
+                        "libdrizled error '%s' executing '%.*s'",
+                         drizzle_error(con->drizzle),
+                         query_size, query);
+    }
+  }
+
+  return query_result;
+}
+
 /**
  * Query handling function.
  */
@@ -223,28 +267,9 @@ static drizzle_return_t _libdrizzle_query(plugins::queue::Drizzle *queue,
 
   gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "libdrizzle query: %.*s", (uint32_t)query_size, query);
 
-  drizzle_result_st *result= drizzle_query(queue->con, queue->result(), query, query_size, &ret);
+  drizzle_result_st *result= _libdrizzle_query_with_retry(queue->con, queue->result(), query, query_size, &ret);
   if (libdrizzle_failed(ret))
   {
-
-    if (ret == DRIZZLE_RETURN_COULD_NOT_CONNECT)
-    {
-      gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM,
-			 "Failed to connect to database instance. host: %s:%d user: %s schema: %s (%s)", 
-                         drizzle_con_host(queue->con),
-                         (int)(drizzle_con_port(queue->con)),
-                         drizzle_con_user(queue->con),
-                         drizzle_con_db(queue->con),
-                         drizzle_error(queue->drizzle));
-    }
-    else
-    {
-      gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM,
-			 "libdrizled error '%s' executing '%.*s'",
-                         drizzle_error(queue->drizzle),
-                         query_size, query);
-    }
-
     return ret;
   }
   (void)result;
@@ -257,28 +282,9 @@ static drizzle_return_t _libdrizzle_insert(plugins::queue::Drizzle *queue,
 {
   drizzle_return_t ret;
 
-  drizzle_result_st *result= drizzle_query(queue->insert_con, NULL, &query[0], query.size() -1, &ret);
+  drizzle_result_st *result= _libdrizzle_query_with_retry(queue->insert_con, NULL, &query[0], query.size() -1, &ret);
   if (libdrizzle_failed(ret))
   {
-
-    if (ret == DRIZZLE_RETURN_COULD_NOT_CONNECT)
-    {
-      gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM,
-			 "Failed to connect to database instance. host: %s:%d user: %s schema: %s (%s)", 
-                         drizzle_con_host(queue->insert_con),
-                         int(drizzle_con_port(queue->insert_con)),
-                         drizzle_con_user(queue->insert_con),
-                         drizzle_con_db(queue->insert_con),
-                         drizzle_error(queue->drizzle));
-    }
-    else
-    {
-      gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM,
-			 "libdrizled error '%s' executing '%.*s'",
-                         drizzle_error(queue->drizzle),
-                         query.size(), &query[0]);
-    }
-
     return ret;
   }
 
@@ -322,27 +328,6 @@ gearmand_error_t gearman_server_queue_libdrizzle_init(plugins::queue::Drizzle *q
 {
   gearmand_info("Initializing libdrizzle module");
 
-  if (drizzle_create(queue->drizzle) == NULL)
-  {
-    gearmand_error("drizzle_create");
-    return GEARMAN_QUEUE_ERROR;
-  }
-
-  if (drizzle_con_create(queue->drizzle, queue->con) == NULL)
-  {
-    gearmand_error("drizzle_con_create");
-    return GEARMAN_QUEUE_ERROR;
-  }
-
-  if (drizzle_con_create(queue->drizzle, queue->insert_con) == NULL)
-  {
-    gearmand_error("drizzle_con_create");
-    return GEARMAN_QUEUE_ERROR;
-  }
-
-  drizzle_con_set_db(queue->con, queue->schema.c_str());
-  drizzle_con_set_db(queue->insert_con, queue->schema.c_str());
-
   if (queue->mysql_protocol)
   {
     drizzle_con_set_options(queue->con, DRIZZLE_CON_MYSQL);
@@ -364,26 +349,51 @@ gearmand_error_t gearman_server_queue_libdrizzle_init(plugins::queue::Drizzle *q
   drizzle_con_set_auth(queue->insert_con, queue->user.c_str(), queue->password.c_str());
   gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Using '%s' as the username", queue->user.c_str());
 
+  drizzle_con_set_db(queue->con, "INFORMATION_SCHEMA");
+
   std::string query;
-
-  query+= "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = \"";
-  query+= queue->schema;
-  query+= "\"";
-  if (libdrizzle_failed(_libdrizzle_query(queue, query.c_str(), query.size())))
   {
-    return gearmand_gerror("Error occurred while searching for gearman queue schema", GEARMAN_QUEUE_ERROR);
+    query.clear();
+
+    query+= "CREATE SCHEMA IF NOT EXISTS  " +queue->schema;
+    if (libdrizzle_failed(_libdrizzle_query(queue, query.c_str(), query.size())))
+    {
+      return gearmand_gerror(drizzle_error(queue->drizzle), GEARMAN_QUEUE_ERROR);
+    }
+
+    if (libdrizzle_failed(drizzle_column_skip_all(queue->result())))
+    {
+      drizzle_result_free(queue->result());
+      return gearmand_gerror(drizzle_error(queue->drizzle), GEARMAN_QUEUE_ERROR);
+    }
+    drizzle_result_free(queue->result());
   }
 
-  if (libdrizzle_failed(drizzle_result_buffer(queue->result())))
+  // Look for schema
   {
-    return gearmand_gerror(drizzle_error(queue->drizzle), GEARMAN_QUEUE_ERROR);
+    query.clear();
+    query+= "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = \"";
+    query+= queue->schema;
+    query+= "\"";
+    if (libdrizzle_failed(_libdrizzle_query(queue, query.c_str(), query.size())))
+    {
+      return gearmand_gerror("Error occurred while searching for gearman queue schema", GEARMAN_QUEUE_ERROR);
+    }
+
+    if (libdrizzle_failed(drizzle_result_buffer(queue->result())))
+    {
+      return gearmand_gerror(drizzle_error(queue->drizzle), GEARMAN_QUEUE_ERROR);
+    }
+
+    if (drizzle_result_row_count(queue->result()) == 0)
+    {
+      return gearmand_gerror("Error occurred while search for gearman queue schema", GEARMAN_QUEUE_ERROR);
+    }
+    drizzle_result_free(queue->result());
   }
 
-  if (drizzle_result_row_count(queue->result()) == 0)
-  {
-    return gearmand_gerror("Error occurred while search for gearman queue schema", GEARMAN_QUEUE_ERROR);
-  }
-  drizzle_result_free(queue->result());
+  drizzle_con_set_db(queue->con, queue->schema.c_str());
+  drizzle_con_set_db(queue->insert_con, queue->schema.c_str());
 
   // We need to check and see if the tables exists, and if not create it
   query.clear();
@@ -407,7 +417,7 @@ gearmand_error_t gearman_server_queue_libdrizzle_init(plugins::queue::Drizzle *q
 
     query.clear();
 
-    query+= "CREATE TABLE " +queue->table + "( unique_key VARCHAR(" + TOSTRING(GEARMAN_UNIQUE_SIZE) + "),";
+    query+= "CREATE TABLE " +queue->schema + "." +queue->table + "( unique_key VARCHAR(" + TOSTRING(GEARMAN_UNIQUE_SIZE) + "),";
     query+= "function_name VARCHAR(255), priority INT, data LONGBLOB, when_to_run BIGINT, unique key (unique_key, function_name))";
 
     if (libdrizzle_failed(_libdrizzle_query(queue, query.c_str(), query.size())))

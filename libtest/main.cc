@@ -1,22 +1,37 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  libtest
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Data Differential YATL (i.e. libtest)  library
  *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 3 of the License, or (at your option) any later version.
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
  *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #include <config.h>
@@ -25,14 +40,15 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <unistd.h>
 #include <ctime>
 #include <fnmatch.h>
 #include <iostream>
+#include <memory>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <signal.h>
 
@@ -42,33 +58,23 @@
 
 using namespace libtest;
 
-static void stats_print(Stats *stats)
+static void stats_print(Framework *frame)
 {
-  if (stats->collection_failed == 0 and stats->collection_success == 0)
+  if (frame->failed() == 0 and frame->success() == 0)
   {
     return;
   }
 
-  Out << "\tTotal Collections\t\t\t\t" << stats->collection_total;
-  Out << "\tFailed Collections\t\t\t\t" << stats->collection_failed;
-  Out << "\tSkipped Collections\t\t\t\t" << stats->collection_skipped;
-  Out << "\tSucceeded Collections\t\t\t\t" << stats->collection_success;
   Outn();
-  Out << "Total\t\t\t\t" << stats->total;
-  Out << "\tFailed\t\t\t" << stats->failed;
-  Out << "\tSkipped\t\t\t" << stats->skipped;
-  Out << "\tSucceeded\t\t" << stats->success;
-}
-
-static long int timedif(struct timeval a, struct timeval b)
-{
-  long us, s;
-
-  us = (long)(a.tv_usec - b.tv_usec);
-  us /= 1000;
-  s = (long)(a.tv_sec - b.tv_sec);
-  s *= 1000;
-  return s + us;
+  Out << "Collections\t\t\t\t\t" << frame->total();
+  Out << "\tFailed\t\t\t\t\t" << frame->failed();
+  Out << "\tSkipped\t\t\t\t\t" << frame->skipped();
+  Out << "\tSucceeded\t\t\t\t" << frame->success();
+  Outn();
+  Out << "Tests\t\t\t\t\t" << frame->sum_total();
+  Out << "\tFailed\t\t\t\t" << frame->sum_failed();
+  Out << "\tSkipped\t\t\t\t" << frame->sum_skipped();
+  Out << "\tSucceeded\t\t\t" << frame->sum_success();
 }
 
 #include <getopt.h>
@@ -80,6 +86,7 @@ int main(int argc, char *argv[])
   unsigned long int opt_repeat= 1; // Run all tests once
   bool opt_quiet= false;
   std::string collection_to_run;
+  std::string wildcard;
 
   // Options parsing
   {
@@ -88,6 +95,7 @@ int main(int argc, char *argv[])
       OPT_LIBYATL_MATCH_COLLECTION,
       OPT_LIBYATL_MASSIVE,
       OPT_LIBYATL_QUIET,
+      OPT_LIBYATL_MATCH_WILDCARD,
       OPT_LIBYATL_REPEAT
     };
 
@@ -97,6 +105,7 @@ int main(int argc, char *argv[])
       { "quiet", no_argument, NULL, OPT_LIBYATL_QUIET },
       { "repeat", no_argument, NULL, OPT_LIBYATL_REPEAT },
       { "collection", required_argument, NULL, OPT_LIBYATL_MATCH_COLLECTION },
+      { "wildcard", required_argument, NULL, OPT_LIBYATL_MATCH_WILDCARD },
       { "massive", no_argument, NULL, OPT_LIBYATL_MASSIVE },
       { 0, 0, 0, 0 }
     };
@@ -125,6 +134,10 @@ int main(int argc, char *argv[])
 
       case OPT_LIBYATL_MATCH_COLLECTION:
         collection_to_run= optarg;
+        break;
+
+      case OPT_LIBYATL_MATCH_WILDCARD:
+        wildcard= optarg;
         break;
 
       case OPT_LIBYATL_MASSIVE:
@@ -193,13 +206,31 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
+  if (getenv("YATL_COLLECTION_TO_RUN"))
+  {
+    if (strlen(getenv("YATL_COLLECTION_TO_RUN")))
+    {
+      collection_to_run= getenv("YATL_COLLECTION_TO_RUN");
+    }
+  }
+
+  if (collection_to_run.compare("none") == 0)
+  {
+    return EXIT_SUCCESS;
+  }
+
+  if (collection_to_run.empty() == false)
+  {
+    Out << "Only testing " <<  collection_to_run;
+  }
+
   int exit_code;
 
-  try {
-    do {
+  try 
+  {
+    do
+    {
       exit_code= EXIT_SUCCESS;
-      Framework world;
-
       fatal_assert(sigignore(SIGPIPE) == 0);
 
       libtest::SignalThread signal;
@@ -209,230 +240,27 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
       }
 
-      Stats stats;
+      std::auto_ptr<Framework> frame(new Framework(signal, collection_to_run, wildcard));
 
-      get_world(&world);
-
-      test_return_t error;
-      void *creators_ptr= world.create(error);
-
-      switch (error)
+      // Run create(), bail on error.
       {
-      case TEST_SUCCESS:
-        break;
-
-      case TEST_SKIPPED:
-        Out << "SKIP " << argv[0];
-        return EXIT_SUCCESS;
-
-      case TEST_FAILURE:
-        return EXIT_FAILURE;
-      }
-
-      if (getenv("YATL_COLLECTION_TO_RUN"))
-      {
-        if (strlen(getenv("YATL_COLLECTION_TO_RUN")))
-        {
-          collection_to_run= getenv("YATL_COLLECTION_TO_RUN");
-        }
-      }
-
-      if (collection_to_run.compare("none") == 0)
-      {
-        return EXIT_SUCCESS;
-      }
-
-      if (collection_to_run.empty() == false)
-      {
-        Out << "Only testing " <<  collection_to_run;
-      }
-
-      char *wildcard= NULL;
-      if (argc == 3)
-      {
-        wildcard= argv[2];
-      }
-
-      for (collection_st *next= world.collections; next and next->name and (not signal.is_shutdown()); next++)
-      {
-        bool failed= false;
-        bool skipped= false;
-
-        if (collection_to_run.empty() == false and fnmatch(collection_to_run.c_str(), next->name, 0))
-        {
-          continue;
-        }
-
-        stats.collection_total++;
-
-        test_return_t collection_rc= world.startup(creators_ptr);
-
-        if (collection_rc == TEST_SUCCESS and next->pre)
-        {
-          collection_rc= world.runner()->pre(next->pre, creators_ptr);
-        }
-
-        switch (collection_rc)
+        switch (frame->create())
         {
         case TEST_SUCCESS:
           break;
 
-        case TEST_FAILURE:
-          Out << next->name << " [ failed ]";
-          failed= true;
-          signal.set_shutdown(SHUTDOWN_GRACEFUL);
-          goto cleanup;
-
         case TEST_SKIPPED:
-          Out << next->name << " [ skipping ]";
-          skipped= true;
-          goto cleanup;
+          Out << "SKIP " << argv[0];
+          return EXIT_SUCCESS;
 
-        default:
-          fatal_message("invalid return code");
+        case TEST_FAILURE:
+          return EXIT_FAILURE;
         }
-
-        Out << "Collection: " << next->name;
-
-        for (test_st *run= next->tests; run->name; run++)
-        {
-          struct timeval start_time, end_time;
-          long int load_time= 0;
-
-          if (wildcard && fnmatch(wildcard, run->name, 0))
-          {
-            continue;
-          }
-
-          test_return_t return_code;
-          try {
-            if (test_success(return_code= world.item.startup(creators_ptr)))
-            {
-              if (test_success(return_code= world.item.flush(creators_ptr, run)))
-              {
-                // @note pre will fail is SKIPPED is returned
-                if (test_success(return_code= world.item.pre(creators_ptr)))
-                {
-                  { // Runner Code
-                    gettimeofday(&start_time, NULL);
-                    assert(world.runner());
-                    assert(run->test_fn);
-                    try 
-                    {
-                      return_code= world.runner()->run(run->test_fn, creators_ptr);
-                    }
-                    // Special case where check for the testing of the exception
-                    // system.
-                    catch (libtest::fatal &e)
-                    {
-                      if (fatal::is_disabled())
-                      {
-                        fatal::increment_disabled_counter();
-                        return_code= TEST_SUCCESS;
-                      }
-                      else
-                      {
-                        throw;
-                      }
-                    }
-
-                    gettimeofday(&end_time, NULL);
-                    load_time= timedif(end_time, start_time);
-                  }
-                }
-
-                // @todo do something if post fails
-                (void)world.item.post(creators_ptr);
-              }
-              else if (return_code == TEST_SKIPPED)
-              { }
-              else if (return_code == TEST_FAILURE)
-              {
-                Error << " item.flush(failure)";
-                signal.set_shutdown(SHUTDOWN_GRACEFUL);
-              }
-            }
-            else if (return_code == TEST_SKIPPED)
-            { }
-            else if (return_code == TEST_FAILURE)
-            {
-              Error << " item.startup(failure)";
-              signal.set_shutdown(SHUTDOWN_GRACEFUL);
-            }
-          }
-
-          catch (libtest::fatal &e)
-          {
-            Error << "Fatal exception was thrown: " << e.what();
-            return_code= TEST_FAILURE;
-          }
-          catch (std::exception &e)
-          {
-            Error << "Exception was thrown: " << e.what();
-            return_code= TEST_FAILURE;
-          }
-          catch (...)
-          {
-            Error << "Unknown exception occurred";
-            return_code= TEST_FAILURE;
-          }
-
-          stats.total++;
-
-          switch (return_code)
-          {
-          case TEST_SUCCESS:
-            Out << "\tTesting " << run->name <<  "\t\t\t\t\t" << load_time / 1000 << "." << load_time % 1000 << "[ " << test_strerror(return_code) << " ]";
-            stats.success++;
-            break;
-
-          case TEST_FAILURE:
-            stats.failed++;
-            failed= true;
-            Out << "\tTesting " << run->name <<  "\t\t\t\t\t" << "[ " << test_strerror(return_code) << " ]";
-            break;
-
-          case TEST_SKIPPED:
-            stats.skipped++;
-            skipped= true;
-            Out << "\tTesting " << run->name <<  "\t\t\t\t\t" << "[ " << test_strerror(return_code) << " ]";
-            break;
-
-          default:
-            fatal_message("invalid return code");
-          }
-
-          if (test_failed(world.on_error(return_code, creators_ptr)))
-          {
-            Error << "Failed while running on_error()";
-            signal.set_shutdown(SHUTDOWN_GRACEFUL);
-            break;
-          }
-        }
-
-        (void) world.runner()->post(next->post, creators_ptr);
-
-cleanup:
-        if (failed == false and skipped == false)
-        {
-          stats.collection_success++;
-        }
-
-        if (failed)
-        {
-          stats.collection_failed++;
-        }
-
-        if (skipped)
-        {
-          stats.collection_skipped++;
-        }
-
-        world.shutdown(creators_ptr);
-        Outn();
       }
 
-      if (not signal.is_shutdown())
+      frame->exec();
+
+      if (signal.is_shutdown() == false)
       {
         signal.set_shutdown(SHUTDOWN_GRACEFUL);
       }
@@ -443,21 +271,21 @@ cleanup:
         Out << "Tests were aborted.";
         exit_code= EXIT_FAILURE;
       }
-      else if (stats.collection_failed)
+      else if (frame->failed())
       {
         Out << "Some test failed.";
         exit_code= EXIT_FAILURE;
       }
-      else if (stats.collection_skipped and stats.collection_failed and stats.collection_success)
+      else if (frame->skipped() and frame->failed() and frame->success())
       {
         Out << "Some tests were skipped.";
       }
-      else if (stats.collection_success and stats.collection_failed == 0)
+      else if (frame->success() and (frame->failed() == 0))
       {
         Out << "All tests completed successfully.";
       }
 
-      stats_print(&stats);
+      stats_print(frame.get());
 
       Outn(); // Generate a blank to break up the messages if make check/test has been run
     } while (exit_code == EXIT_SUCCESS and --opt_repeat);
@@ -465,14 +293,22 @@ cleanup:
   catch (libtest::fatal& e)
   {
     std::cerr << e.what() << std::endl;
+    exit_code= EXIT_FAILURE;
+  }
+  catch (libtest::disconnected& e)
+  {
+    std::cerr << "Unhandled disconnection occurred:" << e.what() << std::endl;
+    exit_code= EXIT_FAILURE;
   }
   catch (std::exception& e)
   {
     std::cerr << e.what() << std::endl;
+    exit_code= EXIT_FAILURE;
   }
   catch (...)
   {
     std::cerr << "Unknown exception halted execution." << std::endl;
+    exit_code= EXIT_FAILURE;
   }
 
   return exit_code;

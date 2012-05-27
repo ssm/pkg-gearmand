@@ -44,7 +44,6 @@
 
 #pragma once
 
-#include <inttypes.h>
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -74,6 +73,8 @@
 #include <libgearman-server/gearmand_con.h>
 
 #include <libgearman-server/struct/gearmand.h>
+
+#include <libgearman-server/text.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -39,7 +39,7 @@
 
 struct gearman_unique_t {
   const char *c_str;
-  const size_t size;
+  size_t size;
 };
 
 GEARMAN_LOCAL

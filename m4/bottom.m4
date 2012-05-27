@@ -1,12 +1,26 @@
 AC_DEFUN([CONFIG_EXTRA], [
 
-  AH_BOTTOM([
+AH_TOP([
+#pragma once
+
+/* _SYS_FEATURE_TESTS_H is Solaris, _FEATURES_H is GCC */
+#if defined( _SYS_FEATURE_TESTS_H) || defined(_FEATURES_H)
+#error "You should include config.h as your first include file"
+#endif
+
+])
+
+AH_BOTTOM([
+
+/* This seems to be required for older compilers @note http://stackoverflow.com/questions/8132399/how-to-printf-uint64-t  */
+#ifndef __STDC_FORMAT_MACROS
+#  define __STDC_FORMAT_MACROS
+#endif
+ 
 #if defined(__cplusplus)
-# include CSTDINT_H
-# include CINTTYPES_H
+#  include CINTTYPES_H
 #else
-# include <stdint.h>
-# include <inttypes.h>
+#  include <inttypes.h>
 #endif
 
 #if !defined(HAVE_ULONG) && !defined(__USE_MISC)
@@ -19,7 +33,7 @@ typedef unsigned long int ulong;
  * functions to the unix way. Microsoft use a separate subsystem for sockets,
  * but Unix normally just use a filedescriptor on the same functions. It is
  * a lot easier to map back to the unix way with macros than going the other
- * way without side effect ;-)
+ * way without side effect.
  */
 #ifdef TARGET_OS_WINDOWS
 #define random() rand()
@@ -40,6 +54,6 @@ typedef unsigned long int ulong;
 #define MSG_DONTWAIT 0
 #endif // HAVE_MSG_DONTWAIT
 
-  ])
-
 ])
+
+])dnl CONFIG_EXTRA
