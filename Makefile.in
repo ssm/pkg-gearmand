@@ -23,22 +23,6 @@
 # the COPYING file in this directory for full text.
 
 # vim:ft=automake
-# Copyright (C) 2011 Data Differential, http://datadifferential.com/
-# All rights reserved.
-#
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 3 of the License, or (at your option) any later version.
-#
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
 # included from Top Level Makefile.am
 # All paths should be given relative to the root
@@ -273,7 +257,7 @@
 
 # vim:ft=automake
 # Gearman server and library
-# Copyright (C) 2011 Data Differential, http://datadifferential.com/
+# Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
 # Copyright (C) 2008 Brian Aker, Eric Day
 # All rights reserved.
 #
@@ -421,12 +405,12 @@ check_PROGRAMS = libtest/unittest$(EXEEXT) libtest/skiptest$(EXEEXT) \
 	tests/libgearman-1.0/client_test$(EXEEXT) \
 	tests/libgearman-1.0/internals_test$(EXEEXT) \
 	tests/libgearman-1.0/worker_test$(EXEEXT) \
-	tests/round_robin_test$(EXEEXT) \
-	tests/hostileworker_test$(EXEEXT) tests/cpp_test$(EXEEXT) \
-	tests/c_test$(EXEEXT) tests/ephemeral_test$(EXEEXT) \
-	tests/drizzle_test$(EXEEXT) tests/memcached_test$(EXEEXT) \
-	tests/postgres_test$(EXEEXT) tests/sqlite_test$(EXEEXT) \
-	tests/tokyocabinet_test$(EXEEXT) tests/httpd_test$(EXEEXT)
+	tests/round_robin_test$(EXEEXT) tests/stress_test$(EXEEXT) \
+	tests/cpp_test$(EXEEXT) tests/c_test$(EXEEXT) \
+	tests/ephemeral_test$(EXEEXT) tests/drizzle_test$(EXEEXT) \
+	tests/memcached_test$(EXEEXT) tests/postgres_test$(EXEEXT) \
+	tests/sqlite_test$(EXEEXT) tests/tokyocabinet_test$(EXEEXT) \
+	tests/httpd_test$(EXEEXT)
 noinst_PROGRAMS = libtest/unittest$(EXEEXT) libtest/skiptest$(EXEEXT) \
 	libtest/wait$(EXEEXT) libtest/abort$(EXEEXT) \
 	benchmark/blobslap_client$(EXEEXT) \
@@ -444,13 +428,12 @@ noinst_PROGRAMS = libtest/unittest$(EXEEXT) libtest/skiptest$(EXEEXT) \
 	tests/libgearman-1.0/client_test$(EXEEXT) \
 	tests/libgearman-1.0/internals_test$(EXEEXT) \
 	tests/libgearman-1.0/worker_test$(EXEEXT) \
-	tests/round_robin_test$(EXEEXT) \
-	tests/hostileworker_test$(EXEEXT) tests/cpp_test$(EXEEXT) \
-	tests/c_test$(EXEEXT) tests/ephemeral_test$(EXEEXT) \
-	tests/drizzle_test$(EXEEXT) tests/memcached_test$(EXEEXT) \
-	tests/postgres_test$(EXEEXT) tests/sqlite_test$(EXEEXT) \
-	tests/tokyocabinet_test$(EXEEXT) tests/redis_test$(EXEEXT) \
-	tests/httpd_test$(EXEEXT) \
+	tests/round_robin_test$(EXEEXT) tests/stress_test$(EXEEXT) \
+	tests/cpp_test$(EXEEXT) tests/c_test$(EXEEXT) \
+	tests/ephemeral_test$(EXEEXT) tests/drizzle_test$(EXEEXT) \
+	tests/memcached_test$(EXEEXT) tests/postgres_test$(EXEEXT) \
+	tests/sqlite_test$(EXEEXT) tests/tokyocabinet_test$(EXEEXT) \
+	tests/redis_test$(EXEEXT) tests/httpd_test$(EXEEXT) \
 	docs/libgearman/examples/gearman_client_do_background_example$(EXEEXT) \
 	docs/libgearman/examples/gearman_client_do_example$(EXEEXT) \
 	docs/libgearman/examples/gearman_execute_example$(EXEEXT) \
@@ -518,23 +501,26 @@ DIST_COMMON = README $(am__configure_deps) $(nobase_include_HEADERS) \
 @BUILDING_LIBMEMCACHED_FALSE@@HAVE_LIBMEMCACHED_TRUE@am__append_9 = libtest/memcached.cc
 @BUILDING_LIBMEMCACHED_FALSE@@HAVE_LIBMEMCACHED_FALSE@am__append_10 = -DHAVE_LIBMEMCACHED=0
 @BUILDING_LIBMEMCACHED_FALSE@@HAVE_LIBMEMCACHED_FALSE@am__append_11 = -DHAVE_LIBMEMCACHED=0
-@BUILDING_GEARMAN_TRUE@am__append_12 = libgearman/libgearman.la
-@BUILDING_GEARMAN_TRUE@am__append_13 = libgearman/libgearman.la
-@BUILDING_GEARMAN_TRUE@am__append_14 = libtest/blobslap_worker.cc \
+@HAVE_LIBDRIZZLE_TRUE@am__append_12 = $(libdrizzle_LIBS)
+@HAVE_LIBDRIZZLE_TRUE@am__append_13 = $(libdrizzle_CFLAGS)
+@BUILDING_GEARMAN_TRUE@am__append_14 = libgearman/libgearman.la
+@BUILDING_GEARMAN_TRUE@am__append_15 = libgearman/libgearman.la
+@BUILDING_GEARMAN_TRUE@am__append_16 = libtest/blobslap_worker.cc \
 @BUILDING_GEARMAN_TRUE@	libtest/gearmand.cc util/instance.cc \
 @BUILDING_GEARMAN_TRUE@	util/operation.cc
-@BUILDING_GEARMAN_TRUE@am__append_15 = libgearman/libgearman.la
-@BUILDING_GEARMAN_TRUE@am__append_16 = libgearman/libgearman.la \
+@BUILDING_GEARMAN_TRUE@am__append_17 = libgearman/libgearman.la
+@BUILDING_GEARMAN_TRUE@am__append_18 = libgearman/libgearman.la \
 @BUILDING_GEARMAN_TRUE@	gearmand/gearmand
-@BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@am__append_17 = libgearman/libgearman.la
-@BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@am__append_18 = $(libgearman_LIBS)
-@BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@am__append_19 = libtest/blobslap_worker.cc \
+@BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@am__append_19 = libgearman/libgearman.la
+@BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@am__append_20 = $(libgearman_LIBS)
+@BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@am__append_21 = libtest/blobslap_worker.cc \
 @BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@	libtest/gearmand.cc \
 @BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@	util/instance.cc \
 @BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@	util/operation.cc
-@TARGET_LINUX_TRUE@am__append_20 = $(DL_LIB) $(RT_LIB)
-@TARGET_LINUX_TRUE@am__append_21 = -DHAVE_LIBHOSTILE=1
-@TARGET_LINUX_TRUE@am__append_22 = \
+@TARGET_LINUX_TRUE@am__append_22 = $(DL_LIB) $(RT_LIB)
+@TARGET_LINUX_TRUE@am__append_23 = -DHAVE_LIBHOSTILE=1
+@TARGET_LINUX_TRUE@am__append_24 = \
+@TARGET_LINUX_TRUE@				   libhostile/accept.c \
 @TARGET_LINUX_TRUE@				   libhostile/getaddrinfo.c \
 @TARGET_LINUX_TRUE@				   libhostile/malloc.c \
 @TARGET_LINUX_TRUE@				   libhostile/realloc.c \
@@ -543,34 +529,36 @@ DIST_COMMON = README $(am__configure_deps) $(nobase_include_HEADERS) \
 @TARGET_LINUX_TRUE@				   libhostile/setsockopt.c \
 @TARGET_LINUX_TRUE@				   libhostile/write.c
 
-@TARGET_LINUX_TRUE@am__append_23 = gearmand/hostile_gearmand
-@HAVE_LIBDRIZZLE_TRUE@am__append_24 = libgearman-server/plugins/queue/drizzle/queue.cc
-@HAVE_LIBDRIZZLE_TRUE@am__append_25 = $(libdrizzle_LIBS)
-@HAVE_LIBDRIZZLE_TRUE@am__append_26 = $(libdrizzle_CFLAGS)
+@TARGET_LINUX_TRUE@am__append_25 = gearmand/hostile_gearmand
+@HAVE_LIBDRIZZLE_TRUE@am__append_26 = libgearman-server/plugins/queue/drizzle/queue.cc
 @HAVE_LIBDRIZZLE_TRUE@am__append_27 = $(libdrizzle_LIBS)
-@HAVE_LIBMEMCACHED_TRUE@am__append_28 = libgearman-server/plugins/queue/libmemcached/queue.cc
-@HAVE_LIBMEMCACHED_TRUE@am__append_29 = $(libmemcached_CFLAGS)
-@HAVE_LIBMEMCACHED_TRUE@am__append_30 = $(libmemcached_LIBS)
-@HAVE_LIBMEMCACHED_TRUE@am__append_31 = $(libmemcached_LIBS)
-@HAVE_LIBPQ_TRUE@am__append_32 = libgearman-server/plugins/queue/postgres/queue.cc
-@HAVE_LIBPQ_TRUE@am__append_33 = $(POSTGRESQL_LDFLAGS)
-@HAVE_HIREDIS_TRUE@am__append_34 = libgearman-server/plugins/queue/redis/queue.cc
-@HAVE_HIREDIS_TRUE@am__append_35 = -lhiredis
-@HAVE_LIBSQLITE3_TRUE@am__append_36 = libgearman-server/plugins/queue/sqlite/queue.cc
-@HAVE_LIBSQLITE3_TRUE@am__append_37 = $(SQLITE3_CFLAGS)
-@HAVE_LIBSQLITE3_TRUE@am__append_38 = $(SQLITE3_CFLAGS)
-@HAVE_LIBSQLITE3_TRUE@am__append_39 = $(SQLITE3_LDFLAGS)
-@HAVE_LIBTOKYOCABINET_TRUE@am__append_40 = libgearman-server/plugins/queue/tokyocabinet/queue.cc
-@HAVE_LIBTOKYOCABINET_TRUE@am__append_41 = $(LIBTOKYOCABINET_LDFLAGS)
-@HAVE_MYSQL_TRUE@am__append_42 = libgearman-server/plugins/queue/mysql/queue.cc
-@HAVE_MYSQL_TRUE@am__append_43 = $(MYSQL_LDFLAGS)
-@TARGET_LINUX_TRUE@am__append_44 = -lm
-@TARGET_LINUX_TRUE@am__append_45 = -DHAVE_LIBHOSTILE=1
-@TARGET_LINUX_TRUE@am__append_46 = libhostile/libhostile.la
-@TARGET_LINUX_TRUE@am__append_47 = libhostile/libhostile.la $(DL_LIB) \
+@HAVE_LIBDRIZZLE_TRUE@am__append_28 = $(libdrizzle_CFLAGS)
+@HAVE_LIBDRIZZLE_TRUE@am__append_29 = $(libdrizzle_LIBS)
+@HAVE_LIBMEMCACHED_TRUE@am__append_30 = libgearman-server/plugins/queue/libmemcached/queue.cc
+@HAVE_LIBMEMCACHED_TRUE@am__append_31 = $(libmemcached_CFLAGS)
+@HAVE_LIBMEMCACHED_TRUE@am__append_32 = $(libmemcached_LIBS)
+@HAVE_LIBMEMCACHED_TRUE@am__append_33 = $(libmemcached_LIBS)
+@HAVE_LIBPQ_TRUE@am__append_34 = libgearman-server/plugins/queue/postgres/queue.cc
+@HAVE_LIBPQ_TRUE@am__append_35 = $(POSTGRESQL_LDFLAGS)
+@HAVE_LIBPQ_TRUE@am__append_36 = $(POSTGRESQL_CFLAGS)
+@HAVE_LIBPQ_TRUE@am__append_37 = $(POSTGRESQL_LDFLAGS)
+@HAVE_HIREDIS_TRUE@am__append_38 = libgearman-server/plugins/queue/redis/queue.cc
+@HAVE_HIREDIS_TRUE@am__append_39 = -lhiredis
+@HAVE_LIBSQLITE3_TRUE@am__append_40 = libgearman-server/plugins/queue/sqlite/queue.cc
+@HAVE_LIBSQLITE3_TRUE@am__append_41 = $(SQLITE3_CFLAGS)
+@HAVE_LIBSQLITE3_TRUE@am__append_42 = $(SQLITE3_CFLAGS)
+@HAVE_LIBSQLITE3_TRUE@am__append_43 = $(SQLITE3_LDFLAGS)
+@HAVE_LIBTOKYOCABINET_TRUE@am__append_44 = libgearman-server/plugins/queue/tokyocabinet/queue.cc
+@HAVE_LIBTOKYOCABINET_TRUE@am__append_45 = $(LIBTOKYOCABINET_LDFLAGS)
+@HAVE_MYSQL_TRUE@am__append_46 = libgearman-server/plugins/queue/mysql/queue.cc
+@HAVE_MYSQL_TRUE@am__append_47 = $(MYSQL_LDFLAGS)
+@TARGET_LINUX_TRUE@am__append_48 = -lm
+@TARGET_LINUX_TRUE@am__append_49 = -DHAVE_LIBHOSTILE=1
+@TARGET_LINUX_TRUE@am__append_50 = libhostile/libhostile.la
+@TARGET_LINUX_TRUE@am__append_51 = libhostile/libhostile.la $(DL_LIB) \
 @TARGET_LINUX_TRUE@	$(RT_LIB)
-@HAVE_LIBDRIZZLE_TRUE@am__append_48 = $(libdrizzle_LIBS)
-@HAVE_LIBDRIZZLE_TRUE@am__append_49 = $(libdrizzle_CFLAGS)
+@HAVE_LIBDRIZZLE_TRUE@am__append_52 = $(libdrizzle_LIBS)
+@HAVE_LIBDRIZZLE_TRUE@am__append_53 = $(libdrizzle_CFLAGS)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ac_vc_build.m4 \
@@ -585,6 +573,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ac_vc_build.m4 \
 	$(top_srcdir)/m4/ax_pthread.m4 \
 	$(top_srcdir)/m4/ax_with_prog.m4 $(top_srcdir)/m4/boost.m4 \
 	$(top_srcdir)/m4/bottom.m4 $(top_srcdir)/m4/extensions.m4 \
+	$(top_srcdir)/m4/fcntl_flags.m4 \
 	$(top_srcdir)/m4/have_cinttypes.m4 \
 	$(top_srcdir)/m4/have_cstdint.m4 \
 	$(top_srcdir)/m4/have_libpq.m4 $(top_srcdir)/m4/hiredis.m4 \
@@ -594,6 +583,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ac_vc_build.m4 \
 	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
 	$(top_srcdir)/m4/pandora_canonical.m4 \
 	$(top_srcdir)/m4/pandora_check_compiler_version.m4 \
+	$(top_srcdir)/m4/pandora_clock_gettime.m4 \
 	$(top_srcdir)/m4/pandora_enable_dtrace.m4 \
 	$(top_srcdir)/m4/pandora_extensions.m4 \
 	$(top_srcdir)/m4/pandora_have_better_malloc.m4 \
@@ -683,19 +673,20 @@ am__libgearman_server_libgearman_server_la_SOURCES_DIST =  \
 	libgearman-server/plugins/queue/sqlite/queue.cc \
 	libgearman-server/plugins/queue/tokyocabinet/queue.cc \
 	libgearman-server/plugins/queue/mysql/queue.cc \
-	libgearman-server/byteorder.cc libgearman-server/client.cc \
-	libgearman-server/connection.c \
+	libgearman-server/text.cc libgearman-server/byteorder.cc \
+	libgearman-server/client.cc libgearman-server/connection.c \
 	libgearman-server/connection_list.cc libgearman-server/fifo.c \
 	libgearman-server/function.cc libgearman-server/gearmand.cc \
 	libgearman-server/gearmand_con.c \
 	libgearman-server/gearmand_thread.cc libgearman-server/hash.c \
 	libgearman-server/io.cc libgearman-server/job.c \
-	libgearman-server/list.c libgearman-server/log.cc \
-	libgearman-server/packet.cc libgearman-server/plugins.cc \
-	libgearman-server/queue.cc libgearman-server/server.c \
-	libgearman-server/thread.c libgearman-server/timer.cc \
-	libgearman-server/wakeup.cc libgearman-server/worker.cc \
-	libgearman/command.cc libgearman/strcommand.cc
+	libgearman-server/job_plus.cc libgearman-server/list.c \
+	libgearman-server/log.cc libgearman-server/packet.cc \
+	libgearman-server/plugins.cc libgearman-server/queue.cc \
+	libgearman-server/server.c libgearman-server/thread.c \
+	libgearman-server/timer.cc libgearman-server/wakeup.cc \
+	libgearman-server/worker.cc libgearman/command.cc \
+	libgearman/strcommand.cc
 @HAVE_LIBDRIZZLE_TRUE@am__objects_1 = libgearman-server/plugins/queue/drizzle/libgearman_server_libgearman_server_la-queue.lo
 @HAVE_LIBMEMCACHED_TRUE@am__objects_2 = libgearman-server/plugins/queue/libmemcached/libgearman_server_libgearman_server_la-queue.lo
 @HAVE_LIBPQ_TRUE@am__objects_3 = libgearman-server/plugins/queue/postgres/libgearman_server_libgearman_server_la-queue.lo
@@ -710,6 +701,7 @@ am_libgearman_server_libgearman_server_la_OBJECTS = libgearman-server/error/libg
 	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
 	$(am__objects_4) $(am__objects_5) $(am__objects_6) \
 	$(am__objects_7) \
+	libgearman-server/libgearman_server_libgearman_server_la-text.lo \
 	libgearman-server/libgearman_server_libgearman_server_la-byteorder.lo \
 	libgearman-server/libgearman_server_libgearman_server_la-client.lo \
 	libgearman-server/libgearman_server_libgearman_server_la-connection.lo \
@@ -722,6 +714,7 @@ am_libgearman_server_libgearman_server_la_OBJECTS = libgearman-server/error/libg
 	libgearman-server/libgearman_server_libgearman_server_la-hash.lo \
 	libgearman-server/libgearman_server_libgearman_server_la-io.lo \
 	libgearman-server/libgearman_server_libgearman_server_la-job.lo \
+	libgearman-server/libgearman_server_libgearman_server_la-job_plus.lo \
 	libgearman-server/libgearman_server_libgearman_server_la-list.lo \
 	libgearman-server/libgearman_server_libgearman_server_la-log.lo \
 	libgearman-server/libgearman_server_libgearman_server_la-packet.lo \
@@ -767,6 +760,7 @@ am_libgearman_libgearman_la_OBJECTS =  \
 	libgearman/libgearman_libgearman_la-log.lo \
 	libgearman/libgearman_libgearman_la-packet.lo \
 	libgearman/libgearman_libgearman_la-parse.lo \
+	libgearman/protocol/libgearman_libgearman_la-submit.lo \
 	libgearman/libgearman_libgearman_la-result.lo \
 	libgearman/libgearman_libgearman_la-run.lo \
 	libgearman/libgearman_libgearman_la-strcommand.lo \
@@ -806,10 +800,11 @@ libgearman_libgearmancore_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 @TARGET_LINUX_TRUE@am__DEPENDENCIES_8 = $(am__DEPENDENCIES_1) \
 @TARGET_LINUX_TRUE@	$(am__DEPENDENCIES_1)
 am__libhostile_libhostile_la_SOURCES_DIST = libhostile/initialize.c \
-	libhostile/getaddrinfo.c libhostile/malloc.c \
-	libhostile/realloc.c libhostile/recv.c libhostile/send.c \
-	libhostile/setsockopt.c libhostile/write.c
-@TARGET_LINUX_TRUE@am__objects_8 = libhostile/libhostile_libhostile_la-getaddrinfo.lo \
+	libhostile/accept.c libhostile/getaddrinfo.c \
+	libhostile/malloc.c libhostile/realloc.c libhostile/recv.c \
+	libhostile/send.c libhostile/setsockopt.c libhostile/write.c
+@TARGET_LINUX_TRUE@am__objects_8 = libhostile/libhostile_libhostile_la-accept.lo \
+@TARGET_LINUX_TRUE@	libhostile/libhostile_libhostile_la-getaddrinfo.lo \
 @TARGET_LINUX_TRUE@	libhostile/libhostile_libhostile_la-malloc.lo \
 @TARGET_LINUX_TRUE@	libhostile/libhostile_libhostile_la-realloc.lo \
 @TARGET_LINUX_TRUE@	libhostile/libhostile_libhostile_la-recv.lo \
@@ -827,16 +822,17 @@ libhostile_libhostile_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(LDFLAGS) -o $@
 @BUILDING_LIBMEMCACHED_FALSE@@HAVE_LIBMEMCACHED_TRUE@am__DEPENDENCIES_9 = $(am__DEPENDENCIES_1)
 am__libtest_libtest_la_SOURCES_DIST = libtest/binaries.cc \
-	libtest/cmdline.cc libtest/comparison.cc libtest/core.cc \
-	libtest/cpu.cc libtest/dream.cc libtest/fatal.cc \
-	libtest/framework.cc libtest/has.cc libtest/http.cc \
-	libtest/is_local.cc libtest/killpid.cc libtest/libtool.cc \
-	libtest/main.cc libtest/port.cc libtest/runner.cc \
-	libtest/server.cc libtest/server_container.cc \
-	libtest/signal.cc libtest/socket.cc libtest/strerror.cc \
-	libtest/tmpfile.cc libtest/vchar.cc libtest/memcached.cc \
-	libtest/blobslap_worker.cc libtest/gearmand.cc \
-	util/instance.cc util/operation.cc
+	libtest/cmdline.cc libtest/comparison.cc libtest/collection.cc \
+	libtest/core.cc libtest/cpu.cc libtest/dream.cc \
+	libtest/fatal.cc libtest/framework.cc libtest/has.cc \
+	libtest/drizzled.cc libtest/http.cc libtest/is_local.cc \
+	libtest/killpid.cc libtest/libtool.cc libtest/main.cc \
+	libtest/port.cc libtest/runner.cc libtest/server.cc \
+	libtest/server_container.cc libtest/signal.cc \
+	libtest/socket.cc libtest/stream.cc libtest/strerror.cc \
+	libtest/timer.cc libtest/tmpfile.cc libtest/vchar.cc \
+	libtest/memcached.cc libtest/blobslap_worker.cc \
+	libtest/gearmand.cc util/instance.cc util/operation.cc
 @BUILDING_LIBMEMCACHED_TRUE@am__objects_9 = libtest/libtest_libtest_la-memcached.lo
 @BUILDING_LIBMEMCACHED_FALSE@@HAVE_LIBMEMCACHED_TRUE@am__objects_10 = libtest/libtest_libtest_la-memcached.lo
 @BUILDING_GEARMAN_TRUE@am__objects_11 = libtest/libtest_libtest_la-blobslap_worker.lo \
@@ -851,12 +847,14 @@ am_libtest_libtest_la_OBJECTS =  \
 	libtest/libtest_libtest_la-binaries.lo \
 	libtest/libtest_libtest_la-cmdline.lo \
 	libtest/libtest_libtest_la-comparison.lo \
+	libtest/libtest_libtest_la-collection.lo \
 	libtest/libtest_libtest_la-core.lo \
 	libtest/libtest_libtest_la-cpu.lo \
 	libtest/libtest_libtest_la-dream.lo \
 	libtest/libtest_libtest_la-fatal.lo \
 	libtest/libtest_libtest_la-framework.lo \
 	libtest/libtest_libtest_la-has.lo \
+	libtest/libtest_libtest_la-drizzled.lo \
 	libtest/libtest_libtest_la-http.lo \
 	libtest/libtest_libtest_la-is_local.lo \
 	libtest/libtest_libtest_la-killpid.lo \
@@ -868,7 +866,9 @@ am_libtest_libtest_la_OBJECTS =  \
 	libtest/libtest_libtest_la-server_container.lo \
 	libtest/libtest_libtest_la-signal.lo \
 	libtest/libtest_libtest_la-socket.lo \
+	libtest/libtest_libtest_la-stream.lo \
 	libtest/libtest_libtest_la-strerror.lo \
+	libtest/libtest_libtest_la-timer.lo \
 	libtest/libtest_libtest_la-tmpfile.lo \
 	libtest/libtest_libtest_la-vchar.lo $(am__objects_9) \
 	$(am__objects_10) $(am__objects_11) $(am__objects_12)
@@ -1092,18 +1092,6 @@ tests_ephemeral_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(LDFLAGS) -o $@
 am_tests_gearmand_OBJECTS = tests/gearmand.$(OBJEXT)
 tests_gearmand_OBJECTS = $(am_tests_gearmand_OBJECTS)
-am_tests_hostileworker_test_OBJECTS =  \
-	tests/tests_hostileworker_test-stress_worker.$(OBJEXT) \
-	tests/tests_hostileworker_test-burnin.$(OBJEXT) \
-	tests/libgearman-1.0/tests_hostileworker_test-workers.$(OBJEXT)
-tests_hostileworker_test_OBJECTS =  \
-	$(am_tests_hostileworker_test_OBJECTS)
-@TARGET_LINUX_TRUE@am__DEPENDENCIES_11 = libhostile/libhostile.la \
-@TARGET_LINUX_TRUE@	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
-tests_hostileworker_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
-	$(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
-	$(LDFLAGS) -o $@
 am_tests_httpd_test_OBJECTS = tests/httpd_test.$(OBJEXT) \
 	tests/libgearman-1.0/workers.$(OBJEXT)
 tests_httpd_test_OBJECTS = $(am_tests_httpd_test_OBJECTS)
@@ -1132,7 +1120,8 @@ am_tests_libgearman_1_0_internals_test_OBJECTS =  \
 tests_libgearman_1_0_internals_test_OBJECTS =  \
 	$(am_tests_libgearman_1_0_internals_test_OBJECTS)
 am_tests_libgearman_1_0_worker_test_OBJECTS =  \
-	tests/libgearman-1.0/worker_test.$(OBJEXT)
+	tests/libgearman-1.0/worker_test.$(OBJEXT) \
+	tests/libgearman-1.0/workers.$(OBJEXT)
 tests_libgearman_1_0_worker_test_OBJECTS =  \
 	$(am_tests_libgearman_1_0_worker_test_OBJECTS)
 am_tests_memcached_test_OBJECTS = tests/basic.$(OBJEXT) \
@@ -1158,6 +1147,17 @@ tests_round_robin_test_OBJECTS = $(am_tests_round_robin_test_OBJECTS)
 am_tests_sqlite_test_OBJECTS = tests/basic.$(OBJEXT) \
 	tests/sqlite_test.$(OBJEXT)
 tests_sqlite_test_OBJECTS = $(am_tests_sqlite_test_OBJECTS)
+am_tests_stress_test_OBJECTS =  \
+	tests/tests_stress_test-burnin.$(OBJEXT) \
+	tests/libgearman-1.0/tests_stress_test-workers.$(OBJEXT) \
+	tests/tests_stress_test-stress_worker.$(OBJEXT)
+tests_stress_test_OBJECTS = $(am_tests_stress_test_OBJECTS)
+@TARGET_LINUX_TRUE@am__DEPENDENCIES_11 = libhostile/libhostile.la \
+@TARGET_LINUX_TRUE@	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+tests_stress_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(tests_stress_test_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 am_tests_tokyocabinet_test_OBJECTS =  \
 	tests/tokyocabinet_test.$(OBJEXT) tests/basic.$(OBJEXT)
 tests_tokyocabinet_test_OBJECTS =  \
@@ -1234,14 +1234,13 @@ SOURCES = $(benchmark_libbenchmark_la_SOURCES) \
 	$(tests_c_test_SOURCES) $(tests_cli_SOURCES) \
 	$(tests_cpp_test_SOURCES) $(tests_cycle_SOURCES) \
 	$(tests_drizzle_test_SOURCES) $(tests_ephemeral_test_SOURCES) \
-	$(tests_gearmand_SOURCES) $(tests_hostileworker_test_SOURCES) \
-	$(tests_httpd_test_SOURCES) \
+	$(tests_gearmand_SOURCES) $(tests_httpd_test_SOURCES) \
 	$(tests_libgearman_1_0_client_test_SOURCES) \
 	$(tests_libgearman_1_0_internals_test_SOURCES) \
 	$(tests_libgearman_1_0_worker_test_SOURCES) \
 	$(tests_memcached_test_SOURCES) $(tests_postgres_test_SOURCES) \
 	$(tests_redis_test_SOURCES) $(tests_round_robin_test_SOURCES) \
-	$(tests_sqlite_test_SOURCES) \
+	$(tests_sqlite_test_SOURCES) $(tests_stress_test_SOURCES) \
 	$(tests_tokyocabinet_test_SOURCES)
 DIST_SOURCES = $(benchmark_libbenchmark_la_SOURCES) \
 	$(am__libgearman_server_libgearman_server_la_SOURCES_DIST) \
@@ -1273,14 +1272,13 @@ DIST_SOURCES = $(benchmark_libbenchmark_la_SOURCES) \
 	$(tests_c_test_SOURCES) $(tests_cli_SOURCES) \
 	$(tests_cpp_test_SOURCES) $(tests_cycle_SOURCES) \
 	$(tests_drizzle_test_SOURCES) $(tests_ephemeral_test_SOURCES) \
-	$(tests_gearmand_SOURCES) $(tests_hostileworker_test_SOURCES) \
-	$(tests_httpd_test_SOURCES) \
+	$(tests_gearmand_SOURCES) $(tests_httpd_test_SOURCES) \
 	$(tests_libgearman_1_0_client_test_SOURCES) \
 	$(tests_libgearman_1_0_internals_test_SOURCES) \
 	$(tests_libgearman_1_0_worker_test_SOURCES) \
 	$(tests_memcached_test_SOURCES) $(tests_postgres_test_SOURCES) \
 	$(tests_redis_test_SOURCES) $(tests_round_robin_test_SOURCES) \
-	$(tests_sqlite_test_SOURCES) \
+	$(tests_sqlite_test_SOURCES) $(tests_stress_test_SOURCES) \
 	$(tests_tokyocabinet_test_SOURCES)
 man1dir = $(mandir)/man1
 man3dir = $(mandir)/man3
@@ -1349,7 +1347,6 @@ DEPDIR = @DEPDIR@
 DISTCHECK_CONFIGURE_FLAGS = @DISTCHECK_CONFIGURE_FLAGS@
 DLLTOOL = @DLLTOOL@
 DL_LIB = @DL_LIB@
-DOXYGEN = @DOXYGEN@
 DPKG_GENSYMBOLS = @DPKG_GENSYMBOLS@
 DRIZZLED_BINARY = @DRIZZLED_BINARY@
 DSYMUTIL = @DSYMUTIL@
@@ -1553,24 +1550,24 @@ nobase_include_HEADERS = libgearman/gearman.h libgearman-1.0/actions.h \
 	libgearman-1.0/universal.h libgearman-1.0/util.h \
 	libgearman-1.0/version.h libgearman-1.0/visibility.h \
 	libgearman-1.0/worker.h
-noinst_HEADERS = libtest/binaries.h libtest/cpu.hpp \
+noinst_HEADERS = libtest/timer.hpp libtest/binaries.h libtest/cpu.hpp \
 	libtest/blobslap_worker.h libtest/callbacks.h \
 	libtest/cmdline.h libtest/collection.h libtest/common.h \
 	libtest/comparison.hpp libtest/core.h libtest/dream.h \
 	libtest/error.h libtest/failed.h libtest/fatal.hpp \
-	libtest/framework.h libtest/gearmand.h libtest/get.h \
-	libtest/has.hpp libtest/http.hpp libtest/is_pid.hpp \
-	libtest/is_local.hpp libtest/killpid.h libtest/libtool.hpp \
-	libtest/memcached.h libtest/port.h libtest/runner.h \
-	libtest/server.h libtest/server_container.h libtest/signal.h \
-	libtest/socket.hpp libtest/stats.h libtest/stream.h \
+	libtest/framework.h libtest/gearmand.h libtest/drizzled.h \
+	libtest/get.h libtest/has.hpp libtest/http.hpp \
+	libtest/is_pid.hpp libtest/is_local.hpp libtest/killpid.h \
+	libtest/libtool.hpp libtest/memcached.h libtest/port.h \
+	libtest/runner.h libtest/server.h libtest/server_container.h \
+	libtest/signal.h libtest/socket.hpp libtest/stream.h \
 	libtest/strerror.h libtest/string.hpp libtest/test.h \
 	libtest/test.hpp libtest/tmpfile.hpp libtest/vchar.hpp \
-	libtest/visibility.h libtest/wait.h libhostile/action.h \
-	libhostile/getaddrinfo.h libhostile/hostile.h \
-	libhostile/initialize.h libhostile/malloc.h \
-	libhostile/realloc.h libhostile/recv.h libhostile/send.h \
-	libhostile/setsockopt.h libhostile/write.h \
+	libtest/visibility.h libtest/wait.h libhostile/accept.h \
+	libhostile/action.h libhostile/getaddrinfo.h \
+	libhostile/hostile.h libhostile/initialize.h \
+	libhostile/malloc.h libhostile/realloc.h libhostile/recv.h \
+	libhostile/send.h libhostile/setsockopt.h libhostile/write.h \
 	benchmark/benchmark.h bin/arguments.h bin/error.h \
 	bin/function.h bin/client.h bin/worker.h gearmand/error.hpp \
 	gearmand/log.hpp libgearman-server/struct/client.h \
@@ -1601,9 +1598,9 @@ noinst_HEADERS = libtest/binaries.h libtest/cpu.hpp \
 	libgearman-server/plugins/queue/sqlite/queue.h \
 	libgearman-server/plugins/queue/tokyocabinet/queue.h \
 	libgearman-server/plugins/queue/mysql/queue.h \
-	libgearman-server/byte.h libgearman-server/byteorder.h \
-	libgearman-server/client.h libgearman-server/common.h \
-	libgearman-server/connection.h \
+	libgearman-server/text.h libgearman-server/byte.h \
+	libgearman-server/byteorder.h libgearman-server/client.h \
+	libgearman-server/common.h libgearman-server/connection.h \
 	libgearman-server/connection_list.h \
 	libgearman-server/constants.h libgearman-server/fifo.h \
 	libgearman-server/function.h libgearman-server/gearmand.h \
@@ -1616,7 +1613,7 @@ noinst_HEADERS = libtest/binaries.h libtest/cpu.hpp \
 	libgearman-server/struct/port.h libgearman-server/thread.h \
 	libgearman-server/timer.h libgearman-server/verbose.h \
 	libgearman-server/wakeup.h libgearman-server/worker.h \
-	libgearman/actions.hpp libgearman/add.hpp \
+	libgearman/job.h libgearman/actions.hpp libgearman/add.hpp \
 	libgearman/aggregator.hpp libgearman/allocator.hpp \
 	libgearman/assert.hpp libgearman/backtrace.hpp \
 	libgearman/byteorder.h libgearman/command.h \
@@ -1628,9 +1625,10 @@ noinst_HEADERS = libtest/binaries.h libtest/cpu.hpp \
 	libgearman/function/make.hpp libgearman/function/null.hpp \
 	libgearman/function/partition.hpp libgearman/is.hpp \
 	libgearman/log.hpp libgearman/ostream.hpp \
-	libgearman/packet.hpp libgearman/result.hpp libgearman/run.hpp \
-	libgearman/task.hpp libgearman/strcommand.h \
-	libgearman/string.hpp libgearman/unique.hpp \
+	libgearman/packet.hpp libgearman/protocol/submit.h \
+	libgearman/result.hpp libgearman/run.hpp \
+	libgearman/strcommand.h libgearman/string.hpp \
+	libgearman/task.hpp libgearman/unique.hpp \
 	libgearman/universal.hpp libgearman/vector.hpp util/daemon.hpp \
 	util/instance.hpp util/logfile.hpp util/log.hpp \
 	util/operation.hpp util/signal.hpp util/string.hpp \
@@ -1641,7 +1639,7 @@ noinst_HEADERS = libtest/binaries.h libtest/cpu.hpp \
 	tests/protocol.h tests/regression.h tests/runner.h \
 	tests/server_options.h tests/start_worker.h tests/task.h \
 	tests/unique.h tests/worker.h tests/workers.h \
-	tests/workers_v1.h
+	tests/workers_v1.h configmake.h
 man1_MANS = docs/man/gearadmin.1 docs/man/gearman.1
 man3_MANS = docs/man/gearman_allocator_t.3 \
 	docs/man/gearman_client_set_memory_allocators.3 \
@@ -1774,9 +1772,11 @@ DISTCLEANFILES = config/top.h
 EXTRA_DIST = libtest/run.gdb support/gearmand.init support/gearmand.pc \
 	support/gearmand.spec HACKING ${man1_MANS} ${man3_MANS} \
 	${man8_MANS} scripts/README.solaris
-CLEANFILES = tmp_chroot/var/log/* tmp_chroot/var/run/* \
-	tmp_chroot/var/tmp/* tests/gearman.sql \
-	tests/gearman.sql-journal tests/gearmand.log*
+CLEANFILES = ${BUILT_SOURCES} tmp_chroot/var/drizzle/* \
+	tmp_chroot/var/log/* tmp_chroot/var/run/* tmp_chroot/var/tmp/* \
+	tests/gearman.sql tests/gearman.sql-journal \
+	tests/gearmand.log*
+BUILT_SOURCES = configmake.h
 TESTS = $(check_PROGRAMS)
 .PHONY = 
 LIBTOOL_COMMAND = ${abs_top_builddir}/libtool --mode=execute
@@ -1786,40 +1786,42 @@ HELGRIND_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=helgrind --read-var-info=y
 DRD_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=drd
 GDB_COMMAND = $(LIBTOOL_COMMAND) gdb -f -x libtest/run.gdb
 PTRCHECK_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=exp-ptrcheck --error-exitcode=1
-libtest_libtest_la_CXXFLAGS = ${NO_CONVERSION} -DBUILDING_LIBTEST \
-	$(PTHREAD_CFLAGS) -DLIBTEST_TEMP="\"tmp_chroot\"" \
-	$(CURL_CFLAGS) $(am__append_4) $(am__append_10)
+libtest_libtest_la_CXXFLAGS = -DBUILDING_LIBTEST $(PTHREAD_CFLAGS) \
+	-DLIBTEST_TEMP="\"tmp_chroot\"" $(CURL_CFLAGS) $(am__append_4) \
+	$(am__append_10) $(am__append_13)
 libtest_libtest_la_DEPENDENCIES = libtest_tmp_dir libtest/abort \
-	libtest/wait $(am__append_1) $(am__append_12) $(am__append_17)
+	libtest/wait $(am__append_1) $(am__append_14) $(am__append_19)
 libtest_libtest_la_LIBADD = $(PTHREAD_LIBS) $(CURL_LIBS) \
-	$(am__append_2) $(am__append_8) $(am__append_13) \
-	$(am__append_18)
+	$(am__append_2) $(am__append_8) $(am__append_12) \
+	$(am__append_15) $(am__append_20)
 libtest_libtest_la_SOURCES = libtest/binaries.cc libtest/cmdline.cc \
-	libtest/comparison.cc libtest/core.cc libtest/cpu.cc \
-	libtest/dream.cc libtest/fatal.cc libtest/framework.cc \
-	libtest/has.cc libtest/http.cc libtest/is_local.cc \
-	libtest/killpid.cc libtest/libtool.cc libtest/main.cc \
-	libtest/port.cc libtest/runner.cc libtest/server.cc \
+	libtest/comparison.cc libtest/collection.cc libtest/core.cc \
+	libtest/cpu.cc libtest/dream.cc libtest/fatal.cc \
+	libtest/framework.cc libtest/has.cc libtest/drizzled.cc \
+	libtest/http.cc libtest/is_local.cc libtest/killpid.cc \
+	libtest/libtool.cc libtest/main.cc libtest/port.cc \
+	libtest/runner.cc libtest/server.cc \
 	libtest/server_container.cc libtest/signal.cc \
-	libtest/socket.cc libtest/strerror.cc libtest/tmpfile.cc \
-	libtest/vchar.cc $(am__append_3) $(am__append_9) \
-	$(am__append_14) $(am__append_19)
+	libtest/socket.cc libtest/stream.cc libtest/strerror.cc \
+	libtest/timer.cc libtest/tmpfile.cc libtest/vchar.cc \
+	$(am__append_3) $(am__append_9) $(am__append_16) \
+	$(am__append_21)
 
 # Declare unittest so that we can append to it
 libtest_unittest_CXXFLAGS = $(am__append_5) $(am__append_11)
-libtest_unittest_LDADD = $(am__append_6) $(am__append_15) \
+libtest_unittest_LDADD = $(am__append_6) $(am__append_17) \
 	libtest/libtest.la
-libtest_unittest_DEPENDENCIES = $(am__append_7) $(am__append_16) \
+libtest_unittest_DEPENDENCIES = $(am__append_7) $(am__append_18) \
 	libtest/libtest.la
 libtest_unittest_SOURCES = libtest/unittest.cc
 libtest_skiptest_LDADD = libtest/libtest.la
 libtest_skiptest_SOURCES = libtest/skiptest.cc
 libtest_wait_SOURCES = libtest/wait.cc libtest/dream.cc
 libtest_abort_SOURCES = libtest/abort.cc
-libhostile_libhostile_la_CFLAGS = $(am__append_21)
-libhostile_libhostile_la_LIBADD = $(am__append_20)
+libhostile_libhostile_la_CFLAGS = $(am__append_23)
+libhostile_libhostile_la_LIBADD = $(am__append_22)
 libhostile_libhostile_la_SOURCES = libhostile/initialize.c \
-	$(am__append_22)
+	$(am__append_24)
 libhostile_libhostile_la_DEPENDENCIES = 
 benchmark_libbenchmark_la_SOURCES = benchmark/benchmark.cc
 benchmark_blobslap_client_SOURCES = benchmark/blobslap_client.cc
@@ -1899,7 +1901,7 @@ examples_wc_worker_LDADD = $(EXAMPLES_LDADD)
 examples_wc_worker_CXXFLAGS = $(BOOST_CPPFLAGS)
 examples_wc_worker_LDFLAGS = $(EXAMPLES_LD_FLAGS)
 gearmand_gearmand_LDADD = libgearman-server/libgearman-server.la \
-	$(am__append_27) $(am__append_31)
+	$(am__append_29) $(am__append_33) $(am__append_37)
 gearmand_gearmand_CXXFLAGS = $(BOOST_CPPFLAGS)
 gearmand_gearmand_DEPENDENCIES =  \
 	libgearman-server/libgearman-server.la
@@ -1918,15 +1920,16 @@ gearmand_gearmand_SOURCES = gearmand/gearmand.cc util/daemon.cc \
 @TARGET_LINUX_TRUE@	$(gearmand_gearmand_LDFLAGS)
 @TARGET_LINUX_TRUE@gearmand_hostile_gearmand_SOURCES =  \
 @TARGET_LINUX_TRUE@	$(gearmand_gearmand_SOURCES)
-libgearman_server_libgearman_server_la_CFLAGS = $(am__append_37) \
+libgearman_server_libgearman_server_la_CFLAGS = $(am__append_41) \
 	$(LIBEVENT_CPPFLAGS) $(PTHREAD_CFLAGS) -DBUILDING_LIBGEARMAN
-libgearman_server_libgearman_server_la_CXXFLAGS = $(am__append_26) \
-	$(am__append_29) $(am__append_38) $(BOOST_CPPFLAGS) \
-	$(LIBEVENT_CPPFLAGS) $(PTHREAD_CFLAGS) -DBUILDING_LIBGEARMAN
+libgearman_server_libgearman_server_la_CXXFLAGS = $(am__append_28) \
+	$(am__append_31) $(am__append_36) $(am__append_42) \
+	$(BOOST_CPPFLAGS) $(LIBEVENT_CPPFLAGS) $(PTHREAD_CFLAGS) \
+	-DBUILDING_LIBGEARMAN
 libgearman_server_libgearman_server_la_LDFLAGS = 
-libgearman_server_libgearman_server_la_LIBADD = $(am__append_25) \
-	$(am__append_30) $(am__append_33) $(am__append_35) \
-	$(am__append_39) $(am__append_41) $(am__append_43) \
+libgearman_server_libgearman_server_la_LIBADD = $(am__append_27) \
+	$(am__append_32) $(am__append_35) $(am__append_39) \
+	$(am__append_43) $(am__append_45) $(am__append_47) \
 	$(LIBEVENT_LDFLAGS) $(PTHREAD_LIBS) \
 	$(BOOST_PROGRAM_OPTIONS_LIBS) $(M_LIB)
 libgearman_server_libgearman_server_la_SOURCES =  \
@@ -1934,21 +1937,23 @@ libgearman_server_libgearman_server_la_SOURCES =  \
 	libgearman-server/plugins/protocol/http/protocol.cc \
 	libgearman-server/plugins/protocol/http/response_codes.cc \
 	libgearman-server/plugins/protocol/http/method.cc \
-	$(am__append_24) $(am__append_28) $(am__append_32) \
-	$(am__append_34) $(am__append_36) $(am__append_40) \
-	$(am__append_42) libgearman-server/byteorder.cc \
-	libgearman-server/client.cc libgearman-server/connection.c \
+	$(am__append_26) $(am__append_30) $(am__append_34) \
+	$(am__append_38) $(am__append_40) $(am__append_44) \
+	$(am__append_46) libgearman-server/text.cc \
+	libgearman-server/byteorder.cc libgearman-server/client.cc \
+	libgearman-server/connection.c \
 	libgearman-server/connection_list.cc libgearman-server/fifo.c \
 	libgearman-server/function.cc libgearman-server/gearmand.cc \
 	libgearman-server/gearmand_con.c \
 	libgearman-server/gearmand_thread.cc libgearman-server/hash.c \
 	libgearman-server/io.cc libgearman-server/job.c \
-	libgearman-server/list.c libgearman-server/log.cc \
-	libgearman-server/packet.cc libgearman-server/plugins.cc \
-	libgearman-server/queue.cc libgearman-server/server.c \
-	libgearman-server/thread.c libgearman-server/timer.cc \
-	libgearman-server/wakeup.cc libgearman-server/worker.cc \
-	libgearman/command.cc libgearman/strcommand.cc
+	libgearman-server/job_plus.cc libgearman-server/list.c \
+	libgearman-server/log.cc libgearman-server/packet.cc \
+	libgearman-server/plugins.cc libgearman-server/queue.cc \
+	libgearman-server/server.c libgearman-server/thread.c \
+	libgearman-server/timer.cc libgearman-server/wakeup.cc \
+	libgearman-server/worker.cc libgearman/command.cc \
+	libgearman/strcommand.cc
 libgearman_libgearmancore_la_SOURCES = \
 				      libgearman/allocator.cc \
 				      libgearman/byteorder.cc \
@@ -1987,6 +1992,7 @@ libgearman_libgearman_la_SOURCES = \
 				  libgearman/log.cc \
 				  libgearman/packet.cc \
 				  libgearman/parse.cc \
+				  libgearman/protocol/submit.cc \
 				  libgearman/result.cc \
 				  libgearman/run.cc \
 				  libgearman/strcommand.cc \
@@ -2001,7 +2007,7 @@ libgearman_libgearman_la_SOURCES = \
 
 libgearman_libgearman_la_CXXFLAGS = -DBUILDING_LIBGEARMAN
 libgearman_libgearman_la_LDFLAGS = -version-info $(GEARMAN_LIBRARY_VERSION)
-libgearman_libgearman_la_LIBADD = $(LIBUUID_LDFLAGS) $(am__append_44)
+libgearman_libgearman_la_LIBADD = $(LIBUUID_LDFLAGS) $(am__append_48)
 
 # Test linking with C application
 libgearman_1_0_t_c_test_SOURCES = libgearman-1.0/t/c_test.c
@@ -2018,23 +2024,20 @@ tests_libstartworker_la_LIBADD = $(BOOST_THREAD_LDFLAGS) \
 	libgearman/libgearman.la
 tests_libstartworker_la_SOURCES = tests/start_worker.cc \
 	util/instance.cc util/operation.cc
-CLIENT_LDADD = \
-	      libgearman/libgearman.la \
-	      libtest/libtest.la \
-	      tests/libstartworker.la
-
+CLIENT_LDADD = libgearman/libgearman.la libtest/libtest.la \
+	tests/libstartworker.la
 tests_cycle_SOURCES = tests/cycle.cc
 tests_cycle_DEPENDENCIES = ${CLIENT_LDADD} gearmand/gearmand
 tests_cycle_LDADD = ${CLIENT_LDADD}
 tests_blobslap_client_SOURCES = tests/blobslap_client.cc
 tests_blobslap_client_DEPENDENCIES = ${CLIENT_LDADD} gearmand/gearmand
 tests_blobslap_client_LDADD = ${CLIENT_LDADD}
-tests_cli_SOURCES = tests/cli.cc tests/libgearman-1.0/workers.cc
 tests_cli_DEPENDENCIES = ${CLIENT_LDADD} gearmand/gearmand bin/gearman \
 	bin/gearadmin
+tests_cli_SOURCES = tests/cli.cc tests/libgearman-1.0/workers.cc
 tests_cli_LDADD = ${CLIENT_LDADD}
-tests_gearmand_SOURCES = tests/gearmand.cc
 tests_gearmand_DEPENDENCIES = ${CLIENT_LDADD} gearmand/gearmand
+tests_gearmand_SOURCES = tests/gearmand.cc
 tests_gearmand_LDADD = ${CLIENT_LDADD}
 LIBGEARMAN_1_0_CLIENT_LDADD = \
 			     libgearman/libgearman.la \
@@ -2062,19 +2065,22 @@ tests_libgearman_1_0_internals_test_SOURCES = \
 
 tests_libgearman_1_0_internals_test_DEPENDENCIES = ${LIBGEARMAN_1_0_CLIENT_LDADD} libgearman/libgearmancore.la gearmand/gearmand
 tests_libgearman_1_0_internals_test_LDADD = ${LIBGEARMAN_1_0_CLIENT_LDADD} libgearman/libgearmancore.la
-tests_libgearman_1_0_worker_test_SOURCES = tests/libgearman-1.0/worker_test.cc
+tests_libgearman_1_0_worker_test_SOURCES =  \
+	tests/libgearman-1.0/worker_test.cc \
+	tests/libgearman-1.0/workers.cc
 tests_libgearman_1_0_worker_test_DEPENDENCIES = ${LIBGEARMAN_1_0_CLIENT_LDADD} libgearman/libgearmancore.la gearmand/gearmand
 tests_libgearman_1_0_worker_test_LDADD = ${LIBGEARMAN_1_0_CLIENT_LDADD} libgearman/libgearmancore.la
-tests_round_robin_test_SOURCES = tests/round_robin.cc
 tests_round_robin_test_DEPENDENCIES = ${CLIENT_LDADD} \
 	libgearman/libgearmancore.la gearmand/gearmand
-tests_round_robin_test_LDADD = ${CLIENT_LDADD} libgearman/libgearmancore.la
-tests_hostileworker_test_SOURCES = tests/stress_worker.cc \
-	tests/burnin.cc tests/libgearman-1.0/workers.cc
-tests_hostileworker_test_DEPENDENCIES = $(am__append_46) \
-	${CLIENT_LDADD} gearmand/gearmand
-tests_hostileworker_test_CXXFLAGS = $(am__append_45)
-tests_hostileworker_test_LDADD = $(am__append_47) ${CLIENT_LDADD}
+tests_round_robin_test_SOURCES = tests/round_robin.cc
+tests_round_robin_test_LDADD = ${CLIENT_LDADD} \
+	libgearman/libgearmancore.la
+tests_stress_test_SOURCES = tests/burnin.cc \
+	tests/libgearman-1.0/workers.cc tests/stress_worker.cc
+tests_stress_test_DEPENDENCIES = $(am__append_50) ${CLIENT_LDADD} \
+	gearmand/gearmand
+tests_stress_test_CXXFLAGS = $(am__append_49)
+tests_stress_test_LDADD = $(am__append_51) ${CLIENT_LDADD}
 
 # Test linking with C++ application
 tests_cpp_test_SOURCES = tests/cpp_test.cc
@@ -2089,13 +2095,10 @@ tests_ephemeral_test_SOURCES = tests/basic.cc tests/ephemeral_test.cc
 tests_ephemeral_test_CXXFLAGS = 
 tests_ephemeral_test_DEPENDENCIES = ${CLIENT_LDADD} gearmand/gearmand
 tests_ephemeral_test_LDADD = ${CLIENT_LDADD}
-tests_drizzle_test_SOURCES = \
-			    tests/basic.cc \
-			    tests/drizzle_test.cc
-
-tests_drizzle_test_CXXFLAGS = $(am__append_49)
+tests_drizzle_test_CXXFLAGS = $(am__append_53)
+tests_drizzle_test_SOURCES = tests/basic.cc tests/drizzle_test.cc
 tests_drizzle_test_DEPENDENCIES = ${CLIENT_LDADD} gearmand/gearmand
-tests_drizzle_test_LDADD = ${CLIENT_LDADD} $(am__append_48)
+tests_drizzle_test_LDADD = ${CLIENT_LDADD} $(am__append_52)
 tests_memcached_test_SOURCES = tests/basic.cc tests/memcached_test.cc
 tests_memcached_test_DEPENDENCIES = $(CLIENT_LDADD) gearmand/gearmand
 tests_memcached_test_LDADD = $(CLIENT_LDADD)
@@ -2140,7 +2143,7 @@ docs_libgearman_examples_gearman_client_do_example_SOURCES = docs/libgearman/exa
 docs_libgearman_examples_gearman_client_do_example_LDADD = libgearman/libgearman.la
 docs_libgearman_examples_gearman_client_do_background_example_SOURCES = docs/libgearman/examples/gearman_client_do_background_example.c
 docs_libgearman_examples_gearman_client_do_background_example_LDADD = libgearman/libgearman.la
-all: config.h
+all: $(BUILT_SOURCES) config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
@@ -2357,6 +2360,9 @@ libgearman-server/$(am__dirstamp):
 libgearman-server/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) libgearman-server/$(DEPDIR)
 	@: > libgearman-server/$(DEPDIR)/$(am__dirstamp)
+libgearman-server/libgearman_server_libgearman_server_la-text.lo:  \
+	libgearman-server/$(am__dirstamp) \
+	libgearman-server/$(DEPDIR)/$(am__dirstamp)
 libgearman-server/libgearman_server_libgearman_server_la-byteorder.lo:  \
 	libgearman-server/$(am__dirstamp) \
 	libgearman-server/$(DEPDIR)/$(am__dirstamp)
@@ -2391,6 +2397,9 @@ libgearman-server/libgearman_server_libgearman_server_la-io.lo:  \
 	libgearman-server/$(am__dirstamp) \
 	libgearman-server/$(DEPDIR)/$(am__dirstamp)
 libgearman-server/libgearman_server_libgearman_server_la-job.lo:  \
+	libgearman-server/$(am__dirstamp) \
+	libgearman-server/$(DEPDIR)/$(am__dirstamp)
+libgearman-server/libgearman_server_libgearman_server_la-job_plus.lo:  \
 	libgearman-server/$(am__dirstamp) \
 	libgearman-server/$(DEPDIR)/$(am__dirstamp)
 libgearman-server/libgearman_server_libgearman_server_la-list.lo:  \
@@ -2511,6 +2520,15 @@ libgearman/libgearman_libgearman_la-packet.lo:  \
 libgearman/libgearman_libgearman_la-parse.lo:  \
 	libgearman/$(am__dirstamp) \
 	libgearman/$(DEPDIR)/$(am__dirstamp)
+libgearman/protocol/$(am__dirstamp):
+	@$(MKDIR_P) libgearman/protocol
+	@: > libgearman/protocol/$(am__dirstamp)
+libgearman/protocol/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) libgearman/protocol/$(DEPDIR)
+	@: > libgearman/protocol/$(DEPDIR)/$(am__dirstamp)
+libgearman/protocol/libgearman_libgearman_la-submit.lo:  \
+	libgearman/protocol/$(am__dirstamp) \
+	libgearman/protocol/$(DEPDIR)/$(am__dirstamp)
 libgearman/libgearman_libgearman_la-result.lo:  \
 	libgearman/$(am__dirstamp) \
 	libgearman/$(DEPDIR)/$(am__dirstamp)
@@ -2590,6 +2608,9 @@ libhostile/$(DEPDIR)/$(am__dirstamp):
 libhostile/libhostile_libhostile_la-initialize.lo:  \
 	libhostile/$(am__dirstamp) \
 	libhostile/$(DEPDIR)/$(am__dirstamp)
+libhostile/libhostile_libhostile_la-accept.lo:  \
+	libhostile/$(am__dirstamp) \
+	libhostile/$(DEPDIR)/$(am__dirstamp)
 libhostile/libhostile_libhostile_la-getaddrinfo.lo:  \
 	libhostile/$(am__dirstamp) \
 	libhostile/$(DEPDIR)/$(am__dirstamp)
@@ -2625,6 +2646,8 @@ libtest/libtest_libtest_la-cmdline.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-comparison.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
+libtest/libtest_libtest_la-collection.lo: libtest/$(am__dirstamp) \
+	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-core.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-cpu.lo: libtest/$(am__dirstamp) \
@@ -2636,6 +2659,8 @@ libtest/libtest_libtest_la-fatal.lo: libtest/$(am__dirstamp) \
 libtest/libtest_libtest_la-framework.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-has.lo: libtest/$(am__dirstamp) \
+	libtest/$(DEPDIR)/$(am__dirstamp)
+libtest/libtest_libtest_la-drizzled.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-http.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
@@ -2659,7 +2684,11 @@ libtest/libtest_libtest_la-signal.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-socket.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
+libtest/libtest_libtest_la-stream.lo: libtest/$(am__dirstamp) \
+	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-strerror.lo: libtest/$(am__dirstamp) \
+	libtest/$(DEPDIR)/$(am__dirstamp)
+libtest/libtest_libtest_la-timer.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-tmpfile.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
@@ -3037,16 +3066,6 @@ tests/gearmand.$(OBJEXT): tests/$(am__dirstamp) \
 tests/gearmand$(EXEEXT): $(tests_gearmand_OBJECTS) $(tests_gearmand_DEPENDENCIES) tests/$(am__dirstamp)
 	@rm -f tests/gearmand$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(tests_gearmand_OBJECTS) $(tests_gearmand_LDADD) $(LIBS)
-tests/tests_hostileworker_test-stress_worker.$(OBJEXT):  \
-	tests/$(am__dirstamp) tests/$(DEPDIR)/$(am__dirstamp)
-tests/tests_hostileworker_test-burnin.$(OBJEXT):  \
-	tests/$(am__dirstamp) tests/$(DEPDIR)/$(am__dirstamp)
-tests/libgearman-1.0/tests_hostileworker_test-workers.$(OBJEXT):  \
-	tests/libgearman-1.0/$(am__dirstamp) \
-	tests/libgearman-1.0/$(DEPDIR)/$(am__dirstamp)
-tests/hostileworker_test$(EXEEXT): $(tests_hostileworker_test_OBJECTS) $(tests_hostileworker_test_DEPENDENCIES) tests/$(am__dirstamp)
-	@rm -f tests/hostileworker_test$(EXEEXT)
-	$(AM_V_CXXLD)$(tests_hostileworker_test_LINK) $(tests_hostileworker_test_OBJECTS) $(tests_hostileworker_test_LDADD) $(LIBS)
 tests/httpd_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 tests/httpd_test$(EXEEXT): $(tests_httpd_test_OBJECTS) $(tests_httpd_test_DEPENDENCIES) tests/$(am__dirstamp)
@@ -3140,6 +3159,16 @@ tests/sqlite_test.$(OBJEXT): tests/$(am__dirstamp) \
 tests/sqlite_test$(EXEEXT): $(tests_sqlite_test_OBJECTS) $(tests_sqlite_test_DEPENDENCIES) tests/$(am__dirstamp)
 	@rm -f tests/sqlite_test$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(tests_sqlite_test_OBJECTS) $(tests_sqlite_test_LDADD) $(LIBS)
+tests/tests_stress_test-burnin.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+tests/libgearman-1.0/tests_stress_test-workers.$(OBJEXT):  \
+	tests/libgearman-1.0/$(am__dirstamp) \
+	tests/libgearman-1.0/$(DEPDIR)/$(am__dirstamp)
+tests/tests_stress_test-stress_worker.$(OBJEXT):  \
+	tests/$(am__dirstamp) tests/$(DEPDIR)/$(am__dirstamp)
+tests/stress_test$(EXEEXT): $(tests_stress_test_OBJECTS) $(tests_stress_test_DEPENDENCIES) tests/$(am__dirstamp)
+	@rm -f tests/stress_test$(EXEEXT)
+	$(AM_V_CXXLD)$(tests_stress_test_LINK) $(tests_stress_test_OBJECTS) $(tests_stress_test_LDADD) $(LIBS)
 tests/tokyocabinet_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 tests/tokyocabinet_test$(EXEEXT): $(tests_tokyocabinet_test_OBJECTS) $(tests_tokyocabinet_test_DEPENDENCIES) tests/$(am__dirstamp)
@@ -3199,6 +3228,8 @@ mostlyclean-compile:
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-io.lo
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-job.$(OBJEXT)
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-job.lo
+	-rm -f libgearman-server/libgearman_server_libgearman_server_la-job_plus.$(OBJEXT)
+	-rm -f libgearman-server/libgearman_server_libgearman_server_la-job_plus.lo
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-list.$(OBJEXT)
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-list.lo
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-log.$(OBJEXT)
@@ -3211,6 +3242,8 @@ mostlyclean-compile:
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-queue.lo
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-server.$(OBJEXT)
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-server.lo
+	-rm -f libgearman-server/libgearman_server_libgearman_server_la-text.$(OBJEXT)
+	-rm -f libgearman-server/libgearman_server_libgearman_server_la-text.lo
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-thread.$(OBJEXT)
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-thread.lo
 	-rm -f libgearman-server/libgearman_server_libgearman_server_la-timer.$(OBJEXT)
@@ -3333,6 +3366,10 @@ mostlyclean-compile:
 	-rm -f libgearman/libgearman_server_libgearman_server_la-command.lo
 	-rm -f libgearman/libgearman_server_libgearman_server_la-strcommand.$(OBJEXT)
 	-rm -f libgearman/libgearman_server_libgearman_server_la-strcommand.lo
+	-rm -f libgearman/protocol/libgearman_libgearman_la-submit.$(OBJEXT)
+	-rm -f libgearman/protocol/libgearman_libgearman_la-submit.lo
+	-rm -f libhostile/libhostile_libhostile_la-accept.$(OBJEXT)
+	-rm -f libhostile/libhostile_libhostile_la-accept.lo
 	-rm -f libhostile/libhostile_libhostile_la-getaddrinfo.$(OBJEXT)
 	-rm -f libhostile/libhostile_libhostile_la-getaddrinfo.lo
 	-rm -f libhostile/libhostile_libhostile_la-initialize.$(OBJEXT)
@@ -3357,6 +3394,8 @@ mostlyclean-compile:
 	-rm -f libtest/libtest_libtest_la-blobslap_worker.lo
 	-rm -f libtest/libtest_libtest_la-cmdline.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-cmdline.lo
+	-rm -f libtest/libtest_libtest_la-collection.$(OBJEXT)
+	-rm -f libtest/libtest_libtest_la-collection.lo
 	-rm -f libtest/libtest_libtest_la-comparison.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-comparison.lo
 	-rm -f libtest/libtest_libtest_la-core.$(OBJEXT)
@@ -3365,6 +3404,8 @@ mostlyclean-compile:
 	-rm -f libtest/libtest_libtest_la-cpu.lo
 	-rm -f libtest/libtest_libtest_la-dream.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-dream.lo
+	-rm -f libtest/libtest_libtest_la-drizzled.$(OBJEXT)
+	-rm -f libtest/libtest_libtest_la-drizzled.lo
 	-rm -f libtest/libtest_libtest_la-fatal.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-fatal.lo
 	-rm -f libtest/libtest_libtest_la-framework.$(OBJEXT)
@@ -3397,8 +3438,12 @@ mostlyclean-compile:
 	-rm -f libtest/libtest_libtest_la-signal.lo
 	-rm -f libtest/libtest_libtest_la-socket.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-socket.lo
+	-rm -f libtest/libtest_libtest_la-stream.$(OBJEXT)
+	-rm -f libtest/libtest_libtest_la-stream.lo
 	-rm -f libtest/libtest_libtest_la-strerror.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-strerror.lo
+	-rm -f libtest/libtest_libtest_la-timer.$(OBJEXT)
+	-rm -f libtest/libtest_libtest_la-timer.lo
 	-rm -f libtest/libtest_libtest_la-tmpfile.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-tmpfile.lo
 	-rm -f libtest/libtest_libtest_la-vchar.$(OBJEXT)
@@ -3416,7 +3461,6 @@ mostlyclean-compile:
 	-rm -f tests/httpd_test.$(OBJEXT)
 	-rm -f tests/libgearman-1.0/internals.$(OBJEXT)
 	-rm -f tests/libgearman-1.0/regression.$(OBJEXT)
-	-rm -f tests/libgearman-1.0/tests_hostileworker_test-workers.$(OBJEXT)
 	-rm -f tests/libgearman-1.0/tests_libgearman_1_0_client_test-client_test.$(OBJEXT)
 	-rm -f tests/libgearman-1.0/tests_libgearman_1_0_client_test-do.$(OBJEXT)
 	-rm -f tests/libgearman-1.0/tests_libgearman_1_0_client_test-do_background.$(OBJEXT)
@@ -3430,6 +3474,7 @@ mostlyclean-compile:
 	-rm -f tests/libgearman-1.0/tests_libgearman_1_0_client_test-unique.$(OBJEXT)
 	-rm -f tests/libgearman-1.0/tests_libgearman_1_0_client_test-workers.$(OBJEXT)
 	-rm -f tests/libgearman-1.0/tests_libgearman_1_0_client_test-workers_v1.$(OBJEXT)
+	-rm -f tests/libgearman-1.0/tests_stress_test-workers.$(OBJEXT)
 	-rm -f tests/libgearman-1.0/worker_test.$(OBJEXT)
 	-rm -f tests/libgearman-1.0/workers.$(OBJEXT)
 	-rm -f tests/memcached_test.$(OBJEXT)
@@ -3439,14 +3484,14 @@ mostlyclean-compile:
 	-rm -f tests/tests_drizzle_test-drizzle_test.$(OBJEXT)
 	-rm -f tests/tests_ephemeral_test-basic.$(OBJEXT)
 	-rm -f tests/tests_ephemeral_test-ephemeral_test.$(OBJEXT)
-	-rm -f tests/tests_hostileworker_test-burnin.$(OBJEXT)
-	-rm -f tests/tests_hostileworker_test-stress_worker.$(OBJEXT)
 	-rm -f tests/tests_libstartworker_la-start_worker.$(OBJEXT)
 	-rm -f tests/tests_libstartworker_la-start_worker.lo
 	-rm -f tests/tests_postgres_test-basic.$(OBJEXT)
 	-rm -f tests/tests_postgres_test-postgres_test.$(OBJEXT)
 	-rm -f tests/tests_redis_test-basic.$(OBJEXT)
 	-rm -f tests/tests_redis_test-redis.$(OBJEXT)
+	-rm -f tests/tests_stress_test-burnin.$(OBJEXT)
+	-rm -f tests/tests_stress_test-stress_worker.$(OBJEXT)
 	-rm -f tests/tokyocabinet_test.$(OBJEXT)
 	-rm -f util/benchmark_blobslap_worker-daemon.$(OBJEXT)
 	-rm -f util/benchmark_blobslap_worker-logfile.$(OBJEXT)
@@ -3507,12 +3552,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-hash.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-io.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-job.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-job_plus.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-list.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-log.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-packet.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-plugins.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-queue.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-server.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-text.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-thread.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-timer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-wakeup.Plo@am__quote@
@@ -3575,6 +3622,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/function/$(DEPDIR)/libgearman_libgearman_la-function_v2.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/function/$(DEPDIR)/libgearman_libgearman_la-make.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/function/$(DEPDIR)/libgearman_libgearman_la-partition.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-submit.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libhostile/$(DEPDIR)/libhostile_libhostile_la-accept.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libhostile/$(DEPDIR)/libhostile_libhostile_la-getaddrinfo.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libhostile/$(DEPDIR)/libhostile_libhostile_la-initialize.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libhostile/$(DEPDIR)/libhostile_libhostile_la-malloc.Plo@am__quote@
@@ -3588,10 +3637,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-binaries.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-blobslap_worker.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-cmdline.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-collection.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-comparison.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-core.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-cpu.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-dream.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-drizzled.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-fatal.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-framework.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-gearmand.Plo@am__quote@
@@ -3608,7 +3659,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-server_container.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-signal.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-socket.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-stream.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-strerror.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-timer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-tmpfile.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-vchar.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_unittest-unittest.Po@am__quote@
@@ -3629,17 +3682,16 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_drizzle_test-drizzle_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_ephemeral_test-basic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_ephemeral_test-ephemeral_test.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_hostileworker_test-burnin.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_hostileworker_test-stress_worker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_libstartworker_la-start_worker.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_postgres_test-basic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_postgres_test-postgres_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_redis_test-basic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_redis_test-redis.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_stress_test-burnin.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tests_stress_test-stress_worker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/tokyocabinet_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/internals.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/regression.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/tests_hostileworker_test-workers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/tests_libgearman_1_0_client_test-client_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/tests_libgearman_1_0_client_test-do.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/tests_libgearman_1_0_client_test-do_background.Po@am__quote@
@@ -3653,6 +3705,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/tests_libgearman_1_0_client_test-unique.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/tests_libgearman_1_0_client_test-workers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/tests_libgearman_1_0_client_test-workers_v1.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/tests_stress_test-workers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/worker_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/libgearman-1.0/$(DEPDIR)/workers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@util/$(DEPDIR)/benchmark_blobslap_worker-daemon.Po@am__quote@
@@ -3769,6 +3822,14 @@ libhostile/libhostile_libhostile_la-initialize.lo: libhostile/initialize.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='libhostile/initialize.c' object='libhostile/libhostile_libhostile_la-initialize.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libhostile_libhostile_la_CFLAGS) $(CFLAGS) -c -o libhostile/libhostile_libhostile_la-initialize.lo `test -f 'libhostile/initialize.c' || echo '$(srcdir)/'`libhostile/initialize.c
+
+libhostile/libhostile_libhostile_la-accept.lo: libhostile/accept.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libhostile_libhostile_la_CFLAGS) $(CFLAGS) -MT libhostile/libhostile_libhostile_la-accept.lo -MD -MP -MF libhostile/$(DEPDIR)/libhostile_libhostile_la-accept.Tpo -c -o libhostile/libhostile_libhostile_la-accept.lo `test -f 'libhostile/accept.c' || echo '$(srcdir)/'`libhostile/accept.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) libhostile/$(DEPDIR)/libhostile_libhostile_la-accept.Tpo libhostile/$(DEPDIR)/libhostile_libhostile_la-accept.Plo
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='libhostile/accept.c' object='libhostile/libhostile_libhostile_la-accept.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libhostile_libhostile_la_CFLAGS) $(CFLAGS) -c -o libhostile/libhostile_libhostile_la-accept.lo `test -f 'libhostile/accept.c' || echo '$(srcdir)/'`libhostile/accept.c
 
 libhostile/libhostile_libhostile_la-getaddrinfo.lo: libhostile/getaddrinfo.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libhostile_libhostile_la_CFLAGS) $(CFLAGS) -MT libhostile/libhostile_libhostile_la-getaddrinfo.lo -MD -MP -MF libhostile/$(DEPDIR)/libhostile_libhostile_la-getaddrinfo.Tpo -c -o libhostile/libhostile_libhostile_la-getaddrinfo.lo `test -f 'libhostile/getaddrinfo.c' || echo '$(srcdir)/'`libhostile/getaddrinfo.c
@@ -3941,6 +4002,14 @@ libgearman-server/plugins/queue/mysql/libgearman_server_libgearman_server_la-que
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_server_libgearman_server_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman-server/plugins/queue/mysql/libgearman_server_libgearman_server_la-queue.lo `test -f 'libgearman-server/plugins/queue/mysql/queue.cc' || echo '$(srcdir)/'`libgearman-server/plugins/queue/mysql/queue.cc
 
+libgearman-server/libgearman_server_libgearman_server_la-text.lo: libgearman-server/text.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_server_libgearman_server_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman-server/libgearman_server_libgearman_server_la-text.lo -MD -MP -MF libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-text.Tpo -c -o libgearman-server/libgearman_server_libgearman_server_la-text.lo `test -f 'libgearman-server/text.cc' || echo '$(srcdir)/'`libgearman-server/text.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-text.Tpo libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-text.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libgearman-server/text.cc' object='libgearman-server/libgearman_server_libgearman_server_la-text.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_server_libgearman_server_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman-server/libgearman_server_libgearman_server_la-text.lo `test -f 'libgearman-server/text.cc' || echo '$(srcdir)/'`libgearman-server/text.cc
+
 libgearman-server/libgearman_server_libgearman_server_la-byteorder.lo: libgearman-server/byteorder.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_server_libgearman_server_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman-server/libgearman_server_libgearman_server_la-byteorder.lo -MD -MP -MF libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-byteorder.Tpo -c -o libgearman-server/libgearman_server_libgearman_server_la-byteorder.lo `test -f 'libgearman-server/byteorder.cc' || echo '$(srcdir)/'`libgearman-server/byteorder.cc
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-byteorder.Tpo libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-byteorder.Plo
@@ -3996,6 +4065,14 @@ libgearman-server/libgearman_server_libgearman_server_la-io.lo: libgearman-serve
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libgearman-server/io.cc' object='libgearman-server/libgearman_server_libgearman_server_la-io.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_server_libgearman_server_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman-server/libgearman_server_libgearman_server_la-io.lo `test -f 'libgearman-server/io.cc' || echo '$(srcdir)/'`libgearman-server/io.cc
+
+libgearman-server/libgearman_server_libgearman_server_la-job_plus.lo: libgearman-server/job_plus.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_server_libgearman_server_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman-server/libgearman_server_libgearman_server_la-job_plus.lo -MD -MP -MF libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-job_plus.Tpo -c -o libgearman-server/libgearman_server_libgearman_server_la-job_plus.lo `test -f 'libgearman-server/job_plus.cc' || echo '$(srcdir)/'`libgearman-server/job_plus.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-job_plus.Tpo libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-job_plus.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libgearman-server/job_plus.cc' object='libgearman-server/libgearman_server_libgearman_server_la-job_plus.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_server_libgearman_server_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman-server/libgearman_server_libgearman_server_la-job_plus.lo `test -f 'libgearman-server/job_plus.cc' || echo '$(srcdir)/'`libgearman-server/job_plus.cc
 
 libgearman-server/libgearman_server_libgearman_server_la-log.lo: libgearman-server/log.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_server_libgearman_server_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman-server/libgearman_server_libgearman_server_la-log.lo -MD -MP -MF libgearman-server/$(DEPDIR)/libgearman_server_libgearman_server_la-log.Tpo -c -o libgearman-server/libgearman_server_libgearman_server_la-log.lo `test -f 'libgearman-server/log.cc' || echo '$(srcdir)/'`libgearman-server/log.cc
@@ -4253,6 +4330,14 @@ libgearman/libgearman_libgearman_la-parse.lo: libgearman/parse.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/libgearman_libgearman_la-parse.lo `test -f 'libgearman/parse.cc' || echo '$(srcdir)/'`libgearman/parse.cc
 
+libgearman/protocol/libgearman_libgearman_la-submit.lo: libgearman/protocol/submit.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/protocol/libgearman_libgearman_la-submit.lo -MD -MP -MF libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-submit.Tpo -c -o libgearman/protocol/libgearman_libgearman_la-submit.lo `test -f 'libgearman/protocol/submit.cc' || echo '$(srcdir)/'`libgearman/protocol/submit.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-submit.Tpo libgearman/protocol/$(DEPDIR)/libgearman_libgearman_la-submit.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libgearman/protocol/submit.cc' object='libgearman/protocol/libgearman_libgearman_la-submit.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/protocol/libgearman_libgearman_la-submit.lo `test -f 'libgearman/protocol/submit.cc' || echo '$(srcdir)/'`libgearman/protocol/submit.cc
+
 libgearman/libgearman_libgearman_la-result.lo: libgearman/result.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearman_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/libgearman_libgearman_la-result.lo -MD -MP -MF libgearman/$(DEPDIR)/libgearman_libgearman_la-result.Tpo -c -o libgearman/libgearman_libgearman_la-result.lo `test -f 'libgearman/result.cc' || echo '$(srcdir)/'`libgearman/result.cc
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman/$(DEPDIR)/libgearman_libgearman_la-result.Tpo libgearman/$(DEPDIR)/libgearman_libgearman_la-result.Plo
@@ -4453,6 +4538,14 @@ libtest/libtest_libtest_la-comparison.lo: libtest/comparison.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-comparison.lo `test -f 'libtest/comparison.cc' || echo '$(srcdir)/'`libtest/comparison.cc
 
+libtest/libtest_libtest_la-collection.lo: libtest/collection.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-collection.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-collection.Tpo -c -o libtest/libtest_libtest_la-collection.lo `test -f 'libtest/collection.cc' || echo '$(srcdir)/'`libtest/collection.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-collection.Tpo libtest/$(DEPDIR)/libtest_libtest_la-collection.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libtest/collection.cc' object='libtest/libtest_libtest_la-collection.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-collection.lo `test -f 'libtest/collection.cc' || echo '$(srcdir)/'`libtest/collection.cc
+
 libtest/libtest_libtest_la-core.lo: libtest/core.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-core.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-core.Tpo -c -o libtest/libtest_libtest_la-core.lo `test -f 'libtest/core.cc' || echo '$(srcdir)/'`libtest/core.cc
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-core.Tpo libtest/$(DEPDIR)/libtest_libtest_la-core.Plo
@@ -4500,6 +4593,14 @@ libtest/libtest_libtest_la-has.lo: libtest/has.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libtest/has.cc' object='libtest/libtest_libtest_la-has.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-has.lo `test -f 'libtest/has.cc' || echo '$(srcdir)/'`libtest/has.cc
+
+libtest/libtest_libtest_la-drizzled.lo: libtest/drizzled.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-drizzled.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-drizzled.Tpo -c -o libtest/libtest_libtest_la-drizzled.lo `test -f 'libtest/drizzled.cc' || echo '$(srcdir)/'`libtest/drizzled.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-drizzled.Tpo libtest/$(DEPDIR)/libtest_libtest_la-drizzled.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libtest/drizzled.cc' object='libtest/libtest_libtest_la-drizzled.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-drizzled.lo `test -f 'libtest/drizzled.cc' || echo '$(srcdir)/'`libtest/drizzled.cc
 
 libtest/libtest_libtest_la-http.lo: libtest/http.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-http.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-http.Tpo -c -o libtest/libtest_libtest_la-http.lo `test -f 'libtest/http.cc' || echo '$(srcdir)/'`libtest/http.cc
@@ -4589,6 +4690,14 @@ libtest/libtest_libtest_la-socket.lo: libtest/socket.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-socket.lo `test -f 'libtest/socket.cc' || echo '$(srcdir)/'`libtest/socket.cc
 
+libtest/libtest_libtest_la-stream.lo: libtest/stream.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-stream.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-stream.Tpo -c -o libtest/libtest_libtest_la-stream.lo `test -f 'libtest/stream.cc' || echo '$(srcdir)/'`libtest/stream.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-stream.Tpo libtest/$(DEPDIR)/libtest_libtest_la-stream.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libtest/stream.cc' object='libtest/libtest_libtest_la-stream.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-stream.lo `test -f 'libtest/stream.cc' || echo '$(srcdir)/'`libtest/stream.cc
+
 libtest/libtest_libtest_la-strerror.lo: libtest/strerror.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-strerror.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-strerror.Tpo -c -o libtest/libtest_libtest_la-strerror.lo `test -f 'libtest/strerror.cc' || echo '$(srcdir)/'`libtest/strerror.cc
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-strerror.Tpo libtest/$(DEPDIR)/libtest_libtest_la-strerror.Plo
@@ -4596,6 +4705,14 @@ libtest/libtest_libtest_la-strerror.lo: libtest/strerror.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libtest/strerror.cc' object='libtest/libtest_libtest_la-strerror.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-strerror.lo `test -f 'libtest/strerror.cc' || echo '$(srcdir)/'`libtest/strerror.cc
+
+libtest/libtest_libtest_la-timer.lo: libtest/timer.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-timer.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-timer.Tpo -c -o libtest/libtest_libtest_la-timer.lo `test -f 'libtest/timer.cc' || echo '$(srcdir)/'`libtest/timer.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-timer.Tpo libtest/$(DEPDIR)/libtest_libtest_la-timer.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libtest/timer.cc' object='libtest/libtest_libtest_la-timer.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-timer.lo `test -f 'libtest/timer.cc' || echo '$(srcdir)/'`libtest/timer.cc
 
 libtest/libtest_libtest_la-tmpfile.lo: libtest/tmpfile.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-tmpfile.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-tmpfile.Tpo -c -o libtest/libtest_libtest_la-tmpfile.lo `test -f 'libtest/tmpfile.cc' || echo '$(srcdir)/'`libtest/tmpfile.cc
@@ -5109,54 +5226,6 @@ tests/tests_ephemeral_test-ephemeral_test.obj: tests/ephemeral_test.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_ephemeral_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/tests_ephemeral_test-ephemeral_test.obj `if test -f 'tests/ephemeral_test.cc'; then $(CYGPATH_W) 'tests/ephemeral_test.cc'; else $(CYGPATH_W) '$(srcdir)/tests/ephemeral_test.cc'; fi`
 
-tests/tests_hostileworker_test-stress_worker.o: tests/stress_worker.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -MT tests/tests_hostileworker_test-stress_worker.o -MD -MP -MF tests/$(DEPDIR)/tests_hostileworker_test-stress_worker.Tpo -c -o tests/tests_hostileworker_test-stress_worker.o `test -f 'tests/stress_worker.cc' || echo '$(srcdir)/'`tests/stress_worker.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/tests_hostileworker_test-stress_worker.Tpo tests/$(DEPDIR)/tests_hostileworker_test-stress_worker.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/stress_worker.cc' object='tests/tests_hostileworker_test-stress_worker.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/tests_hostileworker_test-stress_worker.o `test -f 'tests/stress_worker.cc' || echo '$(srcdir)/'`tests/stress_worker.cc
-
-tests/tests_hostileworker_test-stress_worker.obj: tests/stress_worker.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -MT tests/tests_hostileworker_test-stress_worker.obj -MD -MP -MF tests/$(DEPDIR)/tests_hostileworker_test-stress_worker.Tpo -c -o tests/tests_hostileworker_test-stress_worker.obj `if test -f 'tests/stress_worker.cc'; then $(CYGPATH_W) 'tests/stress_worker.cc'; else $(CYGPATH_W) '$(srcdir)/tests/stress_worker.cc'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/tests_hostileworker_test-stress_worker.Tpo tests/$(DEPDIR)/tests_hostileworker_test-stress_worker.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/stress_worker.cc' object='tests/tests_hostileworker_test-stress_worker.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/tests_hostileworker_test-stress_worker.obj `if test -f 'tests/stress_worker.cc'; then $(CYGPATH_W) 'tests/stress_worker.cc'; else $(CYGPATH_W) '$(srcdir)/tests/stress_worker.cc'; fi`
-
-tests/tests_hostileworker_test-burnin.o: tests/burnin.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -MT tests/tests_hostileworker_test-burnin.o -MD -MP -MF tests/$(DEPDIR)/tests_hostileworker_test-burnin.Tpo -c -o tests/tests_hostileworker_test-burnin.o `test -f 'tests/burnin.cc' || echo '$(srcdir)/'`tests/burnin.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/tests_hostileworker_test-burnin.Tpo tests/$(DEPDIR)/tests_hostileworker_test-burnin.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/burnin.cc' object='tests/tests_hostileworker_test-burnin.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/tests_hostileworker_test-burnin.o `test -f 'tests/burnin.cc' || echo '$(srcdir)/'`tests/burnin.cc
-
-tests/tests_hostileworker_test-burnin.obj: tests/burnin.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -MT tests/tests_hostileworker_test-burnin.obj -MD -MP -MF tests/$(DEPDIR)/tests_hostileworker_test-burnin.Tpo -c -o tests/tests_hostileworker_test-burnin.obj `if test -f 'tests/burnin.cc'; then $(CYGPATH_W) 'tests/burnin.cc'; else $(CYGPATH_W) '$(srcdir)/tests/burnin.cc'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/tests_hostileworker_test-burnin.Tpo tests/$(DEPDIR)/tests_hostileworker_test-burnin.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/burnin.cc' object='tests/tests_hostileworker_test-burnin.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/tests_hostileworker_test-burnin.obj `if test -f 'tests/burnin.cc'; then $(CYGPATH_W) 'tests/burnin.cc'; else $(CYGPATH_W) '$(srcdir)/tests/burnin.cc'; fi`
-
-tests/libgearman-1.0/tests_hostileworker_test-workers.o: tests/libgearman-1.0/workers.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -MT tests/libgearman-1.0/tests_hostileworker_test-workers.o -MD -MP -MF tests/libgearman-1.0/$(DEPDIR)/tests_hostileworker_test-workers.Tpo -c -o tests/libgearman-1.0/tests_hostileworker_test-workers.o `test -f 'tests/libgearman-1.0/workers.cc' || echo '$(srcdir)/'`tests/libgearman-1.0/workers.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/libgearman-1.0/$(DEPDIR)/tests_hostileworker_test-workers.Tpo tests/libgearman-1.0/$(DEPDIR)/tests_hostileworker_test-workers.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/libgearman-1.0/workers.cc' object='tests/libgearman-1.0/tests_hostileworker_test-workers.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/libgearman-1.0/tests_hostileworker_test-workers.o `test -f 'tests/libgearman-1.0/workers.cc' || echo '$(srcdir)/'`tests/libgearman-1.0/workers.cc
-
-tests/libgearman-1.0/tests_hostileworker_test-workers.obj: tests/libgearman-1.0/workers.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -MT tests/libgearman-1.0/tests_hostileworker_test-workers.obj -MD -MP -MF tests/libgearman-1.0/$(DEPDIR)/tests_hostileworker_test-workers.Tpo -c -o tests/libgearman-1.0/tests_hostileworker_test-workers.obj `if test -f 'tests/libgearman-1.0/workers.cc'; then $(CYGPATH_W) 'tests/libgearman-1.0/workers.cc'; else $(CYGPATH_W) '$(srcdir)/tests/libgearman-1.0/workers.cc'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/libgearman-1.0/$(DEPDIR)/tests_hostileworker_test-workers.Tpo tests/libgearman-1.0/$(DEPDIR)/tests_hostileworker_test-workers.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/libgearman-1.0/workers.cc' object='tests/libgearman-1.0/tests_hostileworker_test-workers.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_hostileworker_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/libgearman-1.0/tests_hostileworker_test-workers.obj `if test -f 'tests/libgearman-1.0/workers.cc'; then $(CYGPATH_W) 'tests/libgearman-1.0/workers.cc'; else $(CYGPATH_W) '$(srcdir)/tests/libgearman-1.0/workers.cc'; fi`
-
 tests/libgearman-1.0/tests_libgearman_1_0_client_test-client_test.o: tests/libgearman-1.0/client_test.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_libgearman_1_0_client_test_CXXFLAGS) $(CXXFLAGS) -MT tests/libgearman-1.0/tests_libgearman_1_0_client_test-client_test.o -MD -MP -MF tests/libgearman-1.0/$(DEPDIR)/tests_libgearman_1_0_client_test-client_test.Tpo -c -o tests/libgearman-1.0/tests_libgearman_1_0_client_test-client_test.o `test -f 'tests/libgearman-1.0/client_test.cc' || echo '$(srcdir)/'`tests/libgearman-1.0/client_test.cc
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/libgearman-1.0/$(DEPDIR)/tests_libgearman_1_0_client_test-client_test.Tpo tests/libgearman-1.0/$(DEPDIR)/tests_libgearman_1_0_client_test-client_test.Po
@@ -5429,6 +5498,54 @@ tests/tests_redis_test-redis.obj: tests/redis.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_redis_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/tests_redis_test-redis.obj `if test -f 'tests/redis.cc'; then $(CYGPATH_W) 'tests/redis.cc'; else $(CYGPATH_W) '$(srcdir)/tests/redis.cc'; fi`
 
+tests/tests_stress_test-burnin.o: tests/burnin.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -MT tests/tests_stress_test-burnin.o -MD -MP -MF tests/$(DEPDIR)/tests_stress_test-burnin.Tpo -c -o tests/tests_stress_test-burnin.o `test -f 'tests/burnin.cc' || echo '$(srcdir)/'`tests/burnin.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/tests_stress_test-burnin.Tpo tests/$(DEPDIR)/tests_stress_test-burnin.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/burnin.cc' object='tests/tests_stress_test-burnin.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/tests_stress_test-burnin.o `test -f 'tests/burnin.cc' || echo '$(srcdir)/'`tests/burnin.cc
+
+tests/tests_stress_test-burnin.obj: tests/burnin.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -MT tests/tests_stress_test-burnin.obj -MD -MP -MF tests/$(DEPDIR)/tests_stress_test-burnin.Tpo -c -o tests/tests_stress_test-burnin.obj `if test -f 'tests/burnin.cc'; then $(CYGPATH_W) 'tests/burnin.cc'; else $(CYGPATH_W) '$(srcdir)/tests/burnin.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/tests_stress_test-burnin.Tpo tests/$(DEPDIR)/tests_stress_test-burnin.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/burnin.cc' object='tests/tests_stress_test-burnin.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/tests_stress_test-burnin.obj `if test -f 'tests/burnin.cc'; then $(CYGPATH_W) 'tests/burnin.cc'; else $(CYGPATH_W) '$(srcdir)/tests/burnin.cc'; fi`
+
+tests/libgearman-1.0/tests_stress_test-workers.o: tests/libgearman-1.0/workers.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -MT tests/libgearman-1.0/tests_stress_test-workers.o -MD -MP -MF tests/libgearman-1.0/$(DEPDIR)/tests_stress_test-workers.Tpo -c -o tests/libgearman-1.0/tests_stress_test-workers.o `test -f 'tests/libgearman-1.0/workers.cc' || echo '$(srcdir)/'`tests/libgearman-1.0/workers.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/libgearman-1.0/$(DEPDIR)/tests_stress_test-workers.Tpo tests/libgearman-1.0/$(DEPDIR)/tests_stress_test-workers.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/libgearman-1.0/workers.cc' object='tests/libgearman-1.0/tests_stress_test-workers.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/libgearman-1.0/tests_stress_test-workers.o `test -f 'tests/libgearman-1.0/workers.cc' || echo '$(srcdir)/'`tests/libgearman-1.0/workers.cc
+
+tests/libgearman-1.0/tests_stress_test-workers.obj: tests/libgearman-1.0/workers.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -MT tests/libgearman-1.0/tests_stress_test-workers.obj -MD -MP -MF tests/libgearman-1.0/$(DEPDIR)/tests_stress_test-workers.Tpo -c -o tests/libgearman-1.0/tests_stress_test-workers.obj `if test -f 'tests/libgearman-1.0/workers.cc'; then $(CYGPATH_W) 'tests/libgearman-1.0/workers.cc'; else $(CYGPATH_W) '$(srcdir)/tests/libgearman-1.0/workers.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/libgearman-1.0/$(DEPDIR)/tests_stress_test-workers.Tpo tests/libgearman-1.0/$(DEPDIR)/tests_stress_test-workers.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/libgearman-1.0/workers.cc' object='tests/libgearman-1.0/tests_stress_test-workers.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/libgearman-1.0/tests_stress_test-workers.obj `if test -f 'tests/libgearman-1.0/workers.cc'; then $(CYGPATH_W) 'tests/libgearman-1.0/workers.cc'; else $(CYGPATH_W) '$(srcdir)/tests/libgearman-1.0/workers.cc'; fi`
+
+tests/tests_stress_test-stress_worker.o: tests/stress_worker.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -MT tests/tests_stress_test-stress_worker.o -MD -MP -MF tests/$(DEPDIR)/tests_stress_test-stress_worker.Tpo -c -o tests/tests_stress_test-stress_worker.o `test -f 'tests/stress_worker.cc' || echo '$(srcdir)/'`tests/stress_worker.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/tests_stress_test-stress_worker.Tpo tests/$(DEPDIR)/tests_stress_test-stress_worker.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/stress_worker.cc' object='tests/tests_stress_test-stress_worker.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/tests_stress_test-stress_worker.o `test -f 'tests/stress_worker.cc' || echo '$(srcdir)/'`tests/stress_worker.cc
+
+tests/tests_stress_test-stress_worker.obj: tests/stress_worker.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -MT tests/tests_stress_test-stress_worker.obj -MD -MP -MF tests/$(DEPDIR)/tests_stress_test-stress_worker.Tpo -c -o tests/tests_stress_test-stress_worker.obj `if test -f 'tests/stress_worker.cc'; then $(CYGPATH_W) 'tests/stress_worker.cc'; else $(CYGPATH_W) '$(srcdir)/tests/stress_worker.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/tests_stress_test-stress_worker.Tpo tests/$(DEPDIR)/tests_stress_test-stress_worker.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/stress_worker.cc' object='tests/tests_stress_test-stress_worker.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_stress_test_CXXFLAGS) $(CXXFLAGS) -c -o tests/tests_stress_test-stress_worker.obj `if test -f 'tests/stress_worker.cc'; then $(CYGPATH_W) 'tests/stress_worker.cc'; else $(CYGPATH_W) '$(srcdir)/tests/stress_worker.cc'; fi`
+
 mostlyclean-libtool:
 	-rm -f *.lo
 
@@ -5452,6 +5569,7 @@ clean-libtool:
 	-rm -rf libgearman-server/plugins/queue/sqlite/.libs libgearman-server/plugins/queue/sqlite/_libs
 	-rm -rf libgearman-server/plugins/queue/tokyocabinet/.libs libgearman-server/plugins/queue/tokyocabinet/_libs
 	-rm -rf libgearman/function/.libs libgearman/function/_libs
+	-rm -rf libgearman/protocol/.libs libgearman/protocol/_libs
 	-rm -rf libhostile/.libs libhostile/_libs
 	-rm -rf libtest/.libs libtest/_libs
 	-rm -rf tests/.libs tests/_libs
@@ -5913,7 +6031,8 @@ distcleancheck: distclean
 check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS check-local
-check: check-am
+check: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(MANS) $(DATA) $(HEADERS) \
 		config.h
 install-binPROGRAMS: install-libLTLIBRARIES
@@ -5922,7 +6041,8 @@ installdirs:
 	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man3dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(pkgconfigdir)" "$(DESTDIR)$(includedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: install-am
+install: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) install-am
 install-exec: install-exec-am
 install-data: install-data-am
 uninstall: uninstall-am
@@ -5980,6 +6100,8 @@ distclean-generic:
 	-rm -f libgearman/$(am__dirstamp)
 	-rm -f libgearman/function/$(DEPDIR)/$(am__dirstamp)
 	-rm -f libgearman/function/$(am__dirstamp)
+	-rm -f libgearman/protocol/$(DEPDIR)/$(am__dirstamp)
+	-rm -f libgearman/protocol/$(am__dirstamp)
 	-rm -f libhostile/$(DEPDIR)/$(am__dirstamp)
 	-rm -f libhostile/$(am__dirstamp)
 	-rm -f libtest/$(DEPDIR)/$(am__dirstamp)
@@ -5995,6 +6117,7 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 @HAVE_SPHINX_FALSE@html-local:
 clean: clean-am
 
@@ -6005,7 +6128,7 @@ clean-am: clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf benchmark/$(DEPDIR) bin/$(DEPDIR) docs/libgearman/examples/$(DEPDIR) examples/$(DEPDIR) gearmand/$(DEPDIR) libgearman-1.0/t/$(DEPDIR) libgearman-server/$(DEPDIR) libgearman-server/error/$(DEPDIR) libgearman-server/plugins/protocol/http/$(DEPDIR) libgearman-server/plugins/queue/drizzle/$(DEPDIR) libgearman-server/plugins/queue/libmemcached/$(DEPDIR) libgearman-server/plugins/queue/mysql/$(DEPDIR) libgearman-server/plugins/queue/postgres/$(DEPDIR) libgearman-server/plugins/queue/redis/$(DEPDIR) libgearman-server/plugins/queue/sqlite/$(DEPDIR) libgearman-server/plugins/queue/tokyocabinet/$(DEPDIR) libgearman/$(DEPDIR) libgearman/function/$(DEPDIR) libhostile/$(DEPDIR) libtest/$(DEPDIR) tests/$(DEPDIR) tests/libgearman-1.0/$(DEPDIR) util/$(DEPDIR)
+	-rm -rf benchmark/$(DEPDIR) bin/$(DEPDIR) docs/libgearman/examples/$(DEPDIR) examples/$(DEPDIR) gearmand/$(DEPDIR) libgearman-1.0/t/$(DEPDIR) libgearman-server/$(DEPDIR) libgearman-server/error/$(DEPDIR) libgearman-server/plugins/protocol/http/$(DEPDIR) libgearman-server/plugins/queue/drizzle/$(DEPDIR) libgearman-server/plugins/queue/libmemcached/$(DEPDIR) libgearman-server/plugins/queue/mysql/$(DEPDIR) libgearman-server/plugins/queue/postgres/$(DEPDIR) libgearman-server/plugins/queue/redis/$(DEPDIR) libgearman-server/plugins/queue/sqlite/$(DEPDIR) libgearman-server/plugins/queue/tokyocabinet/$(DEPDIR) libgearman/$(DEPDIR) libgearman/function/$(DEPDIR) libgearman/protocol/$(DEPDIR) libhostile/$(DEPDIR) libtest/$(DEPDIR) tests/$(DEPDIR) tests/libgearman-1.0/$(DEPDIR) util/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-libtool distclean-tags
@@ -6055,7 +6178,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf benchmark/$(DEPDIR) bin/$(DEPDIR) docs/libgearman/examples/$(DEPDIR) examples/$(DEPDIR) gearmand/$(DEPDIR) libgearman-1.0/t/$(DEPDIR) libgearman-server/$(DEPDIR) libgearman-server/error/$(DEPDIR) libgearman-server/plugins/protocol/http/$(DEPDIR) libgearman-server/plugins/queue/drizzle/$(DEPDIR) libgearman-server/plugins/queue/libmemcached/$(DEPDIR) libgearman-server/plugins/queue/mysql/$(DEPDIR) libgearman-server/plugins/queue/postgres/$(DEPDIR) libgearman-server/plugins/queue/redis/$(DEPDIR) libgearman-server/plugins/queue/sqlite/$(DEPDIR) libgearman-server/plugins/queue/tokyocabinet/$(DEPDIR) libgearman/$(DEPDIR) libgearman/function/$(DEPDIR) libhostile/$(DEPDIR) libtest/$(DEPDIR) tests/$(DEPDIR) tests/libgearman-1.0/$(DEPDIR) util/$(DEPDIR)
+	-rm -rf benchmark/$(DEPDIR) bin/$(DEPDIR) docs/libgearman/examples/$(DEPDIR) examples/$(DEPDIR) gearmand/$(DEPDIR) libgearman-1.0/t/$(DEPDIR) libgearman-server/$(DEPDIR) libgearman-server/error/$(DEPDIR) libgearman-server/plugins/protocol/http/$(DEPDIR) libgearman-server/plugins/queue/drizzle/$(DEPDIR) libgearman-server/plugins/queue/libmemcached/$(DEPDIR) libgearman-server/plugins/queue/mysql/$(DEPDIR) libgearman-server/plugins/queue/postgres/$(DEPDIR) libgearman-server/plugins/queue/redis/$(DEPDIR) libgearman-server/plugins/queue/sqlite/$(DEPDIR) libgearman-server/plugins/queue/tokyocabinet/$(DEPDIR) libgearman/$(DEPDIR) libgearman/function/$(DEPDIR) libgearman/protocol/$(DEPDIR) libhostile/$(DEPDIR) libtest/$(DEPDIR) tests/$(DEPDIR) tests/libgearman-1.0/$(DEPDIR) util/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -6078,7 +6201,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
 
 uninstall-man: uninstall-man1 uninstall-man3 uninstall-man8
 
-.MAKE: all check-am install-am install-strip
+.MAKE: all check check-am install install-am install-strip
 
 .PHONY: CTAGS GTAGS all all-am am--refresh check check-TESTS check-am \
 	check-local clean clean-binPROGRAMS clean-checkPROGRAMS \
@@ -6131,7 +6254,7 @@ drd:
 distclean-libtest-check:
 	-rm -rf tmp_chroot
 
-libtest_tmp_dir: tmp_chroot/var/log tmp_chroot/var/tmp tmp_chroot/var/run
+libtest_tmp_dir: tmp_chroot/var/log tmp_chroot/var/tmp tmp_chroot/var/run tmp_chroot/var/drizzle
 
 tmp_chroot:
 	@$(mkdir_p) tmp_chroot
@@ -6144,6 +6267,9 @@ tmp_chroot/var/log: tmp_chroot/var
 
 tmp_chroot/var/tmp: tmp_chroot/var
 	@$(mkdir_p) tmp_chroot/var/tmp
+
+tmp_chroot/var/drizzle: tmp_chroot/var
+	@$(mkdir_p) tmp_chroot/var/drizzle
 
 tmp_chroot/var/run: tmp_chroot/var
 	@$(mkdir_p) tmp_chroot/var/run
@@ -6252,14 +6378,26 @@ gdb-client: tests/libgearman-1.0/client_test gearmand/gearmand
 valgrind-client: tests/libgearman-1.0/client_test gearmand/gearmand
 	@$(VALGRIND_COMMAND) tests/libgearman-1.0/client_test
 
-test-hostile: tests/hostileworker_test gearmand/gearmand
-	@tests/hostileworker_test
+test-round-robin: tests/round_robin_test gearmand/gearmand
+	@tests/round_robin_test
 
-valgrind-hostile: tests/hostileworker_test gearmand/gearmand
-	@$(VALGRIND_COMMAND) tests/hostileworker_test
+gdb-round-robin: tests/round_robin_test gearmand/gearmand
+	@$(GDB_COMMAND) tests/round_robin_test
 
-gdb-hostile: tests/hostileworker_test gearmand/gearmand
-	@$(GDB_COMMAND) tests/hostileworker_test
+valgrind-round-robin: tests/round_robin_test gearmand/gearmand
+	@$(VALGRIND_COMMAND) tests/round_robin_test
+
+helgrind-round-robin: tests/round_robin_test gearmand/gearmand
+	@$(HELGRIND_COMMAND) tests/round_robin_test
+
+test-stress: tests/stress_test gearmand/gearmand
+	@tests/stress_test
+
+valgrind-stress: tests/stress_test gearmand/gearmand
+	@$(VALGRIND_COMMAND) tests/stress_test
+
+gdb-stress: tests/stress_test gearmand/gearmand
+	@$(GDB_COMMAND) tests/stress_test
 
 test-cycle: tests/cycle gearmand/gearmand
 	@tests/cycle
@@ -6273,13 +6411,7 @@ test-gearmand: tests/gearmand gearmand/gearmand
 tests-blobslap_client: tests/blobslap_client gearmand/gearmand
 	@tests/blobslap_client
 
-test-round-robin: tests/round_robin_test gearmand/gearmand
-	@tests/round_robin_test
-
 check-local:
-
-gdb-round-robin: tests/round_robin_test gearmand/gearmand
-	@$(GDB_COMMAND) tests/round_robin_test
 
 gdb-cli: tests/cli gearmand/gearmand
 	@$(GDB_COMMAND) tests/cli
@@ -6296,9 +6428,6 @@ gdb-gearmand: tests/gearmand gearmand/gearmand
 valgrind-cli: tests/cli gearmand/gearmand
 	@$(VALGRIND_COMMAND) tests/cli gearmand/gearmand
 
-valgrind-round-robin: tests/round_robin_test gearmand/gearmand
-	@$(VALGRIND_COMMAND) tests/round_robin_test
-
 valgrind-burnin: tests/burnin_test gearmand/gearmand
 	@$(VALGRIND_COMMAND) tests/burnin_test
 
@@ -6310,9 +6439,6 @@ valgrind-gearmand: tests/gearmand gearmand/gearmand
 
 helgrind-client: tests/client_test gearmand/gearmand
 	@$(HELGRIND_COMMAND) tests/client_test
-
-helgrind-round-robin: tests/round_robin_test gearmand/gearmand
-	@$(HELGRIND_COMMAND) tests/round_robin_test
 
 helgrind-burnin: tests/burnin_test gearmand/gearmand
 	@$(HELGRIND_COMMAND) tests/burnin_test
@@ -6516,7 +6642,21 @@ bogus:
 docs: html man
 
 test: check
-
+configmake.h: ${top_srcdir}/Makefile.in
+	@echo "Making $@"
+	@rm -f $@-t $@
+	@{ echo '/* DO NOT EDIT! GENERATED AUTOMATICALLY! */'; \
+	  echo '#define PREFIX "$(prefix)"'; \
+	  echo '#define SYSCONFDIR "$(sysconfdir)"'; \
+	  echo '#define GEARMAND_CONFIG "$(sysconfdir)/gearmand.conf"'; \
+	  echo '#define LOCALSTATEDIR "$(localstatedir)"'; \
+	  echo '#define GEARMAND_PID "$(localstatedir)/gearmand.pid"'; \
+	  } | sed '/""/d' > $@-t
+	@if diff $@-t $@ >/dev/null 2>&1 ; then \
+	  rm @-t ; \
+	  else \
+	  mv $@-t $@ ; \
+	  fi
 clean-local:
 	-rm -rf docs/_build docs/doctrees
 

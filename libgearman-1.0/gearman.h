@@ -44,17 +44,30 @@
 
 #pragma once
 
-#include <inttypes.h>
-#ifndef __cplusplus
-#  include <stdbool.h>
+/* This seems to be required for older compilers @note http://stackoverflow.com/questions/8132399/how-to-printf-uint64-t  */
+#ifndef __STDC_FORMAT_MACROS
+#  define __STDC_FORMAT_MACROS
 #endif
+
+#ifdef __cplusplus
+#  include <tr1/cinttypes>
+#  include <cstddef>
+#  include <cstdlib>
+#  include <ctime>
+#else
+#  include <inttypes.h>
+#  include <stdbool.h>
+#  include <stddef.h>
+#  include <stdlib.h>
+#  include <time.h>
+#endif
+
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <poll.h>
 #include <sys/uio.h>
-#include <time.h>
 
 #include <libgearman-1.0/visibility.h>
 #include <libgearman-1.0/version.h>

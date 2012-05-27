@@ -38,6 +38,8 @@
 #pragma once
 
 test_return_t gearman_execute_test(void *object);
+test_return_t gearman_execute_NULL_workload_TEST(void *object);
+test_return_t gearman_execute_NULL_attr_NULL_workload_TEST(void *object);
 test_return_t gearman_execute_fail_test(void *object);
 test_return_t gearman_execute_timeout_test(void *object);
 test_return_t gearman_execute_epoch_test(void *object);

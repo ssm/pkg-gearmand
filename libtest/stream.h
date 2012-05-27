@@ -1,22 +1,37 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  libtest
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Data Differential YATL (i.e. libtest)  library
  *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 3 of the License, or (at your option) any later version.
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
  *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #pragma once
@@ -33,58 +48,66 @@ namespace stream {
 namespace detail {
 
 template<class Ch, class Tr, class A>
-  class cerr {
+  class channel {
   private:
 
   public:
     typedef std::basic_ostringstream<Ch, Tr, A> stream_buffer;
 
   public:
-    void operator()(const stream_buffer &s)
+    void operator()(const stream_buffer& s, std::ostream& _out,
+                    const char* filename, int line_number, const char* func)
     {
-      std::cerr << s.str() << std::endl;
+      if (filename)
+      {
+        _out
+          << filename 
+          << ":" 
+          << line_number 
+          << ": in " 
+          << func << "() "
+          << s.str()
+          << std::endl;
+      }
+      else
+      {
+        _out
+          << s.str()
+          << std::endl;
+      }
     }
   };
 
 template<class Ch, class Tr, class A>
-  class make_cerr {
+  class channelln {
   private:
 
   public:
     typedef std::basic_ostringstream<Ch, Tr, A> stream_buffer;
 
   public:
-    void operator()(const stream_buffer &s)
+    void operator()(const stream_buffer& s, std::ostream& _out,
+                    const char* filename, int line_number, const char* func)
     {
-      std::cerr << std::endl << s.str() << std::endl;
-    }
-  };
-
-template<class Ch, class Tr, class A>
-  class cout {
-  private:
-
-  public:
-    typedef std::basic_ostringstream<Ch, Tr, A> stream_buffer;
-
-  public:
-    void operator()(const stream_buffer &s)
-    {
-      std::cout << s.str() << std::endl;
-    }
-  };
-
-template<class Ch, class Tr, class A>
-  class clog {
-  private:
-
-  public:
-    typedef std::basic_ostringstream<Ch, Tr, A> stream_buffer;
-
-  public:
-    void operator()(const stream_buffer &s)
-    {
-      std::cerr<< s.str() << std::endl;
+      if (filename)
+      {
+        _out
+          << std::endl
+          << filename 
+          << ":" 
+          << line_number 
+          << ": in " 
+          << func << "() "
+          << s.str()
+          << std::endl;
+      }
+      else
+      {
+        _out
+          << std::endl
+          << s.str()
+          << std::endl;
+      }
     }
   };
 
@@ -92,37 +115,30 @@ template<template <class Ch, class Tr, class A> class OutputPolicy, class Ch = c
   class log {
   private:
     typedef OutputPolicy<Ch, Tr, A> output_policy;
+
+  private:
+    std::ostream& _out;
     const char *_filename;
     int _line_number;
     const char *_func;
 
   public:
-    log() :
-      _filename(NULL),
-      _line_number(0)
+    log(std::ostream& out_arg, const char* filename, int line_number, const char* func) :
+      _out(out_arg),
+      _filename(filename),
+      _line_number(line_number),
+      _func(func)
     { }
-
-    void set_filename(const char *filename, int line_number, const char *func)
-    {
-      _filename= filename;
-      _line_number= line_number;
-      _func= func;
-    }
 
     ~log()
     {
-      output_policy()(arg);
+      output_policy()(arg, _out, _filename, _line_number, _func);
     }
 
   public:
     template<class T>
       log &operator<<(const T &x)
       {
-        if (_filename)
-        {
-          arg << _filename << ":" << _line_number << ": in " << _func << "() ";
-          _filename= NULL;
-        }
         arg << x;
         return *this;
       }
@@ -130,34 +146,26 @@ template<template <class Ch, class Tr, class A> class OutputPolicy, class Ch = c
   private:
     typename output_policy::stream_buffer arg;
   };
-}
+} // namespace detail
 
-class make_cerr : public detail::log<detail::make_cerr> {
+class make_cerr : public detail::log<detail::channelln> {
 public:
-  make_cerr(const char *filename, int line_number, const char *func)
-  {
-    set_filename(filename, line_number, func);
-  }
+  make_cerr(const char* filename, int line_number, const char* func);
 };
 
-class cerr : public detail::log<detail::cerr> {
+class cerr : public detail::log<detail::channel> {
 public:
-  cerr(const char *filename, int line_number, const char *func)
-  {
-    set_filename(filename, line_number, func);
-  }
+  cerr(const char* filename, int line_number, const char* func);
 };
 
-class clog : public detail::log<detail::clog> {
+class clog : public detail::log<detail::channel> {
 public:
-  clog(const char *, int, const char*)
-  { }
+  clog(const char* filename, int line_number, const char* func);
 };
 
-class cout : public detail::log<detail::cout> {
+class cout : public detail::log<detail::channel> {
 public:
-  cout(const char *, int, const char *)
-  { }
+  cout(const char* filename, int line_number, const char* func);
 };
 
 

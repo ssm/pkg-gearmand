@@ -24,6 +24,8 @@ using namespace libtest;
 
 #include <tests/client.h>
 #include <tests/worker.h>
+#include "tests/start_worker.h"
+#include <tests/workers.h>
 
 static test_return_t init_test(void *)
 {
@@ -81,6 +83,50 @@ static test_return_t gearman_worker_timeout_default_test(void *)
   Worker worker;
 
   test_compare(-1, gearman_worker_timeout(&worker));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_worker_free_TEST(void *)
+{
+  gearman_worker_free(NULL);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_worker_error_TEST(void *)
+{
+  test_null(gearman_worker_error(NULL));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_worker_error_no_error_TEST(void *)
+{
+  Worker worker;
+  test_null(gearman_worker_error(&worker));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_worker_errno_TEST(void *)
+{
+  test_compare(0, gearman_worker_errno(NULL));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_worker_errno_no_error_TEST(void *)
+{
+  Worker worker;
+  test_compare(0, gearman_worker_errno(&worker));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_worker_options_TEST(void *)
+{
+  test_compare(gearman_worker_options_t(), gearman_worker_options(NULL));
 
   return TEST_SUCCESS;
 }
@@ -318,6 +364,275 @@ static test_return_t echo_max_test(void *)
 
   test_compare(GEARMAN_ARGUMENT_TOO_LARGE,
                gearman_worker_echo(&worker, "This is my echo test", GEARMAN_MAX_ECHO_SIZE +1));
+
+  return TEST_SUCCESS;
+}
+
+// The idea is to return GEARMAN_ERROR until we hit limit, then return
+// GEARMAN_SUCCESS
+static gearman_return_t GEARMAN_ERROR_worker(gearman_job_st* job, void *context)
+{
+  assert(gearman_job_workload_size(job) == 0);
+  assert(gearman_job_workload(job) == NULL);
+  size_t *ret= (size_t*)context;
+
+  if (*ret > 0)
+  {
+    *ret= (*ret) -1;
+    return GEARMAN_ERROR;
+  }
+
+  if (gearman_failed(gearman_job_send_data(job, test_literal_param("OK"))))
+  {
+    // We should return ERROR here, but that would then possibly loop
+    return GEARMAN_FAIL;
+  }
+
+  return GEARMAN_SUCCESS;
+}
+
+static gearman_return_t error_return_worker(gearman_job_st* job, void *)
+{
+  assert(sizeof(gearman_return_t) == gearman_job_workload_size(job));
+  const gearman_return_t *ret= (const gearman_return_t*)gearman_job_workload(job);
+
+  if (gearman_failed(gearman_job_send_data(job, gearman_strerror(*ret), strlen(gearman_strerror(*ret)))))
+  {
+    return GEARMAN_ERROR;
+  }
+
+  return *ret;
+}
+
+static test_return_t error_return_TEST(void *)
+{
+  // Sanity test on initial enum
+  test_compare(0, int(GEARMAN_SUCCESS));
+  test_compare(1, int(GEARMAN_IO_WAIT));
+
+  gearman_client_st *client= gearman_client_create(NULL);
+  test_true(client);
+  test_compare(GEARMAN_SUCCESS, gearman_client_add_server(client, "localhost", libtest::default_port()));
+  test_compare(GEARMAN_SUCCESS, gearman_client_echo(client, test_literal_param(__func__)));
+
+  gearman_function_t error_return_TEST_FN= gearman_function_create(error_return_worker);
+  std::auto_ptr<worker_handle_st> handle(test_worker_start(libtest::default_port(),
+                                                           NULL,
+                                                           __func__,
+                                                           error_return_TEST_FN,
+                                                           NULL,
+                                                           gearman_worker_options_t(),
+                                                           0)); // timeout
+
+  for (gearman_return_t x= GEARMAN_IO_WAIT; int(x) < int(GEARMAN_MAX_RETURN); x= gearman_return_t((int(x) +1)))
+  {
+    if (x == GEARMAN_SHUTDOWN)
+    {
+      continue;
+    }
+    if (x == GEARMAN_WORK_ERROR)
+    {
+      continue;
+    }
+    gearman_argument_t arg= gearman_argument_make(NULL, 0, (const char*)&x, sizeof(gearman_return_t));
+    gearman_task_st *task= gearman_execute(client,
+                                           test_literal_param(__func__),
+                                           NULL, 0, // unique
+                                           NULL, // gearman_task_attr_t
+                                           &arg, // gearman_argument_t
+                                           NULL); // context
+    test_truth(task);
+
+    gearman_return_t rc;
+    bool is_known;
+    do {
+      rc= gearman_client_job_status(client, gearman_task_job_handle(task), &is_known, NULL, NULL, NULL);
+    }  while (gearman_continue(rc) or is_known);
+
+    gearman_result_st *result= gearman_task_result(task);
+    test_false(result);
+    {
+      test_compare_hint(GEARMAN_WORK_FAIL, 
+                        gearman_task_return(task), 
+                        gearman_strerror(x));
+      test_compare_hint(false, handle->is_shutdown(), gearman_strerror(x));
+    }
+  }
+
+  // GEARMAN_SHUTDOWN is a special case
+  {
+    gearman_return_t x= GEARMAN_SHUTDOWN;
+    gearman_argument_t arg= gearman_argument_make(NULL, 0, (const char*)&x, sizeof(gearman_return_t));
+    gearman_task_st *task= gearman_execute(client,
+                                           test_literal_param(__func__),
+                                           NULL, 0, // unique
+                                           NULL, // gearman_task_attr_t
+                                           &arg, // gearman_argument_t
+                                           NULL); // context
+    test_truth(task);
+
+    gearman_return_t rc;
+    bool is_known;
+    do {
+      rc= gearman_client_job_status(client, gearman_task_job_handle(task), &is_known, NULL, NULL, NULL);
+    }  while (gearman_continue(rc) or is_known);
+
+    {
+      test_compare_hint(GEARMAN_SUCCESS,
+                        gearman_task_return(task),
+                        gearman_strerror(x));
+    }
+  }
+
+  int client_timeout= gearman_client_timeout(client);
+  // Test for unknown function
+  {
+    gearman_return_t x= GEARMAN_SUCCESS;
+    gearman_argument_t arg= gearman_argument_make(NULL, 0, (const char*)&x, sizeof(gearman_return_t));
+    gearman_client_set_timeout(client, 1500);
+    gearman_task_st *task= gearman_execute(client,
+                                           test_literal_param("unknown_function_to_fail_on"),
+                                           NULL, 0, // unique
+                                           NULL, // gearman_task_attr_t
+                                           &arg, // gearman_argument_t
+                                           NULL); // context
+    test_true(task);
+#if 0
+    test_compare_hint(GEARMAN_SUCCESS,
+                      gearman_task_return(task),
+                      gearman_strerror(x));
+#endif
+  }
+  
+  // GEARMAN_SUCCESS after GEARMAN_SHUTDOWN should fail
+  {
+    gearman_return_t x= GEARMAN_SUCCESS;
+    gearman_argument_t arg= gearman_argument_make(NULL, 0, (const char*)&x, sizeof(gearman_return_t));
+    gearman_task_st *task= gearman_execute(client,
+                                           test_literal_param(__func__),
+                                           NULL, 0, // unique
+                                           NULL, // gearman_task_attr_t
+                                           &arg, // gearman_argument_t
+                                           NULL); // context
+    test_truth(task);
+
+    gearman_return_t rc;
+    bool is_known;
+    do {
+      rc= gearman_client_job_status(client, gearman_task_job_handle(task), &is_known, NULL, NULL, NULL);
+    }  while (gearman_continue(rc) or is_known);
+
+    {
+      test_compare_hint(GEARMAN_UNKNOWN_STATE,
+                        gearman_task_return(task),
+                        gearman_strerror(x));
+    }
+  }
+  gearman_client_set_timeout(client, client_timeout);
+  gearman_client_free(client);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t GEARMAN_ERROR_return_TEST(void *)
+{
+  // Sanity test on initial enum
+  test_compare(0, int(GEARMAN_SUCCESS));
+  test_compare(1, int(GEARMAN_IO_WAIT));
+
+  gearman_client_st *client= gearman_client_create(NULL);
+  test_true(client);
+  test_compare(GEARMAN_SUCCESS, gearman_client_add_server(client, "localhost", libtest::default_port()));
+  test_compare(GEARMAN_SUCCESS, gearman_client_echo(client, test_literal_param(__func__)));
+
+  size_t count= 0;
+  gearman_function_t GEARMAN_ERROR_FN= gearman_function_create(GEARMAN_ERROR_worker);
+  std::auto_ptr<worker_handle_st> handle(test_worker_start(libtest::default_port(),
+                                                           NULL,
+                                                           __func__,
+                                                           GEARMAN_ERROR_FN,
+                                                           &count,
+                                                           gearman_worker_options_t(),
+                                                           0)); // timeout
+
+  for (size_t x= 0; x < 24; x++)
+  {
+    count= x;
+    gearman_task_st *task= gearman_execute(client,
+                                           test_literal_param(__func__),
+                                           NULL, 0, // unique
+                                           NULL, // gearman_task_attr_t
+                                           NULL, // gearman_argument_t
+                                           NULL); // context
+    test_truth(task);
+
+    gearman_return_t rc;
+    bool is_known;
+    do {
+      rc= gearman_client_job_status(client, gearman_task_job_handle(task), &is_known, NULL, NULL, NULL);
+    }  while (gearman_continue(rc) or is_known);
+
+    test_compare_hint(GEARMAN_SUCCESS,
+                      gearman_task_return(task), x);
+    test_zero(count); // Since we hit zero we know that we ran enough times.
+
+    gearman_result_st *result= gearman_task_result(task);
+    test_true(result);
+    test_memcmp("OK", gearman_result_value(result), strlen("ok"));
+  }
+
+  gearman_client_free(client);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t GEARMAN_FAIL_return_TEST(void *)
+{
+  // Sanity test on initial enum
+  test_compare(0, int(GEARMAN_SUCCESS));
+  test_compare(1, int(GEARMAN_IO_WAIT));
+
+  gearman_client_st *client= gearman_client_create(NULL);
+  test_true(client);
+  test_compare(GEARMAN_SUCCESS, gearman_client_add_server(client, "localhost", libtest::default_port()));
+  test_compare(GEARMAN_SUCCESS, gearman_client_echo(client, test_literal_param(__func__)));
+
+  gearman_function_t error_return_TEST_FN= gearman_function_create(error_return_worker);
+  std::auto_ptr<worker_handle_st> handle(test_worker_start(libtest::default_port(),
+                                                           NULL,
+                                                           __func__,
+                                                           error_return_TEST_FN,
+                                                           NULL,
+                                                           gearman_worker_options_t(),
+                                                           0)); // timeout
+
+  int count= 3;
+  while(--count)
+  {
+    gearman_return_t x= GEARMAN_FAIL;
+    gearman_argument_t arg= gearman_argument_make(NULL, 0, (const char*)&x, sizeof(gearman_return_t));
+    gearman_task_st *task= gearman_execute(client,
+                                           test_literal_param(__func__),
+                                           NULL, 0, // unique
+                                           NULL, // gearman_task_attr_t
+                                           &arg, // gearman_argument_t
+                                           NULL); // context
+    test_truth(task);
+
+    gearman_return_t rc;
+    bool is_known;
+    do {
+      rc= gearman_client_job_status(client, gearman_task_job_handle(task), &is_known, NULL, NULL, NULL);
+    }  while (gearman_continue(rc) or is_known);
+
+    {
+      test_compare_hint(GEARMAN_FAIL,
+                        gearman_task_return(task),
+                        gearman_strerror(x));
+    }
+  }
+
+  gearman_client_free(client);
 
   return TEST_SUCCESS;
 }
@@ -764,6 +1079,72 @@ static test_return_t gearman_worker_add_options_GEARMAN_WORKER_GRAB_UNIQ_worker_
   return TEST_SUCCESS;
 }
 
+static test_return_t _increase_TEST(gearman_function_t &func, gearman_client_options_t options)
+{
+  Client client;
+  test_compare(GEARMAN_SUCCESS,
+               gearman_client_add_server(&client, NULL, libtest::default_port()));
+
+  test_compare(GEARMAN_SUCCESS, gearman_client_echo(&client, test_literal_param(__func__)));
+
+  gearman_client_add_options(&client, options);
+
+  size_t block_size= 1024 * 1024;
+  std::auto_ptr<worker_handle_st> handle(test_worker_start(libtest::default_port(),
+                                                           NULL,
+                                                           __func__,
+                                                           func,
+                                                           &block_size,
+                                                           gearman_worker_options_t(),
+                                                           -1)); // timeout
+
+  for (size_t x= 1; x < 24; x++)
+  {
+    libtest::vchar_t workload;
+    libtest::vchar::make(workload, x * block_size);
+
+    gearman_argument_t value= gearman_argument_make(0, 0, vchar_param(workload));
+
+    gearman_task_st *task= gearman_execute(&client,
+                                           test_literal_param(__func__),
+                                           NULL, 0, // unique
+                                           NULL, // gearman_task_attr_t
+                                           &value, // gearman_argument_t
+                                           NULL); // context
+    test_truth(task);
+
+    gearman_return_t rc;
+    do {
+      rc= gearman_client_run_tasks(&client);
+      if (options)
+      {
+        gearman_client_wait(&client);
+      }
+    }  while (gearman_continue(rc));
+
+    test_compare_hint(GEARMAN_SUCCESS,
+                      gearman_task_return(task), x);
+
+    gearman_result_st *result= gearman_task_result(task);
+    test_true(result);
+    test_compare(workload.size(), gearman_result_size(result));
+  }
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearman_client_run_tasks_increase_TEST(void*)
+{
+  gearman_function_t func= gearman_function_create(echo_or_react_worker_v2);
+  return _increase_TEST(func, GEARMAN_CLIENT_NON_BLOCKING);
+}
+
+static test_return_t gearman_client_run_tasks_increase_chunk_TEST(void*)
+{
+  gearman_function_t func= gearman_function_create(echo_or_react_chunk_worker_v2);
+  return _increase_TEST(func, gearman_client_options_t());
+}
+
 static test_return_t gearman_worker_failover_test(void *)
 {
   Worker worker;
@@ -849,6 +1230,11 @@ test_st tests[] ={
   {"gearman_worker_add_options(GEARMAN_WORKER_GRAB_UNIQ)", 0, gearman_worker_add_options_GEARMAN_WORKER_GRAB_UNIQ },
   {"gearman_worker_add_options(GEARMAN_WORKER_GRAB_UNIQ) worker_work()", 0, gearman_worker_add_options_GEARMAN_WORKER_GRAB_UNIQ_worker_work },
   {"gearman_worker_set_timeout(2) with failover", 0, gearman_worker_set_timeout_FAILOVER_TEST },
+  {"gearman_return_t worker return coverage", 0, error_return_TEST },
+  {"gearman_return_t GEARMAN_FAIL worker coverage", 0, GEARMAN_FAIL_return_TEST },
+  {"gearman_return_t GEARMAN_ERROR worker coverage", 0, GEARMAN_ERROR_return_TEST },
+  {"gearman_client_run_tasks()", 0, gearman_client_run_tasks_increase_TEST },
+  {"gearman_client_run_tasks() chunked", 0, gearman_client_run_tasks_increase_chunk_TEST },
   {"echo_max", 0, echo_max_test },
   {"abandoned_worker", 0, abandoned_worker_test },
   {0, 0, 0}
@@ -856,6 +1242,16 @@ test_st tests[] ={
 
 test_st worker_defaults[] ={
   {"gearman_worker_timeout()", 0, gearman_worker_timeout_default_test },
+  {0, 0, 0}
+};
+
+test_st gearman_worker_st_NULL_invocation_TESTS[] ={
+  {"gearman_worker_free()", 0, gearman_worker_free_TEST },
+  {"gearman_worker_error()", 0, gearman_worker_error_TEST },
+  {"gearman_worker_error() no error", 0, gearman_worker_error_no_error_TEST },
+  {"gearman_worker_errno()", 0, gearman_worker_errno_TEST },
+  {"gearman_worker_errno() no error", 0, gearman_worker_errno_no_error_TEST },
+  {"gearman_worker_options()", 0, gearman_worker_options_TEST },
   {0, 0, 0}
 };
 
@@ -869,6 +1265,7 @@ test_st gearman_worker_set_identifier_TESTS[] ={
 collection_st collection[] ={
   {"worker", 0, 0, tests},
   {"worker defaults", 0, 0, worker_defaults},
+  {"null gearman_worker_st invocation", 0, 0, gearman_worker_st_NULL_invocation_TESTS },
   {"gearman_worker_set_identifier()", 0, 0, gearman_worker_set_identifier_TESTS},
   {0, 0, 0, 0}
 };

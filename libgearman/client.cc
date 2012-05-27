@@ -350,6 +350,16 @@ const char *gearman_client_error(const gearman_client_st *client)
   return gearman_universal_error(client->universal);
 }
 
+gearman_return_t gearman_client_error_code(const gearman_client_st *client)
+{
+  if (client == NULL)
+  {
+    return GEARMAN_INVALID_ARGUMENT;
+  }
+
+  return gearman_universal_error_code(client->universal);
+}
+
 int gearman_client_errno(const gearman_client_st *client)
 {
   if (client == NULL)
@@ -797,18 +807,26 @@ gearman_return_t gearman_client_job_status(gearman_client_st *client,
   if (gearman_success(ret))
   {
     if (is_known)
+    {
       *is_known= do_task.options.is_known;
+    }
 
     if (is_running)
+    {
       *is_running= do_task.options.is_running;
+    }
 
     if (numerator)
+    {
       *numerator= do_task.numerator;
+    }
 
     if (denominator)
+    {
       *denominator= do_task.denominator;
+    }
 
-    if (not is_known and not is_running)
+    if (is_known == false and is_running == false)
     {
       if (do_task.options.is_running) 
       {

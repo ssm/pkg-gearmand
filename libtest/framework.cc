@@ -1,49 +1,73 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  libtest
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Data Differential YATL (i.e. libtest)  library
  *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 3 of the License, or (at your option) any later version.
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
  *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
-
 #include <config.h>
+
 #include <libtest/common.h>
+#include <libtest/collection.h>
+#include <libtest/signal.h>
+
+#include <fnmatch.h>
 #include <iostream>
 
 using namespace libtest;
 
-static test_return_t _default_callback(void *p)
-{
-  (void)p;
-
-  return TEST_SUCCESS;
-}
-
-Framework::Framework() :
+Framework::Framework(libtest::SignalThread& signal,
+                     const std::string& only_run_arg,
+                     const std::string& wildcard_arg) :
   collections(NULL),
+  _total(0),
+  _success(0),
+  _skipped(0),
+  _failed(0),
   _create(NULL),
   _destroy(NULL),
-  collection_startup(_default_callback),
-  collection_shutdown(_default_callback),
-  _on_error(NULL),
   _runner(NULL),
   _socket(false),
-  _creators_ptr(NULL)
+  _creators_ptr(NULL),
+  _signal(signal),
+  _only_run(only_run_arg),
+  _wildcard(wildcard_arg)
 {
+  get_world(this);
+
+  for (collection_st *next= collections; next and next->name; next++)
+  {
+    _collection.push_back(new Collection(this, next));
+  }
 }
 
 Framework::~Framework()
@@ -56,66 +80,121 @@ Framework::~Framework()
   _servers.shutdown();
 
   delete _runner;
+
+  for (std::vector<Collection*>::iterator iter= _collection.begin();
+       iter != _collection.end();
+       iter++)
+  {
+    delete *iter;
+  }
 }
 
-test_return_t Framework::Item::pre(void *arg)
+bool Framework::match(const char* arg)
 {
-  if (pre_run)
+  if (_wildcard.empty() == false and fnmatch(_wildcard.c_str(), arg, 0))
   {
-    return pre_run(arg);
+    return true;
   }
 
-  return TEST_SUCCESS;
+  return false;
 }
 
-test_return_t Framework::Item::post(void *arg)
+void Framework::exec()
 {
-  if (post_run)
+  for (std::vector<Collection*>::iterator iter= _collection.begin();
+       iter != _collection.end() and (_signal.is_shutdown() == false);
+       iter++)
   {
-    return post_run(arg);
-  }
+    if (_only_run.empty() == false and
+        fnmatch(_only_run.c_str(), (*iter)->name(), 0))
+    {
+      continue;
+    }
 
-  return TEST_SUCCESS;
+    _total++;
+
+    try {
+      switch ((*iter)->exec())
+      {
+      case TEST_FAILURE:
+        _failed++;
+        break;
+
+      case TEST_SKIPPED:
+        _skipped++;
+        break;
+
+        // exec() can return SUCCESS, but that doesn't mean that some tests did
+        // not fail or get skipped.
+      case TEST_SUCCESS:
+        _success++;
+        break;
+      }
+    }
+    catch (libtest::fatal& e)
+    {
+      stream::cerr(e.file(), e.line(), e.func()) << e.mesg();
+    }
+    catch (libtest::disconnected& e)
+    {
+      Error << "Unhandled disconnection occurred:" << e.what();
+      throw;
+    }
+
+    Outn();
+  }
 }
 
-test_return_t Framework::Item::flush(void* arg, test_st* run)
+uint32_t Framework::sum_total()
 {
-  if (run->requires_flush and _flush)
+  uint32_t count= 0;
+  for (std::vector<Collection*>::iterator iter= _collection.begin();
+       iter != _collection.end();
+       iter++)
   {
-    return _flush(arg);
+    count+= (*iter)->total();
   }
 
-  return TEST_SUCCESS;
+  return count;
 }
 
-test_return_t Framework::on_error(const test_return_t rc, void* arg)
+uint32_t Framework::sum_success()
 {
-  if (_on_error and test_failed(_on_error(rc, arg)))
+  uint32_t count= 0;
+  for (std::vector<Collection*>::iterator iter= _collection.begin();
+       iter != _collection.end();
+       iter++)
   {
-    return TEST_FAILURE;
+    count+= (*iter)->success();
   }
 
-  return TEST_SUCCESS;
+  return count;
 }
 
-test_return_t Framework::startup(void* arg)
+uint32_t Framework::sum_skipped()
 {
-  if (collection_startup)
+  uint32_t count= 0;
+  for (std::vector<Collection*>::iterator iter= _collection.begin();
+       iter != _collection.end();
+       iter++)
   {
-    return collection_startup(arg);
+    count+= (*iter)->skipped();
   }
 
-  return TEST_SUCCESS;
+  return count;
 }
 
-test_return_t Framework::Item::startup(void* arg)
+uint32_t Framework::sum_failed()
 {
-  if (_startup)
+  uint32_t count= 0;
+  for (std::vector<Collection*>::iterator iter= _collection.begin();
+       iter != _collection.end();
+       iter++)
   {
-    return _startup(arg);
+    count+= (*iter)->failed();
   }
 
-  return TEST_SUCCESS;
+  return count;
 }
 
 libtest::Runner *Framework::runner()
@@ -129,13 +208,13 @@ libtest::Runner *Framework::runner()
   return _runner;
 }
 
-void* Framework::create(test_return_t& arg)
+test_return_t Framework::create()
 {
-  arg= TEST_SUCCESS;
+  test_return_t rc= TEST_SUCCESS;
   if (_create)
   {
-    return _creators_ptr= _create(_servers, arg);
+    _creators_ptr= _create(_servers, rc);
   }
 
-  return NULL;
+  return rc;
 }

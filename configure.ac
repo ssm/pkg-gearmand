@@ -6,7 +6,7 @@
 # Use and distribution licensed under the BSD license.  See
 # the COPYING file in this directory for full text.
 
-AC_INIT([gearmand],[0.32],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+AC_INIT([gearmand],[0.33],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
 
 AC_CONFIG_AUX_DIR(config)
 
@@ -111,6 +111,7 @@ AX_HAVE_LIBPQ
 PANDORA_HAVE_LIBTOKYOCABINET
 AC_FUNC_STRERROR_R
 SOCKET_SEND_FLAGS
+FCNTL_FLAGS
 AX_HAVE_LIBHIREDIS
 
 AX_LIB_MYSQL([5.0])
