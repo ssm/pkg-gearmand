@@ -3,6 +3,7 @@ Description=gearman job control server
 
 [Service]
 ExecStartPre=/usr/bin/install -d -o gearman /run/gearman
+PermissionsStartOnly=true
 User=gearman
 PIDFile=/run/gearman/server.pid
 ExecStart=/usr/sbin/gearmand --listen=127.0.0.1 --pid-file=/run/gearman/server.pid --log-file=/var/log/gearman-job-server/gearman.log
