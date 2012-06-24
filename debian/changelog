@@ -1,8 +1,12 @@
-gearmand (0.33-1) UNRELEASED; urgency=low
+gearmand (0.33-1) unstable; urgency=low
 
   * Imported Upstream version 0.33
+  * Remove kfreebsd O_CLOEXEC patch, this is now checked by configure
+  * Add versions for build dependencies where stated in configure
+  * ExecStartPre= needs root acecss…
+  * Use gcc 4.6 when building
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 27 May 2012 18:58:12 +0200
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 24 Jun 2012 13:53:02 +0200
 
 gearmand (0.32-2) unstable; urgency=low
 
