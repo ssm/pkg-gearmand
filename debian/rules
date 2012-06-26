@@ -6,11 +6,6 @@ DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
 # Only run build tests on some architectures
 BUILD_TEST_ARCH_LIST := amd64
 
-# Does not build on 4.7
-export CC  := gcc-4.6
-export CPP := cpp-4.6
-export CXX := g++-4.6
-
 %:
 	dh $@ --with autoreconf
 
