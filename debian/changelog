@@ -1,3 +1,11 @@
+gearmand (0.33-2) unstable; urgency=low
+
+  * Add patch to support gcc/g++ 4.7 (Closes: #678903)
+    * Revert "Use gcc 4.6 when building"
+  * Fix FTBFS on GNU/Hurd (Closes: #678063)
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Tue, 26 Jun 2012 08:58:21 +0200
+
 gearmand (0.33-1) unstable; urgency=low
 
   * Imported Upstream version 0.33
