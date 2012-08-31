@@ -26,7 +26,7 @@ Bug-Debian: 678063
  #define MAGIC_MEMORY 123570
  
  Server::Server(const std::string& host_arg, const in_port_t port_arg,
-@@ -221,8 +237,14 @@
+@@ -230,8 +246,14 @@
            continue;
          }
  
@@ -38,6 +38,6 @@ Bug-Debian: 678063
          char *getcwd_buf= getcwd(buf, sizeof(buf));
 +#endif // __GLIBC__
 +
-         throw libtest::fatal(LIBYATL_DEFAULT_PARAM,
-                              "Unable to open pidfile in %s for: %s stderr:%s",
-                              getcwd_buf ? getcwd_buf : "",
+         throw libtest::disconnected(LIBYATL_DEFAULT_PARAM,
+                                     hostname(), port(),
+                                     "Unable to open pidfile in %s for: %s stderr:%s",
