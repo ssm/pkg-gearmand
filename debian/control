@@ -32,7 +32,7 @@ Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/gearmand.git
 Vcs-Git: git://anonscm.debian.org/collab-maint/gearmand.git
 
 
-Package: libgearman6
+Package: libgearman7
 Priority: optional
 Architecture: any
 Multi-Arch: same
@@ -51,7 +51,7 @@ Description: Library providing Gearman client and worker functions
 Package: libgearman-dev
 Section: libdevel
 Architecture: any
-Depends: libgearman6 (= ${binary:Version}), libevent-dev, ${shlibs:Depends}, ${misc:Depends}
+Depends: libgearman7 (= ${binary:Version}), libevent-dev, ${shlibs:Depends}, ${misc:Depends}
 Provides: libgearman-server-dev
 Replaces: libgearman-server-dev
 Conflicts: libgearman-server-dev
@@ -65,7 +65,7 @@ Description: Development files for the Gearman Library
 Package: libgearman-dbg
 Section: debug
 Architecture: any
-Depends: libgearman6 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: libgearman7 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: Debug symbols for the Gearman Client Library
  Gearman is a system to farm out work to other machines, dispatching function
  calls to machines that are better suited to do work, to do work in parallel,
@@ -101,7 +101,7 @@ Architecture: any
 Provides: gearman-worker
 Conflicts: gearman-worker
 Replaces: gearman-worker
-Depends: libgearman6 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: libgearman7 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: Tools for the Gearman distributed job queue
  Gearman is a system to farm out work to other machines, dispatching function
  calls to machines that are better suited to do work, to do work in parallel,
