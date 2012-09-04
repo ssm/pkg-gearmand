@@ -51,8 +51,9 @@ using namespace libtest;
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif
 
-#include <tests/workers.h>
 #include <tests/start_worker.h>
+
+#include "tests/workers/v2/echo_or_react.h"
 
 #define WORKER_FUNCTION_NAME "echo_function"
 
@@ -73,7 +74,7 @@ struct Context
 
   void shutdown_workers()
   {
-    for (std::vector<worker_handle_st *>::iterator iter= _workers.begin(); iter != _workers.end(); iter++)
+    for (std::vector<worker_handle_st *>::iterator iter= _workers.begin(); iter != _workers.end(); ++iter)
     {
       delete *iter;
     }
@@ -160,13 +161,16 @@ static test_return_t gearadmin_shutdown_test(void *object)
 
   Server *server= context->servers.pop_server();
   test_true(server);
+  
+  // We will now quiet down the false error about it not being able to restart
+  server->out_of_ban_killed(true);
+
   while (server->ping()) 
   {
     // Wait out the death of the server
   }
 
   // Since we killed the server above, we need to reset it
-  server->reset();
   delete server;
 
   return TEST_SUCCESS;
@@ -297,7 +301,7 @@ static void *world_create(server_startup_st& servers, test_return_t& error)
 {
   if (server_startup(servers, "gearmand", default_port(), 0, NULL) == false)
   {
-    error= TEST_FAILURE;
+    error= TEST_SKIPPED;
     return NULL;
   }
 
@@ -326,9 +330,9 @@ static bool world_destroy(void *object)
 }
 
 
-void get_world(Framework *world)
+void get_world(libtest::Framework *world)
 {
-  world->collections= collection;
-  world->_create= world_create;
-  world->_destroy= world_destroy;
+  world->collections(collection);
+  world->create(world_create);
+  world->destroy(world_destroy);
 }

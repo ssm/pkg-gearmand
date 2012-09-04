@@ -38,6 +38,10 @@
 
 #include <spawn.h>
 
+// http://www.gnu.org/software/automake/manual/automake.html#Using-the-TAP-test-protocol
+#define EXIT_SKIP 77
+#define EXIT_FATAL 77
+
 namespace libtest {
 
 class Application {
@@ -51,6 +55,26 @@ public:
     FAILURE= EXIT_FAILURE,
     INVALID= 127
   };
+
+  static const char* toString(error_t arg)
+  {
+    switch (arg)
+    {
+    case Application::SUCCESS:
+      return "EXIT_SUCCESS";
+
+    case Application::FAILURE:
+      return "EXIT_FAILURE";
+
+    case Application::INVALID:
+      return "127";
+
+    default:
+      break;
+    }
+
+    return "EXIT_UNKNOWN";
+  }
 
   class Pipe {
   public:
@@ -66,8 +90,7 @@ public:
 
     void reset();
     void close(const close_t& arg);
-    void dup_for_spawn(const close_t& arg,
-                       posix_spawn_file_actions_t& file_actions);
+    void dup_for_spawn(posix_spawn_file_actions_t& file_actions);
 
     void nonblock();
     void cloexec();
@@ -89,6 +112,7 @@ public:
   void add_long_option(const std::string& option_name, const std::string& option_value);
   error_t run(const char *args[]= NULL);
   error_t wait(bool nohang= true);
+  Application::error_t join();
 
   libtest::vchar_t stdout_result() const
   {
@@ -173,7 +197,7 @@ private:
   Pipe stdin_fd;
   Pipe stdout_fd;
   Pipe stderr_fd;
-  char * * built_argv;
+  libtest::vchar_ptr_t built_argv;
   pid_t _pid;
   libtest::vchar_t _stdout_buffer;
   libtest::vchar_t _stderr_buffer;
@@ -181,25 +205,7 @@ private:
 
 static inline std::ostream& operator<<(std::ostream& output, const enum Application::error_t &arg)
 {
-  switch (arg)
-  {
-    case Application::SUCCESS:
-      output << "EXIT_SUCCESS";
-      break;
-
-    case Application::FAILURE:
-      output << "EXIT_FAILURE";
-      break;
-
-    case Application::INVALID:
-      output << "127";
-      break;
-
-    default:
-      output << "EXIT_UNKNOWN";
-  }
-
-  return output;
+  return output << Application::toString(arg);
 }
 
 int exec_cmdline(const std::string& executable, const char *args[], bool use_libtool= false);

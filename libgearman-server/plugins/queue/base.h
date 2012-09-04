@@ -38,23 +38,18 @@
 #pragma once
 
 #include <libgearman-server/plugins/base.h>
-#include <libgearman-server/queue.h>
+#include <libgearman-server/queue.hpp>
 
 namespace gearmand {
 namespace plugins {
 
 class Queue : public gearmand::Plugin {
 public:
-  Queue(const std::string &arg) :
-    Plugin(arg)
-  {
-    gearmand::queue::add(this);
-  }
+  Queue(const std::string &arg);
 
   virtual gearmand_error_t initialize()= 0;
 
-  virtual ~Queue()
-  {};
+  virtual ~Queue()= 0;
 
   typedef std::vector<Queue *> vector;
 

@@ -36,19 +36,46 @@
 
 #pragma once
 
+#include <stdbool.h>
+
+#include "libhostile/visibility.h"
+
+enum hostile_poll_t
+{
+  HOSTILE_POLL_CLOSED,
+  HOSTILE_POLL_SHUT_WR,
+  HOSTILE_POLL_SHUT_RD
+};
+
+#ifndef __cplusplus
+typedef enum hostile_poll_t hostile_poll_t;
+#endif
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#if defined(HAVE_LIBHOSTILE) && HAVE_LIBHOSTILE
-void set_accept_close(bool arg, int frequency, int not_until_arg);
-void set_recv_close(bool arg, int frequency, int not_until_arg);
-void set_send_close(bool arg, int frequency, int not_until_arg);
-#else
-#define set_accept_close( __arg, __frequency, __not_until_arg);
-#define set_recv_close( __arg, __frequency, __not_until_arg);
-#define set_send_close( __arg, __frequency, __not_until_arg);
-#endif
+LIBHOSTILE_API
+  bool libhostile_is_accept(void);
+
+LIBHOSTILE_API
+  void set_poll_close(bool arg, int frequency, int not_until_arg, enum hostile_poll_t poll_type);
+
+LIBHOSTILE_API
+  void set_accept_close(bool arg, int frequency, int not_until_arg);
+
+LIBHOSTILE_API
+  void set_recv_corrupt(bool arg, int frequency, int not_until_arg);
+
+LIBHOSTILE_API
+  void set_recv_close(bool arg, int frequency, int not_until_arg);
+
+LIBHOSTILE_API
+  void set_send_close(bool arg, int frequency, int not_until_arg);
+
+LIBHOSTILE_API
+  void hostile_dump(void);
 
 #ifdef __cplusplus
 }

@@ -40,6 +40,9 @@
 
 #include <libgearman/unique.hpp>
 #include <libgearman/result.hpp>
+
+#include "libgearman/assert.hpp"
+
 #include <memory>
 
 struct gearman_result_st;
@@ -54,9 +57,9 @@ static gearman_return_t _client_pause_data(gearman_task_st *task)
 
   if (gearman_task_data_size(task))
   {
-    if (task->result_ptr)
+    if (gearman_task_result(task))
     {
-      task->result_ptr->clear();
+      gearman_task_result(task)->clear();
     }
     else
     {
@@ -92,6 +95,7 @@ static gearman_return_t _client_pause_complete(gearman_task_st *task)
 static gearman_return_t _client_pause_status(gearman_task_st *task)
 {
   assert_msg(task->recv->command == GEARMAN_COMMAND_WORK_STATUS or
+             task->recv->command == GEARMAN_COMMAND_STATUS_RES_UNIQUE or
              task->recv->command == GEARMAN_COMMAND_STATUS_RES, "status has been called out of order for task, or was registered to run on non-status callback, see gearman_actions_t(3)");
   if (task->options.is_paused)
   {
@@ -121,10 +125,10 @@ static gearman_return_t _client_do_data(gearman_task_st *task)
 {
   if (gearman_task_data_size(task))
   {
-    if (not task->result_ptr)
+    if (gearman_task_result(task) == NULL)
     {
       task->result_ptr= new (std::nothrow) gearman_result_st(gearman_task_data_size(task));
-      if (not task->result_ptr)
+      if (task->result_ptr == NULL)
       {
         return GEARMAN_MEMORY_ALLOCATION_FAILURE;
       }
@@ -140,10 +144,10 @@ static gearman_return_t _client_do_complete(gearman_task_st *task)
 {
   if (gearman_task_data_size(task))
   {
-    if (not task->result_ptr)
+    if (gearman_task_result(task) == NULL)
     {
       task->result_ptr= new (std::nothrow) gearman_result_st(gearman_task_data_size(task));
-      if (not task->result_ptr)
+      if (task->result_ptr == NULL)
       {
         return GEARMAN_MEMORY_ALLOCATION_FAILURE;
       }

@@ -1,9 +1,39 @@
-/* Gearman server and library
- * Copyright (C) 2008 Brian Aker, Eric Day
- * All rights reserved.
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -17,6 +47,7 @@
 
 #include <cassert>
 #include <cerrno>
+#include <memory>
 
 #include <libgearman-server/list.h>
 
@@ -48,19 +79,16 @@ static void _clear_events(gearmand_thread_st *thread);
 
 gearmand_error_t gearmand_thread_create(gearmand_st *gearmand)
 {
-  gearmand_thread_st *thread;
-  gearmand_error_t ret;
-
-  thread= static_cast<gearmand_thread_st *>(malloc(sizeof(gearmand_thread_st)));
-  if (not thread)
+  gearmand_thread_st* thread= new (std::nothrow) gearmand_thread_st;
+  if (thread == NULL)
   {
-    return gearmand_merror("malloc", gearmand_thread_st, 1);
+    return gearmand_merror("new", gearmand_thread_st, 1);
   }
 
   if (! gearman_server_thread_init(gearmand_server(gearmand), &(thread->server_thread),
                                    _log, thread, gearmand_connection_watch))
   {
-    free(thread);
+    delete thread;
     gearmand_fatal("gearman_server_thread_init(NULL)");
     return GEARMAN_MEMORY_ALLOCATION_FAILURE;
   }
@@ -99,7 +127,7 @@ gearmand_error_t gearmand_thread_create(gearmand_st *gearmand)
     }
   }
 
-  ret= _wakeup_init(thread);
+  gearmand_error_t ret= _wakeup_init(thread);
   if (ret != GEARMAN_SUCCESS)
   {
     gearmand_thread_free(thread);
@@ -108,7 +136,9 @@ gearmand_error_t gearmand_thread_create(gearmand_st *gearmand)
 
   /* If we are not running multi-threaded, just return the thread context. */
   if (gearmand->threads == 0)
+  {
     return GEARMAN_SUCCESS;
+  }
 
   thread->count= gearmand->thread_count;
 
@@ -147,8 +177,6 @@ gearmand_error_t gearmand_thread_create(gearmand_st *gearmand)
 
 void gearmand_thread_free(gearmand_thread_st *thread)
 {
-  gearmand_con_st *dcon;
-
   if (Gearmand()->threads && thread->count > 0)
   {
     gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Shutting down thread %u", thread->count);
@@ -171,17 +199,17 @@ void gearmand_thread_free(gearmand_thread_st *thread)
 
   while (thread->dcon_add_list != NULL)
   {
-    dcon= thread->dcon_add_list;
+    gearmand_con_st* dcon= thread->dcon_add_list;
     thread->dcon_add_list= dcon->next;
     gearmand_sockfd_close(dcon->fd);
-    free(dcon);
+    delete dcon;
   }
 
   while (thread->free_dcon_list != NULL)
   {
-    dcon= thread->free_dcon_list;
+    gearmand_con_st* dcon= thread->free_dcon_list;
     thread->free_dcon_list= dcon->next;
-    free(dcon);
+    delete dcon;
   }
 
   gearman_server_thread_free(&(thread->server_thread));
@@ -198,7 +226,7 @@ void gearmand_thread_free(gearmand_thread_st *thread)
     gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Thread %u shutdown complete", thread->count);
   }
 
-  free(thread);
+  delete thread;
 }
 
 void gearmand_thread_wakeup(gearmand_thread_st *thread,
@@ -221,13 +249,14 @@ void gearmand_thread_run(gearmand_thread_st *thread)
     gearmand_error_t ret;
     gearmand_con_st *dcon= gearman_server_thread_run(&(thread->server_thread), &ret);
 
-    if (ret == GEARMAN_SUCCESS || ret == GEARMAN_IO_WAIT ||
+    if (ret == GEARMAN_SUCCESS or
+        ret == GEARMAN_IO_WAIT or
         ret == GEARMAN_SHUTDOWN_GRACEFUL)
     {
       return;
     }
 
-    if (not dcon)
+    if (dcon == NULL)
     {
       /* We either got a GEARMAN_SHUTDOWN or some other fatal internal error.
          Either way, we want to shut the server down. */
@@ -254,7 +283,12 @@ static void *_thread(void *data)
   gearmand_thread_st *thread= (gearmand_thread_st *)data;
   char buffer[BUFSIZ];
 
-  snprintf(buffer, sizeof(buffer), "[%6u ]", thread->count);
+  int length= snprintf(buffer, sizeof(buffer), "[%6u ]", thread->count);
+  if (length <= 0 or sizeof(length) >= sizeof(buffer))
+  {
+    assert(0);
+    buffer[0]= 0;
+  }
 
   gearmand_initialize_thread_logging(buffer);
 

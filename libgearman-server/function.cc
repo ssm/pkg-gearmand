@@ -1,9 +1,39 @@
-/* Gearman server and library
- * Copyright (C) 2008 Brian Aker, Eric Day
- * All rights reserved.
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -13,7 +43,9 @@
 
 #include <config.h>
 #include <libgearman-server/common.h>
+
 #include <cstring>
+#include <memory>
 
 #include <libgearman-server/list.h>
 
@@ -21,7 +53,33 @@
  * Public definitions
  */
 
-static gearman_server_function_st * gearman_server_function_create(gearman_server_st *server);
+static gearman_server_function_st* gearman_server_function_create(gearman_server_st *server)
+{
+  gearman_server_function_st* function= new (std::nothrow) gearman_server_function_st;
+
+  if (function == NULL)
+  {
+    gearmand_merror("new gearman_server_function_st", gearman_server_function_st, 0);
+    return NULL;
+  }
+
+  function->worker_count= 0;
+  function->job_count= 0;
+  function->job_total= 0;
+  function->job_running= 0;
+  memset(function->max_queue_size, GEARMAN_DEFAULT_MAX_QUEUE_SIZE,
+         sizeof(uint32_t) * GEARMAN_JOB_PRIORITY_MAX);
+  function->function_name_size= 0;
+  gearmand_server_list_add(server, function);
+  function->function_name= NULL;
+  function->worker_list= NULL;
+  memset(function->job_list, 0,
+         sizeof(gearman_server_job_st *) * GEARMAN_JOB_PRIORITY_MAX);
+  memset(function->job_end, 0,
+         sizeof(gearman_server_job_st *) * GEARMAN_JOB_PRIORITY_MAX);
+
+  return function;
+}
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -37,21 +95,23 @@ gearman_server_function_get(gearman_server_st *server,
   for (function= server->function_list; function != NULL;
        function= function->next)
   {
-    if (function->function_name_size == function_name_size &&
-        !memcmp(function->function_name, function_name, function_name_size))
+    if (function->function_name_size == function_name_size and
+        memcmp(function->function_name, function_name, function_name_size) == 0)
     {
       return function;
     }
   }
 
   function= gearman_server_function_create(server);
-  if (not function)
-    return NULL;
-
-  function->function_name= (char *)malloc(function_name_size +1);
-  if (not function->function_name)
+  if (function == NULL)
   {
-    gearmand_merror("malloc", char,  function_name_size +1);
+    return NULL;
+  }
+
+  function->function_name= new char[function_name_size +1];
+  if (function->function_name == NULL)
+  {
+    gearmand_merror("new[]", char,  function_name_size +1);
     gearman_server_function_free(server, function);
     return NULL;
   }
@@ -63,46 +123,11 @@ gearman_server_function_get(gearman_server_st *server,
   return function;
 }
 
-static gearman_server_function_st * gearman_server_function_create(gearman_server_st *server)
-{
-  gearman_server_function_st *function;
-
-  function= (gearman_server_function_st *)malloc(sizeof(gearman_server_function_st));
-
-  if (function == NULL)
-  {
-    gearmand_merror("malloc", gearman_server_function_st, 0);
-    return NULL;
-  }
-
-  function->worker_count= 0;
-  function->job_count= 0;
-  function->job_total= 0;
-  function->job_running= 0;
-  memset(function->max_queue_size, GEARMAN_DEFAULT_MAX_QUEUE_SIZE,
-         sizeof(uint32_t) * GEARMAND_JOB_PRIORITY_MAX);
-  function->function_name_size= 0;
-  gearmand_server_list_add(server, function);
-  function->function_name= NULL;
-  function->worker_list= NULL;
-  memset(function->job_list, 0,
-         sizeof(gearman_server_job_st *) * GEARMAND_JOB_PRIORITY_MAX);
-  memset(function->job_end, 0,
-         sizeof(gearman_server_job_st *) * GEARMAND_JOB_PRIORITY_MAX);
-
-  return function;
-}
-
 void gearman_server_function_free(gearman_server_st *server, gearman_server_function_st *function)
 {
-  if (function->function_name != NULL)
-  {
-    gearmand_debug("free");
-    free(function->function_name);
-  }
+  delete function->function_name;
 
   gearmand_server_list_free(server, function);
 
-  gearmand_debug("free");
-  free(function);
+  delete function;
 }

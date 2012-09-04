@@ -36,24 +36,17 @@
 
 #include <config.h>
 
-/*
-  Random accept failing library for testing accept failures.
-  LD_PRELOAD="/usr/lib/libdl.so ./util/libhostile_accept.so" ./binary
-*/
-
-//#define _GNU_SOURCE
-#include <dlfcn.h>
-
 #include <errno.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <libhostile/initialize.h>
-
+#include <libhostile/function.h>
 
 static int not_until= 500;
 
@@ -63,6 +56,21 @@ static pthread_once_t function_lookup_once = PTHREAD_ONCE_INIT;
 static void set_local(void)
 {
   __function= set_function("accept", "HOSTILE_SEND");
+}
+
+bool libhostile_is_accept(void)
+{
+  hostile_initialize();
+
+  (void) pthread_once(&function_lookup_once, set_local);
+
+  fprintf(stderr, "libhostile_is_accept() %s\n", __function.frequency ? "true" : "false");
+  if (__function.frequency)
+  {
+    return true;
+  }
+
+  return false;
 }
 
 void set_accept_close(bool arg, int frequency, int not_until_arg)
@@ -86,26 +94,33 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 
   (void) pthread_once(&function_lookup_once, set_local);
 
-  if (is_getaddrinfo() == false && __function.frequency)
+  if (is_called() == false)
   {
-    if (--not_until < 0 && random() % __function.frequency)
+    if (__function.frequency)
     {
-      if (random() % 1)
+      if (--not_until < 0 && rand() % __function.frequency)
       {
-        shutdown(sockfd, SHUT_RDWR);
-        close(sockfd);
-        errno= ECONNABORTED;
-        return -1;
-      }
-      else
-      {
-        shutdown(sockfd, SHUT_RDWR);
-        close(sockfd);
-        errno= EMFILE;
-        return -1;
+        if (rand() % 1)
+        {
+          shutdown(sockfd, SHUT_RDWR);
+          close(sockfd);
+          errno= ECONNABORTED;
+          return -1;
+        }
+        else
+        {
+          shutdown(sockfd, SHUT_RDWR);
+          close(sockfd);
+          errno= EMFILE;
+          return -1;
+        }
       }
     }
   }
 
-  return __function.function.accept(sockfd, addr, addrlen);
+  set_called();
+  int ret= __function.function.accept(sockfd, addr, addrlen);
+  reset_called();
+
+  return ret;
 }

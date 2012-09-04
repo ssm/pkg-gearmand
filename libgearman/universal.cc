@@ -45,7 +45,8 @@
 #include <config.h>
 #include <libgearman/common.h>
 
-#include <cassert>
+#include "libgearman/assert.hpp"
+
 #include <cerrno>
 #include <cstdarg>
 #include <cstdio>
@@ -57,9 +58,7 @@
 void gearman_universal_initialize(gearman_universal_st &self, const gearman_universal_options_t *options)
 {
   { // Set defaults on all options.
-    self.options.dont_track_packets= false;
     self.options.non_blocking= false;
-    self.options.stored_non_blocking= false;
   }
 
   if (options)
@@ -133,7 +132,6 @@ void gearman_universal_clone(gearman_universal_st &destination, const gearman_un
   }
 
   (void)gearman_universal_set_option(destination, GEARMAN_NON_BLOCKING, source.options.non_blocking);
-  (void)gearman_universal_set_option(destination, GEARMAN_DONT_TRACK_PACKETS, source.options.dont_track_packets);
 
   destination.timeout= source.timeout;
 
@@ -172,7 +170,6 @@ gearman_return_t gearman_universal_set_option(gearman_universal_st &self, gearma
     break;
 
   case GEARMAN_DONT_TRACK_PACKETS:
-    self.options.dont_track_packets= value;
     break;
 
   case GEARMAN_MAX:
@@ -269,7 +266,7 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
     }
 
     universal.pfds= pfds;
-    universal.pfds_size= con_count;
+    universal.pfds_size= int(con_count);
   }
   else
   {
@@ -280,7 +277,9 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
   for (gearman_connection_st *con= universal.con_list; con; con= con->next)
   {
     if (con->events == 0)
+    {
       continue;
+    }
 
     pfds[x].fd= con->fd;
     pfds[x].events= con->events;
@@ -387,26 +386,9 @@ gearman_connection_st *gearman_ready(gearman_universal_st& universal)
   return NULL;
 }
 
-/**
-  @note _push_blocking is only used for echo (and should be fixed
-  when tricky flip/flop in IO is fixed).
-*/
-static inline void _push_blocking(gearman_universal_st& universal, bool &orig_block_universal)
-{
-  orig_block_universal= universal.options.non_blocking;
-  universal.options.non_blocking= false;
-}
-
-static inline void _pop_non_blocking(gearman_universal_st& universal, bool orig_block_universal)
-{
-  universal.options.non_blocking= orig_block_universal;
-}
-
 gearman_return_t gearman_set_identifier(gearman_universal_st& universal,
                                         const char *id, size_t id_size)
 {
-  bool orig_block_universal;
-
   if (id == NULL)
   {
     return gearman_error(universal, GEARMAN_INVALID_ARGUMENT, "id was NULL");
@@ -434,74 +416,145 @@ gearman_return_t gearman_set_identifier(gearman_universal_st& universal,
   gearman_return_t ret= gearman_packet_create_args(universal, packet, GEARMAN_MAGIC_REQUEST,
                                                    GEARMAN_COMMAND_SET_CLIENT_ID,
                                                    (const void**)&id, &id_size, 1);
-  if (gearman_failed(ret))
+  if (gearman_success(ret))
   {
-#if 0
-    assert_msg(universal.error.rc != GEARMAN_SUCCESS, "Programmer error, error returned but not recorded");
-#endif
-    gearman_packet_free(&packet);
-    return ret;
+    PUSH_BLOCKING(universal);
+
+    for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+    {
+      gearman_return_t local_ret= con->send_packet(packet, true);
+      if (gearman_failed(local_ret))
+      {
+        ret= local_ret;
+      }
+
+    }
   }
 
-  _push_blocking(universal, orig_block_universal);
+  gearman_packet_free(&packet);
+
+  return ret;
+}
+
+class Check {
+public:
+  virtual gearman_return_t success(gearman_connection_st*)= 0;
+
+  virtual ~Check() {};
+};
+
+class EchoCheck : public Check {
+public:
+  EchoCheck(gearman_universal_st& universal_,
+            const void *workload_, const size_t workload_size_) :
+    _universal(universal_),
+    _workload(workload_),
+    _workload_size(workload_size_)
+  {
+  }
+
+  gearman_return_t success(gearman_connection_st* con)
+  {
+    if (con->_packet.command != GEARMAN_COMMAND_ECHO_RES)
+    {
+      return gearman_error(_universal, GEARMAN_INVALID_COMMAND, "Wrong command sent in response to ECHO request");
+    }
+
+    if (con->_packet.data_size != _workload_size or
+        memcmp(_workload, con->_packet.data, _workload_size))
+    {
+      return gearman_error(_universal, GEARMAN_ECHO_DATA_CORRUPTION, "corruption during echo");
+    }
+
+    return GEARMAN_SUCCESS;
+  }
+
+private:
+  gearman_universal_st& _universal;
+  const void *_workload;
+  const size_t _workload_size;
+};
+
+class OptionCheck : public Check {
+public:
+  OptionCheck(gearman_universal_st& universal_):
+    _universal(universal_)
+  { }
+
+  gearman_return_t success(gearman_connection_st* con)
+  {
+    if (con->_packet.command == GEARMAN_COMMAND_ERROR)
+    {
+      return gearman_error(_universal, GEARMAN_INVALID_ARGUMENT, "invalid server option");
+    }
+
+    return GEARMAN_SUCCESS;
+  }
+
+private:
+  gearman_universal_st& _universal;
+};
+
+static gearman_return_t connection_loop(gearman_universal_st& universal,
+                                        const gearman_packet_st& message,
+                                        Check& check)
+{
+  gearman_return_t ret= GEARMAN_SUCCESS;
 
   for (gearman_connection_st *con= universal.con_list; con; con= con->next)
   {
-    ret= con->send_packet(packet, true);
+    ret= con->send_packet(message, true);
     if (gearman_failed(ret))
     {
 #if 0
       assert_msg(con->universal.error.rc != GEARMAN_SUCCESS, "Programmer error, error returned but not recorded");
 #endif
-      goto exit;
+      break;
     }
 
     con->options.packet_in_use= true;
     gearman_packet_st *packet_ptr= con->receiving(con->_packet, ret, true);
+    if (packet_ptr == NULL)
+    {
+      break;
+    }
+
+    assert(packet_ptr == &con->_packet);
     if (gearman_failed(ret))
     {
 #if 0
       assert_msg(con->universal.error.rc != GEARMAN_SUCCESS, "Programmer error, error returned but not recorded");
 #endif
       con->free_private_packet();
-      con->set_recv_packet(NULL);
+      con->reset_recv_packet();
 
-      goto exit;
+      break;
     }
     assert(packet_ptr);
 
-    if (con->_packet.data_size != id_size or
-        memcmp(id, con->_packet.data, id_size))
+    if (gearman_failed(ret= check.success(con)))
     {
 #if 0
       assert_msg(con->universal.error.rc != GEARMAN_SUCCESS, "Programmer error, error returned but not recorded");
 #endif
       con->free_private_packet();
-      con->set_recv_packet(NULL);
-      ret= gearman_error(universal, GEARMAN_ECHO_DATA_CORRUPTION, "corruption during echo");
+      con->reset_recv_packet();
 
-      goto exit;
+      break;
     }
 
-    con->set_recv_packet(NULL);
+    con->reset_recv_packet();
     con->free_private_packet();
   }
 
-  ret= GEARMAN_SUCCESS;
-
-exit:
-  gearman_packet_free(&packet);
-  _pop_non_blocking(universal, orig_block_universal);
-
   return ret;
 }
+
 
 gearman_return_t gearman_echo(gearman_universal_st& universal,
                               const void *workload,
                               size_t workload_size)
 {
-  bool orig_block_universal;
-
   if (workload == NULL)
   {
     return gearman_error(universal, GEARMAN_INVALID_ARGUMENT, "workload was NULL");
@@ -517,68 +570,25 @@ gearman_return_t gearman_echo(gearman_universal_st& universal,
     return gearman_error(universal, GEARMAN_ARGUMENT_TOO_LARGE,  "workload_size was greater then GEARMAN_MAX_ECHO_SIZE");
   }
 
-  gearman_packet_st packet;
-  gearman_return_t ret= gearman_packet_create_args(universal, packet, GEARMAN_MAGIC_REQUEST,
+  gearman_packet_st message;
+  gearman_return_t ret= gearman_packet_create_args(universal, message, GEARMAN_MAGIC_REQUEST,
                                                    GEARMAN_COMMAND_ECHO_REQ,
                                                    &workload, &workload_size, 1);
-  if (gearman_failed(ret))
+  if (gearman_success(ret))
   {
-#if 0
-    assert_msg(universal.error.rc != GEARMAN_SUCCESS, "Programmer error, error returned but not recorded");
-#endif
-    gearman_packet_free(&packet);
+    PUSH_BLOCKING(universal);
+
+    EchoCheck check(universal, workload, workload_size);
+    ret= connection_loop(universal, message, check);
+  }
+  else
+  {
+    gearman_packet_free(&message);
+    gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "gearman_packet_create_args()");
     return ret;
   }
 
-  _push_blocking(universal, orig_block_universal);
-
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
-  {
-    ret= con->send_packet(packet, true);
-    if (gearman_failed(ret))
-    {
-#if 0
-      assert_msg(con->universal.error.rc != GEARMAN_SUCCESS, "Programmer error, error returned but not recorded");
-#endif
-      goto exit;
-    }
-
-    con->options.packet_in_use= true;
-    gearman_packet_st *packet_ptr= con->receiving(con->_packet, ret, true);
-    if (gearman_failed(ret))
-    {
-#if 0
-      assert_msg(con->universal.error.rc != GEARMAN_SUCCESS, "Programmer error, error returned but not recorded");
-#endif
-      con->free_private_packet();
-      con->set_recv_packet(NULL);
-
-      goto exit;
-    }
-    assert(packet_ptr);
-
-    if (con->_packet.data_size != workload_size or
-        memcmp(workload, con->_packet.data, workload_size))
-    {
-#if 0
-      assert_msg(con->universal.error.rc != GEARMAN_SUCCESS, "Programmer error, error returned but not recorded");
-#endif
-      con->free_private_packet();
-      con->set_recv_packet(NULL);
-      ret= gearman_error(universal, GEARMAN_ECHO_DATA_CORRUPTION, "corruption during echo");
-
-      goto exit;
-    }
-
-    con->set_recv_packet(NULL);
-    con->free_private_packet();
-  }
-
-  ret= GEARMAN_SUCCESS;
-
-exit:
-  gearman_packet_free(&packet);
-  _pop_non_blocking(universal, orig_block_universal);
+  gearman_packet_free(&message);
 
   return ret;
 }
@@ -586,64 +596,29 @@ exit:
 bool gearman_request_option(gearman_universal_st &universal,
                             gearman_string_t &option)
 {
-  bool orig_block_universal;
-
   const void *args[]= { gearman_c_str(option) };
   size_t args_size[]= { gearman_size(option) };
 
-  gearman_packet_st packet;
-  gearman_return_t ret= gearman_packet_create_args(universal, packet, GEARMAN_MAGIC_REQUEST,
+  gearman_packet_st message;
+  gearman_return_t ret= gearman_packet_create_args(universal, message, GEARMAN_MAGIC_REQUEST,
                                                    GEARMAN_COMMAND_OPTION_REQ,
                                                    args, args_size, 1);
-  if (gearman_failed(ret))
+
+  if (gearman_success(ret))
   {
-    gearman_packet_free(&packet);
+    PUSH_BLOCKING(universal);
+
+    OptionCheck check(universal);
+    ret= connection_loop(universal, message, check);
+  }
+  else
+  {
+    gearman_packet_free(&message);
     gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "gearman_packet_create_args()");
     return ret;
   }
 
-  _push_blocking(universal, orig_block_universal);
-
-  for (gearman_connection_st *con= universal.con_list; con != NULL; con= con->next)
-  {
-    ret= con->send_packet(packet, true);
-    if (gearman_failed(ret))
-    {
-      goto exit;
-    }
-
-    gearman_packet_st recv_packet;
-    assert(con->recv_state == GEARMAN_CON_RECV_UNIVERSAL_NONE);
-    gearman_packet_st *packet_ptr= con->receiving(recv_packet, ret, true);
-    if (ret == GEARMAN_NOT_CONNECTED)
-    {
-      goto exit;
-    }
-    else if (gearman_failed(ret))
-    {
-      con->set_recv_packet(NULL);
-      gearman_packet_free(&recv_packet);
-      goto exit;
-    }
-    assert(packet_ptr);
-
-    if (packet_ptr->command == GEARMAN_COMMAND_ERROR)
-    {
-      con->set_recv_packet(NULL);
-      gearman_packet_free(&recv_packet);
-      ret= gearman_error(universal, GEARMAN_INVALID_ARGUMENT, "invalid server option");
-
-      goto exit;
-    }
-
-    gearman_packet_free(&recv_packet);
-  }
-
-  ret= GEARMAN_SUCCESS;
-
-exit:
-  gearman_packet_free(&packet);
-  _pop_non_blocking(universal, orig_block_universal);
+  gearman_packet_free(&message);
 
   return gearman_success(ret);
 }
@@ -671,4 +646,9 @@ void gearman_universal_set_namespace(gearman_universal_st& universal, const char
 {
   gearman_string_free(universal._namespace);
   universal._namespace= gearman_string_create(NULL, namespace_key, namespace_key_size);
+}
+
+const char *gearman_univeral_namespace(gearman_universal_st& universal)
+{
+  return gearman_string_value(universal._namespace);
 }

@@ -426,6 +426,8 @@ static test_return_t http_port_test(void *)
 
 static test_return_t config_file_TEST(void *)
 {
+  test_compare(-1, access("etc/gearmand.conf", R_OK));
+
   const char *args[]= { "--check-args", "--config-file=etc/gearmand.conf", 0 };
 
   test_compare(EXIT_FAILURE, exec_cmdline(gearmand_binary(), args, true));
@@ -456,18 +458,31 @@ static test_return_t config_file_SIMPLE_TEST(void *)
 
   std::string config_file= "etc/gearmand.conf";
   {
+    char current_directory_buffer[1024];
+    char *current_directory= getcwd(current_directory_buffer, sizeof(current_directory_buffer));
+
+    std::string config_path;
+
+    config_path+= current_directory;
+    config_path+= "/";
+    config_path+= config_file;
+
+
     std::fstream file_stream;
-    file_stream.open(config_file.c_str(), std::fstream::out | std::fstream::trunc);
+    file_stream.open(config_path.c_str(), std::fstream::out | std::fstream::trunc);
 
-    file_stream 
-      << "--port " << port_str << std::endl;
+    test_true(file_stream.good());
 
-    fatal_assert(file_stream.good());
+    file_stream << "--port " << port_str << std::endl;
+
+    test_true(file_stream.good());
     file_stream.close();
   }
-  test_compare(0, access(config_file.c_str(), R_OK));
+  test_zero(access(config_file.c_str(), R_OK));
 
-  const char *args[]= { "--check-args", "--config-file=etc/gearmand.conf", 0 };
+  char args_buffer[1024];
+  snprintf(args_buffer, sizeof(args_buffer), "--config-file=%s", config_file.c_str()); 
+  const char *args[]= { "--check-args", args_buffer, 0 };
 
   test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
   unlink(config_file.c_str());
@@ -564,15 +579,21 @@ test_st maxqueue_TESTS[] ={
   {0, 0, 0}
 };
 
+static test_return_t option_SETUP(void*)
+{
+  unlink("etc/gearmand.conf");
+  return TEST_SUCCESS;
+}
+
 collection_st collection[] ={
   { "bad options", 0, 0, bad_option_TESTS },
-  { "basic options", 0, 0, gearmand_option_tests },
+  { "basic options", option_SETUP, 0, gearmand_option_tests },
   { "httpd options", 0, 0, gearmand_httpd_option_tests },
   { "maxqueue", 0, 0, maxqueue_TESTS },
   {0, 0, 0, 0}
 };
 
-void get_world(Framework *world)
+void get_world(libtest::Framework *world)
 {
-  world->collections= collection;
+  world->collections(collection);
 }

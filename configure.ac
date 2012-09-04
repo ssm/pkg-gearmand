@@ -1,33 +1,27 @@
 # Gearman server and library
-# Copyright (C) 2011 Data Differential, http://datadifferential.com/
+# Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
 # Copyright (C) 2008 Brian Aker, Eric Day, Monty Taylor
 # All rights reserved.
 #
 # Use and distribution licensed under the BSD license.  See
 # the COPYING file in this directory for full text.
 
-AC_INIT([gearmand],[0.33],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
-
-AC_CONFIG_AUX_DIR(config)
+AC_INIT([gearmand],[0.37],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+AC_CONFIG_AUX_DIR([config])
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_CANONICAL_TARGET
+AC_ARG_PROGRAM
+AC_USE_SYSTEM_EXTENSIONS
 
-AM_INIT_AUTOMAKE(-Wall -Werror -Wno-portability subdir-objects foreign tar-ustar)
-
-AC_CANONICAL_HOST
-AC_CANONICAL_BUILD
+AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability subdir-objects foreign tar-ustar])
 
 AC_PREREQ([2.63])
 
-AC_CONFIG_MACRO_DIR(m4)
-
 AC_CONFIG_HEADERS([config.h:config.in])dnl Keep filename to 8.3 for MS-DOS.
-
 AC_CONFIG_SRCDIR(libgearman/gearman.cc)
 
-PANDORA_CANONICAL_TARGET(require-cxx, no-vc-changelog)
-
-GEARMAN_LIBRARY_VERSION=6:0:0
+GEARMAN_LIBRARY_VERSION=7:0:0
 #                       | | |
 #                +------+ | +---+
 #                |        |     |
@@ -41,17 +35,17 @@ GEARMAN_LIBRARY_VERSION=6:0:0
 #                +- increment if interfaces have been added, removed or changed
 AC_SUBST(GEARMAN_LIBRARY_VERSION)
 
-LT_PREREQ([2.2])
+LT_PREREQ([2.4])
 LT_INIT([disable-static])
 LT_LANG([C++])
 gl_VISIBILITY
+PANDORA_PLATFORM
+m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
 AX_CXX_HEADER_STDCXX_98
   if test "$ax_cv_cxx_stdcxx_98" = no; then
     AC_MSG_ERROR([Your system lacks a new enough C++ compiler])
   fi
-
-AX_PTHREAD(, [AC_MSG_ERROR(could not find libpthread)])
 
 dnl First look for Boost, maybe for a specific minimum version:
 BOOST_REQUIRE([1.39])
@@ -60,6 +54,8 @@ BOOST_THREADS
 
 AX_CXX_CINTTYPES
 CONFIG_EXTRA
+
+m4_include([libtest/yatl.m4])
 
 WITH_LIBMEMCACHED
 m4_include([m4/memcached.m4])
@@ -89,6 +85,7 @@ AX_LIB_CURL([7.21.7],
               ]
              )
 
+m4_include([m4/have_sphinx.m4])
 m4_include([m4/drizzled.m4])
 WITH_LIBDRIZZLE
 
@@ -106,6 +103,7 @@ AC_DEFINE([HAVE_MEMCACHED_LIGHT_BINARY], [0], [Support for memcached_light])
 AC_DEFINE([MEMCACHED_LIGHT_BINARY], [""], [Support for memcached_light])
 
 
+PANDORA_ENABLE_DTRACE
 PANDORA_HAVE_BETTER_MALLOC
 AX_HAVE_LIBPQ
 PANDORA_HAVE_LIBTOKYOCABINET
@@ -113,16 +111,7 @@ AC_FUNC_STRERROR_R
 SOCKET_SEND_FLAGS
 FCNTL_FLAGS
 AX_HAVE_LIBHIREDIS
-
-AX_LIB_MYSQL([5.0])
-AM_CONDITIONAL(HAVE_MYSQL, test "x${HAVE_MYSQL}" = "x1")
-AS_IF([test "x${HAVE_MYSQL}" = "xyes"],
-      [
-       AC_DEFINE([HAVE_MYSQL_BUILD], [1], [Define to 1 if MySQL libraries are available])
-      ],
-      [
-       AC_DEFINE([HAVE_MYSQL_BUILD], [0], [Define to 1 if MySQL libraries are available])
-      ])
+PANDORA_HEADER_ASSERT
 
 # Checks for programs.
 AC_PROG_AWK
@@ -173,7 +162,9 @@ AC_FUNC_REALLOC
 AC_FUNC_STRERROR_R
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([dup2 gettimeofday memchr memmove memset socket strcasecmp strdup strerror strncasecmp uname])
-AC_CHECK_FUNCS([pipe2])
+AC_CHECK_FUNCS([pipe2], 
+               AC_DEFINE([HAVE_PIPE2], [1], [Have pipe2]),
+               AC_DEFINE([HAVE_PIPE2], [0], [Have pipe2]))
 AC_CHECK_FUNCS([select])
 AC_CHECK_FUNCS([setenv])
 AC_CHECK_FUNCS([strtol])
@@ -219,8 +210,6 @@ AC_DEFINE([GEARMAND_BLOBSLAP_WORKER], [ 1 ], [Have Gearman Blobslap Worker])
 
 AC_TEST_FOR_REPOSITORY
 
-m4_include([m4/relro.m4])
-
 AX_CHECK_LIBRARY([LIBEVENT], [event.h], [event], 
                  [
                   LIBEVENT_LDFLAGS="-levent"
@@ -232,13 +221,25 @@ AX_CHECK_LIBRARY([LIBEVENT], [event.h], [event],
 AX_CHECK_LIBRARY([LIBUUID], [uuid/uuid.h], [uuid], 
                  [
                   LIBUUID_LDFLAGS="-luuid"
+                  AX_UUID_GENERATE_TIME_SAFE
                   ],
                  [
                   AC_MSG_WARN([Unable to find libuuid])
                   ])
 
+AS_IF([test "x${TARGET_LINUX}" = "xtrue"], [AC_DEFINE([BUILD_LIBHOSTILE], [1], [Build libhostile])], [AC_DEFINE([BUILD_LIBHOSTILE], [0], [Build libhostile])])
+AM_CONDITIONAL(TARGET_HOSTILE, [test "x${TARGET_LINUX}" = "xtrue"])
 
-AC_CONFIG_FILES([libtest/version.h])
+AX_CHECK_SOCK_CLOEXEC([AC_DEFINE([HAVE_SOCK_CLOEXEC], [1], [Check for SOCK_CLOEXEC.])],
+                       [AC_DEFINE([HAVE_SOCK_CLOEXEC], [0], [Check for SOCK_CLOEXEC.])])
+
+AX_PTHREAD(, [AC_MSG_ERROR(could not find libpthread)])
+AX_PTHREAD_TIMEDJOIN_NP
+
+AX_HARDEN_COMPILER_FLAGS
+
+AX_DEBUG
+
 AC_CONFIG_FILES(Makefile
                 docs/conf.py
                 libgearman-1.0/version.h
@@ -257,7 +258,11 @@ echo ""
 echo "   * Installation prefix:       $prefix"
 echo "   * System type:               $host_vendor-$host_os"
 echo "   * Host CPU:                  $host_cpu"
-echo "   * C Compiler:                $CC_VERSION"
+echo "   * C Compiler:                $CC"
+echo "   * C Flags:                   $CFLAGS"
+echo "   * C++ Compiler:              $CXX"
+echo "   * C++ Flags:                 $CXXFLAGS"
+echo "   * CPP Flags:                 $CPPFLAGS"
 echo "   * Assertions enabled:        $ac_cv_assert"
 echo "   * Debug enabled:             $with_debug"
 echo "   * Warnings as failure:       $ac_cv_warnings_as_errors"

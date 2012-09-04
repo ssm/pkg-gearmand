@@ -1,9 +1,39 @@
-/* Gearman server and library
- * Copyright (C) 2008 Brian Aker, Eric Day
- * All rights reserved.
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -61,9 +91,58 @@ static bool gearman_server_create(gearman_server_st *server,
                                   uint8_t job_retries,
                                   uint8_t worker_wakeup,
                                   bool round_robin);
-static void gearman_server_free(gearman_server_st *server);
 static void gearmand_set_log_fn(gearmand_st *gearmand, gearmand_log_fn *function,
                                 void *context, const gearmand_verbose_t verbose);
+
+
+static void gearman_server_free(gearman_server_st *server)
+{
+  /* All threads should be cleaned up before calling this. */
+  assert(server->thread_list == NULL);
+
+  for (uint32_t key= 0; key < GEARMAND_JOB_HASH_SIZE; key++)
+  {
+    while (server->job_hash[key] != NULL)
+    {
+      gearman_server_job_free(server->job_hash[key]);
+    }
+  }
+
+  while (server->function_list != NULL)
+  {
+    gearman_server_function_free(server, server->function_list);
+  }
+
+  while (server->free_packet_list != NULL)
+  {
+    gearman_server_packet_st *packet= server->free_packet_list;
+    server->free_packet_list= packet->next;
+    delete packet;
+  }
+
+  while (server->free_job_list != NULL)
+  {
+    gearman_server_job_st* job= server->free_job_list;
+    server->free_job_list= job->next;
+    delete job;
+  }
+
+  while (server->free_client_list != NULL)
+  {
+    gearman_server_client_st* client= server->free_client_list;
+    server->free_client_list= client->con_next;
+    delete client;
+  }
+
+  while (server->free_worker_list != NULL)
+  {
+    gearman_server_worker_st* worker= server->free_worker_list;
+    server->free_worker_list= worker->con_next;
+    delete worker;
+  }
+
+  delete server->queue.object;
+}
 
 /** @} */
 
@@ -89,7 +168,6 @@ gearmand_st *Gearmand(void)
 }
 
 gearmand_st *gearmand_create(const char *host_arg,
-                             const char *port,
                              uint32_t threads_arg,
                              int backlog_arg,
                              uint8_t job_retries,
@@ -106,17 +184,16 @@ gearmand_st *gearmand_create(const char *host_arg,
     _exit(EXIT_FAILURE);
   }
 
-  gearmand= (gearmand_st *)malloc(sizeof(gearmand_st));
+  gearmand= new (std::nothrow) gearmand_st;
   if (gearmand == NULL)
   {
-    gearmand_merror("malloc", gearmand_st, 0);
+    gearmand_merror("new", gearmand_st, 0);
     return NULL;
   }
 
-  if (! gearman_server_create(&(gearmand->server), job_retries, worker_wakeup, round_robin))
+  if (gearman_server_create(&(gearmand->server), job_retries, worker_wakeup, round_robin) == false)
   {
-    gearmand_debug("free");
-    free(gearmand);
+    delete gearmand;
     return NULL;
   }
 
@@ -141,31 +218,6 @@ gearmand_st *gearmand_create(const char *host_arg,
   gearmand->thread_list= NULL;
   gearmand->thread_add_next= NULL;
   gearmand->free_dcon_list= NULL;
-
-  gearmand_error_t rc;
-  if (port && port[0] == 0)
-  {
-    struct servent *gearman_servent= getservbyname(GEARMAN_DEFAULT_TCP_SERVICE, NULL);
-
-    if (gearman_servent && gearman_servent->s_name)
-    {
-      rc= gearmand_port_add(gearmand, gearman_servent->s_name, NULL);
-    }
-    else
-    {
-      rc= gearmand_port_add(gearmand, GEARMAN_DEFAULT_TCP_PORT_STRING, NULL);
-    }
-  }
-  else
-  {
-    rc= gearmand_port_add(gearmand, port, NULL);
-  }
-
-  if (rc != GEARMAN_SUCCESS)
-  {
-    gearmand_free(gearmand);
-    return NULL;
-  }
 
   _global_gearmand= gearmand;
 
@@ -194,7 +246,6 @@ void gearmand_free(gearmand_st *gearmand)
 
     dcon= gearmand->free_dcon_list;
     gearmand->free_dcon_list= dcon->next;
-    gearmand_debug("free");
     free(dcon);
   }
 
@@ -209,27 +260,23 @@ void gearmand_free(gearmand_st *gearmand)
   {
     if (gearmand->port_list[x].listen_fd != NULL)
     {
-      gearmand_debug("free");
       free(gearmand->port_list[x].listen_fd);
     }
 
     if (gearmand->port_list[x].listen_event != NULL)
     {
-      gearmand_debug("free");
       free(gearmand->port_list[x].listen_event);
     }
   }
 
   if (gearmand->port_list != NULL)
   {
-    gearmand_debug("free");
     free(gearmand->port_list);
   }
 
   gearmand_info("Shutdown complete");
 
-  gearmand_debug("free");
-  free(gearmand);
+  delete gearmand;
 }
 
 static void gearmand_set_log_fn(gearmand_st *gearmand, gearmand_log_fn *function,
@@ -385,24 +432,29 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
   for (uint32_t x= 0; x < gearmand->port_count; x++)
   {
     struct linger ling= {0, 0};
-    struct gearmand_port_st *port;
     struct addrinfo hints;
     struct addrinfo *addrinfo;
 
-    port= &gearmand->port_list[x];
+    gearmand_port_st *port= &gearmand->port_list[x];
 
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_flags= AI_PASSIVE;
     hints.ai_socktype= SOCK_STREAM;
 
-    int ret= getaddrinfo(gearmand->host, port->port, &hints, &addrinfo);
-    if (ret != 0)
     {
-      char buffer[1024];
+      int ret= getaddrinfo(gearmand->host, port->port, &hints, &addrinfo);
+      if (ret != 0)
+      {
+        char buffer[1024];
 
-      snprintf(buffer, sizeof(buffer), "%s:%s", gearmand->host ? gearmand->host : "<any>", port->port);
-      gearmand_gai_error(buffer, ret);
-      return GEARMAN_ERRNO;
+        int length= snprintf(buffer, sizeof(buffer), "%s:%s", gearmand->host ? gearmand->host : "<any>", port->port);
+        if (length <= 0 or size_t(length) >= sizeof(buffer))
+        {
+          buffer[0]= 0;
+        }
+        gearmand_gai_error(buffer, ret);
+        return GEARMAN_ERRNO;
+      }
     }
 
     std::set<host_port_t> unique_hosts;
@@ -412,14 +464,16 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
       int fd;
       char host[NI_MAXHOST];
 
-      ret= getnameinfo(addrinfo_next->ai_addr, addrinfo_next->ai_addrlen, host,
-                       NI_MAXHOST, port->port, NI_MAXSERV,
-                       NI_NUMERICHOST | NI_NUMERICSERV);
-      if (ret != 0)
       {
-        gearmand_gai_error("getaddrinfo", ret);
-        strcpy(host, "-");
-        strcpy(port->port, "-");
+        int ret= getnameinfo(addrinfo_next->ai_addr, addrinfo_next->ai_addrlen, host,
+                             NI_MAXHOST, port->port, NI_MAXSERV,
+                             NI_NUMERICHOST | NI_NUMERICSERV);
+        if (ret != 0)
+        {
+          gearmand_gai_error("getaddrinfo", ret);
+          strncpy(host, "-", sizeof(host));
+          strncpy(port->port, "-", sizeof(port->port));
+        }
       }
 
       std::string host_string(host);
@@ -448,8 +502,7 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
       if (addrinfo_next->ai_family == AF_INET6)
       {
         flags= 1;
-        ret= setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &flags, sizeof(flags));
-        if (ret != 0)
+        if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &flags, sizeof(flags)) == -1)
         {
           gearmand_perror("setsockopt(IPV6_V6ONLY)");
           return GEARMAN_ERRNO;
@@ -457,39 +510,45 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
       }
 #endif
 
-      ret= fcntl(fd, F_SETFD, FD_CLOEXEC);
-      if (ret != 0 || !(fcntl(fd, F_GETFD, 0) & FD_CLOEXEC))
       {
-        gearmand_perror("fcntl(FD_CLOEXEC)");
-        return GEARMAN_ERRNO;
+        int ret= fcntl(fd, F_SETFD, FD_CLOEXEC);
+        if (ret != 0 || !(fcntl(fd, F_GETFD, 0) & FD_CLOEXEC))
+        {
+          gearmand_perror("fcntl(FD_CLOEXEC)");
+          return GEARMAN_ERRNO;
+        }
       }
 
-      ret= setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags));
-      if (ret != 0)
       {
-        gearmand_perror("setsockopt(SO_REUSEADDR)");
-        return GEARMAN_ERRNO;
+        if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags)) == -1)
+        {
+          gearmand_perror("setsockopt(SO_REUSEADDR)");
+          return GEARMAN_ERRNO;
+        }
       }
 
-      ret= setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &flags, sizeof(flags));
-      if (ret != 0)
       {
-        gearmand_perror("setsockopt(SO_KEEPALIVE)");
-        return GEARMAN_ERRNO;
+        if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &flags, sizeof(flags)) == -1)
+        {
+          gearmand_perror("setsockopt(SO_KEEPALIVE)");
+          return GEARMAN_ERRNO;
+        }
       }
 
-      ret= setsockopt(fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
-      if (ret != 0)
       {
-        gearmand_perror("setsockopt(SO_LINGER)");
-        return GEARMAN_ERRNO;
+        if (setsockopt(fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling)) == -1)
+        {
+          gearmand_perror("setsockopt(SO_LINGER)");
+          return GEARMAN_ERRNO;
+        }
       }
 
-      ret= setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &flags, sizeof(flags));
-      if (ret != 0)
       {
-        gearmand_perror("setsockopt(TCP_NODELAY)");
-        return GEARMAN_ERRNO;
+        if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &flags, sizeof(flags)) == -1)
+        {
+          gearmand_perror("setsockopt(TCP_NODELAY)");
+          return GEARMAN_ERRNO;
+        }
       }
 
       /*
@@ -505,6 +564,7 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
       uint32_t waited;
       uint32_t this_wait;
       uint32_t retry;
+      int ret= -1;
       for (waited= 0, retry= 1; ; retry++, waited+= this_wait)
       {
         if (((ret= bind(fd, addrinfo_next->ai_addr, addrinfo_next->ai_addrlen)) == 0) or
@@ -620,7 +680,9 @@ static void _listen_close(gearmand_st *gearmand)
 static gearmand_error_t _listen_watch(gearmand_st *gearmand)
 {
   if (gearmand->is_listen_event)
+  {
     return GEARMAN_SUCCESS;
+  }
 
   for (uint32_t x= 0; x < gearmand->port_count; x++)
   {
@@ -643,8 +705,10 @@ static gearmand_error_t _listen_watch(gearmand_st *gearmand)
 
 static void _listen_clear(gearmand_st *gearmand)
 {
-  if (! (gearmand->is_listen_event))
+  if (gearmand->is_listen_event == false)
+  {
     return;
+  }
 
   for (uint32_t x= 0; x < gearmand->port_count; x++)
   {
@@ -669,11 +733,8 @@ static void _listen_event(int fd, short events __attribute__ ((unused)), void *a
 {
   gearmand_port_st *port= (gearmand_port_st *)arg;
   struct sockaddr sa;
-  socklen_t sa_len;
-  char host[NI_MAXHOST];
-  char port_str[NI_MAXSERV];
 
-  sa_len= sizeof(sa);
+  socklen_t sa_len= sizeof(sa);
   fd= accept(fd, &sa, &sa_len);
   if (fd == -1)
   {
@@ -701,14 +762,15 @@ static void _listen_event(int fd, short events __attribute__ ((unused)), void *a
   /* 
     Since this is numeric, it should never fail. Even if it did we don't want to really error from it.
   */
-  int error;
-  error= getnameinfo(&sa, sa_len, host, NI_MAXHOST, port_str, NI_MAXSERV,
-                     NI_NUMERICHOST | NI_NUMERICSERV);
+  char host[NI_MAXHOST];
+  char port_str[NI_MAXSERV];
+  int error= getnameinfo(&sa, sa_len, host, NI_MAXHOST, port_str, NI_MAXSERV,
+                         NI_NUMERICHOST | NI_NUMERICSERV);
   if (error != 0)
   {
     gearmand_gai_error("getnameinfo", error);
-    strcpy(host, "-");
-    strcpy(port_str, "-");
+    strncpy(host, "-", sizeof(host));
+    strncpy(port_str, "-", sizeof(port_str));
   }
 
   gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Accepted connection from %s:%s", host, port_str);
@@ -774,7 +836,9 @@ static void _wakeup_close(gearmand_st *gearmand)
 static gearmand_error_t _wakeup_watch(gearmand_st *gearmand)
 {
   if (gearmand->is_wakeup_event)
+  {
     return GEARMAN_SUCCESS;
+  }
 
   gearmand_debug("Adding event for wakeup pipe");
 
@@ -823,10 +887,14 @@ static void _wakeup_event(int fd, short events __attribute__ ((unused)),
     else if (ret == -1)
     {
       if (errno == EINTR)
+      {
         continue;
+      }
 
       if (errno == EAGAIN)
+      {
         break;
+      }
 
       _clear_events(gearmand);
       gearmand_perror("_wakeup_event:read");
@@ -880,11 +948,15 @@ static gearmand_error_t _watch_events(gearmand_st *gearmand)
 
   ret= _listen_watch(gearmand);
   if (ret != GEARMAN_SUCCESS)
+  {
     return ret;
+  }
 
   ret= _wakeup_watch(gearmand);
   if (ret != GEARMAN_SUCCESS)
+  {
     return ret;
+  }
 
   return GEARMAN_SUCCESS;
 }
@@ -1035,11 +1107,9 @@ static bool gearman_server_create(gearman_server_st *server,
   server->free_job_list= NULL;
   server->free_client_list= NULL;
   server->free_worker_list= NULL;
-  server->queue._context= NULL;
-  server->queue._add_fn= NULL;
-  server->queue._flush_fn= NULL;
-  server->queue._done_fn= NULL;
-  server->queue._replay_fn= NULL;
+
+  server->queue_version= QUEUE_VERSION_FUNCTION;
+
   memset(server->job_hash, 0,
          sizeof(gearman_server_job_st *) * GEARMAND_JOB_HASH_SIZE);
   memset(server->unique_hash, 0,
@@ -1052,7 +1122,7 @@ static bool gearman_server_create(gearman_server_st *server,
   }
 
   int checked_length= snprintf(server->job_handle_prefix, GEARMAND_JOB_HANDLE_SIZE, "H:%s", un.nodename);
-  if (checked_length >= GEARMAND_JOB_HANDLE_SIZE || checked_length < 0)
+  if (checked_length >= GEARMAND_JOB_HANDLE_SIZE or checked_length <= 0)
   {
     gearman_server_free(server);
     return false;
@@ -1061,57 +1131,4 @@ static bool gearman_server_create(gearman_server_st *server,
   server->job_handle_count= 1;
 
   return true;
-}
-
-static void gearman_server_free(gearman_server_st *server)
-{
-  uint32_t key;
-  gearman_server_packet_st *packet;
-  gearman_server_job_st *job;
-  gearman_server_client_st *client;
-  gearman_server_worker_st *worker;
-
-  /* All threads should be cleaned up before calling this. */
-  assert(server->thread_list == NULL);
-
-  for (key= 0; key < GEARMAND_JOB_HASH_SIZE; key++)
-  {
-    while (server->job_hash[key] != NULL)
-    {
-      gearman_server_job_free(server->job_hash[key]);
-    }
-  }
-
-  while (server->function_list != NULL)
-  {
-    gearman_server_function_free(server, server->function_list);
-  }
-
-  while (server->free_packet_list != NULL)
-  {
-    packet= server->free_packet_list;
-    server->free_packet_list= packet->next;
-    free(packet);
-  }
-
-  while (server->free_job_list != NULL)
-  {
-    job= server->free_job_list;
-    server->free_job_list= job->next;
-    free(job);
-  }
-
-  while (server->free_client_list != NULL)
-  {
-    client= server->free_client_list;
-    server->free_client_list= client->con_next;
-    free(client);
-  }
-
-  while (server->free_worker_list != NULL)
-  {
-    worker= server->free_worker_list;
-    server->free_worker_list= worker->con_next;
-    free(worker);
-  }
 }

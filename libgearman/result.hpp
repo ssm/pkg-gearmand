@@ -38,6 +38,8 @@
 
 #pragma once
 
+#include "libgearman/assert.hpp"
+
 struct gearman_result_st
 {
   bool _is_null;
@@ -56,12 +58,7 @@ struct gearman_result_st
     value.boolean= false;
   }
 
-  gearman_result_st(size_t initial_size) :
-    _is_null(true),
-    type(GEARMAN_RESULT_BINARY)
-  {
-    gearman_string_create(&value.string, initial_size);
-  }
+  gearman_result_st(size_t initial_size);
 
   bool is_null() const
   {
@@ -86,7 +83,9 @@ struct gearman_result_st
   gearman_vector_st *string()
   {
     if (type == GEARMAN_RESULT_BINARY)
+    {
       return &value.string;
+    }
 
     return NULL;
   }
@@ -94,7 +93,9 @@ struct gearman_result_st
   int64_t integer()
   {
     if (type == GEARMAN_RESULT_INTEGER)
+    {
       return value.integer;
+    }
 
     return 0;
   }
@@ -102,6 +103,9 @@ struct gearman_result_st
   ~gearman_result_st()
   {
     if (type == GEARMAN_RESULT_BINARY)
+    {
+      assert_msg(gearman_is_initialized(&value.string), "Somehow we have a GEARMAN_RESULT_BINARY, but no valid string");
       gearman_string_free(&value.string);
+    }
   }
 };
