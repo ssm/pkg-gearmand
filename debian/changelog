@@ -1,7 +1,13 @@
-gearmand (0.37-1) UNRELEASED; urgency=low
+gearmand (0.37-1) experimental; urgency=low
 
   * Imported Upstream version 0.37
-  * Update build dependency for libmemcached-dev to version >= 1.0 (Closes: #681768)
+  * Soname bump: libgearman6 -> libgearman7
+  * Remove build dependency on libmemcached-dev (Closes: #681768)
+    (building with it fails)
+  * Add build dependency on libboost-system-dev
+  * Refresh gearmand_hurd.patch
+  * Remove support-gcc-4.7.patch, included upstream
+  * debian/control: Remove old conflicts/replaces/provides
 
  -- Stig Sandbeck Mathisen <ssm@debian.org>  Tue, 04 Sep 2012 07:33:35 +0200
 
