@@ -1,3 +1,10 @@
+gearmand (0.37-1) UNRELEASED; urgency=low
+
+  * Imported Upstream version 0.37
+  * Update build dependency for libmemcached-dev to version >= 1.0 (Closes: #681768)
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Tue, 04 Sep 2012 07:33:35 +0200
+
 gearmand (0.33-2) unstable; urgency=low
 
   * Add patch to support gcc/g++ 4.7 (Closes: #678903)
