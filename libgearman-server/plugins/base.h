@@ -40,6 +40,11 @@
 #include <boost/program_options.hpp>
 
 #include <libgearman-server/error.h>
+#include <libgearman-server/constants.h>
+
+struct gearman_server_con_st;
+struct gearmand_packet_st;
+struct gearman_server_st;
 
 namespace gearmand {
 
@@ -57,17 +62,73 @@ public:
     return _name;
   }
 
-  virtual ~Plugin()
-  {};
+  virtual ~Plugin()= 0;
 
-  boost::program_options::options_description &command_line_options()
-  {
-    return _command_line_options;
-  }
+  boost::program_options::options_description &command_line_options();
 
 private:
   boost::program_options::options_description _command_line_options;
   std::string _name;
 };
 
+namespace queue {
+
+class Context {
+public:
+  virtual ~Context()= 0;
+
+  virtual gearmand_error_t add(gearman_server_st *server,
+                               const char *unique,
+                               size_t unique_size,
+                               const char *function_name,
+                               size_t function_name_size,
+                               const void *data,
+                               size_t data_size,
+                               gearman_job_priority_t priority,
+                               int64_t when)= 0;
+
+  virtual gearmand_error_t flush(gearman_server_st *server)= 0;
+
+  virtual gearmand_error_t done(gearman_server_st *server,
+                                const char *unique,
+                                size_t unique_size,
+                                const char *function_name,
+                                size_t function_name_size)= 0;
+
+  virtual gearmand_error_t replay(gearman_server_st *server)= 0;
+};
+
+} // namespace queue
+
+namespace protocol {
+
+class Context {
+public:
+  virtual ~Context()= 0;
+  
+  // If the caller should free the Context, or leave it up to the plugin
+  virtual bool is_owner()
+  {
+    return true;
+  }
+
+  // Notify on disconnect
+  virtual void notify(gearman_server_con_st*)
+  {
+    return;
+  }
+
+  virtual size_t pack(const gearmand_packet_st *packet,
+                      gearman_server_con_st *con,
+                      void *data, const size_t data_size,
+                      gearmand_error_t& ret_ptr)= 0;
+
+  virtual size_t unpack(gearmand_packet_st *packet,
+                        gearman_server_con_st *con,
+                        const void *data,
+                        const size_t data_size,
+                        gearmand_error_t& ret_ptr)= 0;
+};
+
+} // namespace protocol
 } // namespace gearmand

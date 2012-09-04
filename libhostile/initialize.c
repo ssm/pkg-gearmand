@@ -36,14 +36,17 @@
 
 #include <config.h>
 
-#if defined(TARGET_OS_LINUX) && TARGET_OS_LINUX
+#if defined(BUILD_LIBHOSTILE) && BUILD_LIBHOSTILE
 
 #include <libhostile/initialize.h>
+#include "libhostile/socket_server.h"
 
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>
+
+#define HOSTILE_PORT 6666
 
 static pthread_once_t start_key_once= PTHREAD_ONCE_INIT;
 
@@ -56,62 +59,8 @@ static void startup(void)
   fprintf(stderr, "Seed used %lu\n", (unsigned long)time_seed);
   fprintf(stderr, "\n--------------------------------------------------------\n");
   srand((unsigned int)time_seed);
-}
 
-struct function_st set_function(const char *name, const char *environ_name)
-{
-  struct function_st set;
-
-  set.name= name;
-
-  (void)dlerror();
-  set.function.ptr= dlsym(RTLD_NEXT, set.name);
-
-  if (set.function.ptr == NULL)
-  {
-    fprintf(stderr, "libhostile: %s(%s)", set.name, dlerror());
-    exit(EXIT_FAILURE);
-  }
-
-  if (set.function.ptr == NULL)
-  {
-    fprintf(stderr, "libhostile: %s(%s)", set.name, dlerror());
-    exit(EXIT_FAILURE);
-  }
-
-  char *ptr;
-  if ((ptr= getenv(environ_name)))
-  {
-    set.frequency= atoi(ptr);
-  }
-  else
-  {
-    set.frequency= 0;
-  }
-
-  if (set.frequency)
-  {
-    fprintf(stderr, "--------------------------------------------------------\n\n");
-    fprintf(stderr, "\t\tHostile Engaged -> %s\n\n", set.name);
-    fprintf(stderr, "Frequency used %d\n", set.frequency);
-    fprintf(stderr, "\n--------------------------------------------------------\n");
-  }
-
-  return set;
-}
-
-void set_action_frequency(enum action_t action, int frequency)
-{
-  (void)frequency;
-  switch (action)
-  {
-  case CLOSE_SOCKET_RECV:
-    break;
-
-  case CLOSE_SOCKET_SEND:
-  default:
-    break;
-  }
+  make_socket(HOSTILE_PORT);
 }
 
 void hostile_initialize(void)
@@ -119,12 +68,23 @@ void hostile_initialize(void)
   (void) pthread_once(&start_key_once, startup);
 }
 
-#else // TARGET_OS_LINUX
+void hostile_dump(void)
+{
+  fprintf(stderr, "--------------------------------------------------------\n\n");
+  fprintf(stderr, "send() used:  \n");
+  fprintf(stderr, "\n--------------------------------------------------------\n");
+}
+
+#else // BUILD_LIBHOSTILE
 
 void hostile_initialize(void);
-
 void hostile_initialize(void)
 {
 }
 
-#endif // TARGET_OS_LINUX
+void hostile_dump(void);
+void hostile_dump(void)
+{
+}
+
+#endif // BUILD_LIBHOSTILE

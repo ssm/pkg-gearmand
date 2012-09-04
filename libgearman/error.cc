@@ -39,7 +39,8 @@
 #include <config.h>
 #include <libgearman/common.h>
 
-#include <cassert>
+#include "libgearman/assert.hpp"
+
 #include <cerrno>
 #include <cstdarg>
 #include <cstdio>
@@ -60,11 +61,14 @@ static void correct_from_errno(gearman_universal_st& universal)
       universal.error.rc= GEARMAN_INVALID_ARGUMENT;
       break;
 
-    case ECONNREFUSED:
     case ECONNRESET:
     case EHOSTDOWN:
-    case ENETUNREACH:
     case EPIPE:
+      universal.error.rc= GEARMAN_LOST_CONNECTION;
+      break;
+
+    case ECONNREFUSED:
+    case ENETUNREACH:
     case ETIMEDOUT:
       universal.error.rc= GEARMAN_COULD_NOT_CONNECT;
       break;
@@ -86,6 +90,7 @@ void universal_reset_error(gearman_universal_st& universal)
   universal.error.last_error[0]= 0;
 }
 
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 gearman_return_t gearman_universal_set_error(gearman_universal_st& universal, 
                                              gearman_return_t rc,
                                              const char *function,
@@ -136,9 +141,9 @@ gearman_return_t gearman_universal_set_gerror(gearman_universal_st& universal,
                                               const char *func,
                                               const char *position)
 {
-  if (rc == GEARMAN_SUCCESS)
+  if (rc == GEARMAN_SUCCESS or rc == GEARMAN_IO_WAIT)
   {
-    return GEARMAN_SUCCESS;
+    return rc;
   }
 
   universal.error.rc= rc;

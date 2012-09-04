@@ -4,7 +4,7 @@ Version: @VERSION@
 Release: 1
 License: BSD
 Group: System Environment/Libraries
-BuildRequires: gcc-c++
+BuildRequires: bison
 URL: http://launchpad.net/gearmand
 Requires: sqlite, libevent >= 1.4, boost-program-options >=  1.39
 
@@ -46,7 +46,7 @@ you will need to install %{name}-devel.
 
 
 %build
-%{__make}
+%{__make} %{?_smp_mflags}
 
 %install
 %{__rm} -rf %{buildroot}
@@ -56,6 +56,9 @@ mkdir -p $RPM_BUILD_ROOT/etc/rc.d/init.d
 mkdir -p $RPM_BUILD_ROOT/var/log/gearmand
 mkdir -p $RPM_BUILD_ROOT/var/run/gearmand
 install -m 755 %{SOURCE1} $RPM_BUILD_ROOT/etc/rc.d/init.d/gearmand
+
+%check
+%{__make} %{?_smp_mflags} check
 
 %clean
 %{__rm} -rf %{buildroot}
@@ -93,8 +96,8 @@ fi
 %{_bindir}/gearadmin
 %{_bindir}/gearman
 %{_libdir}/libgearman.la
-%{_libdir}/libgearman.so.6
-%{_libdir}/libgearman.so.6.0.0
+%{_libdir}/libgearman.so.7
+%{_libdir}/libgearman.so.7.0.0
 %{_mandir}/man1/gearadmin.1.gz
 %{_mandir}/man1/gearman.1.gz
 
@@ -124,6 +127,8 @@ fi
 %{_includedir}/libgearman-1.0/execute.h
 %{_includedir}/libgearman-1.0/function.h
 %{_includedir}/libgearman-1.0/gearman.h
+%{_includedir}/libgearman-1.0/interface/status.h
+%{_includedir}/libgearman-1.0/interface/task.h
 %{_includedir}/libgearman-1.0/job.h
 %{_includedir}/libgearman-1.0/job_handle.h
 %{_includedir}/libgearman-1.0/kill.h
@@ -136,6 +141,7 @@ fi
 %{_includedir}/libgearman-1.0/result.h
 %{_includedir}/libgearman-1.0/return.h
 %{_includedir}/libgearman-1.0/signal.h
+%{_includedir}/libgearman-1.0/status.h
 %{_includedir}/libgearman-1.0/strerror.h
 %{_includedir}/libgearman-1.0/string.h
 %{_includedir}/libgearman-1.0/task.h

@@ -60,7 +60,7 @@ static test_return_t collection_init(void *object)
   drizzled_port= libtest::get_free_port();
   if (server_startup(test->_servers, "drizzled", drizzled_port, 0, NULL) == false)
   {
-    return TEST_FAILURE;
+    return TEST_SKIPPED;
   }
 #else
   drizzled_port= 0;
@@ -102,7 +102,7 @@ static test_return_t collection_cleanup(void *object)
 
 static void *world_create(server_startup_st& servers, test_return_t& error)
 {
-  if (has_drizzle_support() == false)
+  if (has_drizzled() == false)
   {
     error= TEST_SKIPPED;
     return NULL;
@@ -146,9 +146,9 @@ collection_st collection[] ={
   {0, 0, 0, 0}
 };
 
-void get_world(Framework *world)
+void get_world(libtest::Framework *world)
 {
-  world->collections= collection;
-  world->_create= world_create;
-  world->_destroy= world_destroy;
+  world->collections(collection);
+  world->create(world_create);
+  world->destroy(world_destroy);
 }

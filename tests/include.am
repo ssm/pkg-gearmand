@@ -1,4 +1,5 @@
 # vim:ft=automake
+#
 # Gearman server and library
 # Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
 # Copyright (C) 2008 Brian Aker, Eric Day
@@ -25,23 +26,6 @@ noinst_HEADERS+= tests/start_worker.h
 noinst_HEADERS+= tests/task.h
 noinst_HEADERS+= tests/unique.h
 noinst_HEADERS+= tests/worker.h
-noinst_HEADERS+= tests/workers.h
-noinst_HEADERS+= tests/workers_v1.h
-
-noinst_LTLIBRARIES+= tests/libstartworker.la
-tests_libstartworker_la_CXXFLAGS=
-tests_libstartworker_la_LIBADD=
-tests_libstartworker_la_SOURCES=
-
-tests_libstartworker_la_CXXFLAGS+= $(PTHREAD_CFLAGS)
-tests_libstartworker_la_CXXFLAGS+= $(BOOST_CPPFLAGS)
-tests_libstartworker_la_LIBADD+= $(BOOST_THREAD_LDFLAGS)
-tests_libstartworker_la_LIBADD+= $(BOOST_THREAD_LIBS)
-tests_libstartworker_la_LIBADD+= libtest/libtest.la
-tests_libstartworker_la_LIBADD+= libgearman/libgearman.la
-tests_libstartworker_la_SOURCES+= tests/start_worker.cc
-tests_libstartworker_la_SOURCES+= util/instance.cc
-tests_libstartworker_la_SOURCES+= util/operation.cc
 
 CLIENT_LDADD=
 CLIENT_LDADD+= libgearman/libgearman.la
@@ -53,7 +37,6 @@ tests_cycle_DEPENDENCIES=
 
 tests_cycle_SOURCES+= tests/cycle.cc
 tests_cycle_DEPENDENCIES+= ${CLIENT_LDADD}
-tests_cycle_DEPENDENCIES+= gearmand/gearmand
 tests_cycle_LDADD= ${CLIENT_LDADD}
 check_PROGRAMS+=tests/cycle
 noinst_PROGRAMS+=tests/cycle
@@ -64,7 +47,6 @@ tests_blobslap_client_LDADD=
 
 tests_blobslap_client_SOURCES+= tests/blobslap_client.cc
 tests_blobslap_client_DEPENDENCIES+= ${CLIENT_LDADD}
-tests_blobslap_client_DEPENDENCIES+= gearmand/gearmand
 tests_blobslap_client_LDADD+= ${CLIENT_LDADD}
 noinst_PROGRAMS+= tests/blobslap_client
 
@@ -73,9 +55,7 @@ tests_cli_SOURCES=
 tests_cli_LDADD=
 
 tests_cli_SOURCES+= tests/cli.cc
-tests_cli_SOURCES+= tests/libgearman-1.0/workers.cc
 tests_cli_DEPENDENCIES+= ${CLIENT_LDADD}
-tests_cli_DEPENDENCIES+= gearmand/gearmand
 tests_cli_DEPENDENCIES+= bin/gearman
 tests_cli_DEPENDENCIES+= bin/gearadmin
 tests_cli_LDADD+= ${CLIENT_LDADD}
@@ -88,12 +68,13 @@ tests_gearmand_LDADD=
 
 tests_gearmand_SOURCES+= tests/gearmand.cc
 tests_gearmand_DEPENDENCIES+= ${CLIENT_LDADD}
-tests_gearmand_DEPENDENCIES+= gearmand/gearmand
 tests_gearmand_LDADD+= ${CLIENT_LDADD}
 check_PROGRAMS+= tests/gearmand
 noinst_PROGRAMS+= tests/gearmand
 
 include tests/libgearman-1.0/include.am
+include tests/stress.am
+include tests/workers/include.am
 
 tests_round_robin_test_DEPENDENCIES=
 tests_round_robin_test_SOURCES=
@@ -102,7 +83,6 @@ tests_round_robin_test_LDADD=
 tests_round_robin_test_SOURCES+= tests/round_robin.cc
 tests_round_robin_test_DEPENDENCIES+= ${CLIENT_LDADD}
 tests_round_robin_test_DEPENDENCIES+= libgearman/libgearmancore.la
-tests_round_robin_test_DEPENDENCIES+= gearmand/gearmand
 tests_round_robin_test_LDADD+= ${CLIENT_LDADD}
 tests_round_robin_test_LDADD+= libgearman/libgearmancore.la
 check_PROGRAMS+= tests/round_robin_test
@@ -120,37 +100,6 @@ valgrind-round-robin: tests/round_robin_test gearmand/gearmand
 helgrind-round-robin: tests/round_robin_test gearmand/gearmand
 	@$(HELGRIND_COMMAND) tests/round_robin_test
 
-tests_stress_test_SOURCES=
-tests_stress_test_DEPENDENCIES=
-tests_stress_test_CXXFLAGS=
-tests_stress_test_LDADD=
-
-if TARGET_LINUX
-tests_stress_test_CXXFLAGS+= -DHAVE_LIBHOSTILE=1
-tests_stress_test_DEPENDENCIES+= libhostile/libhostile.la
-tests_stress_test_LDADD+= libhostile/libhostile.la
-tests_stress_test_LDADD+= $(DL_LIB)
-tests_stress_test_LDADD+= $(RT_LIB)
-endif
-
-tests_stress_test_SOURCES+= tests/burnin.cc
-tests_stress_test_SOURCES+= tests/libgearman-1.0/workers.cc
-tests_stress_test_SOURCES+= tests/stress_worker.cc
-tests_stress_test_DEPENDENCIES+= ${CLIENT_LDADD}
-tests_stress_test_DEPENDENCIES+= gearmand/gearmand
-tests_stress_test_LDADD+= ${CLIENT_LDADD}
-check_PROGRAMS+=tests/stress_test
-noinst_PROGRAMS+=tests/stress_test
-
-test-stress: tests/stress_test gearmand/gearmand
-	@tests/stress_test
-
-valgrind-stress: tests/stress_test gearmand/gearmand
-	@$(VALGRIND_COMMAND) tests/stress_test
-
-gdb-stress: tests/stress_test gearmand/gearmand
-	@$(GDB_COMMAND) tests/stress_test
-
 # Test linking with C++ application
 tests_cpp_test_SOURCES=
 tests_cpp_test_DEPENDENCIES=
@@ -158,7 +107,6 @@ tests_cpp_test_LDADD=
 
 tests_cpp_test_SOURCES+= tests/cpp_test.cc
 tests_cpp_test_DEPENDENCIES+= ${CLIENT_LDADD}
-tests_cpp_test_DEPENDENCIES+= gearmand/gearmand
 tests_cpp_test_LDADD+= ${CLIENT_LDADD}
 check_PROGRAMS+=tests/cpp_test
 noinst_PROGRAMS+=tests/cpp_test
@@ -170,7 +118,6 @@ tests_c_test_LDADD=
 
 tests_c_test_SOURCES+= tests/c_test.c
 tests_c_test_DEPENDENCIES+= ${CLIENT_LDADD}
-tests_c_test_DEPENDENCIES+= gearmand/gearmand
 tests_c_test_LDADD+= ${CLIENT_LDADD}
 check_PROGRAMS+=tests/c_test
 noinst_PROGRAMS+=tests/c_test
@@ -229,10 +176,12 @@ include tests/ephemeral.am
 include tests/libdrizzle.am
 include tests/libmemcached.am
 include tests/postgres.am
+include tests/mysql.am
 include tests/sqlite.am
 include tests/tokyocabinet.am
 include tests/redis.am
 include tests/httpd.am
+include tests/perl/include.am
 
 bogus:
 

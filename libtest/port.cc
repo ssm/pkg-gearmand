@@ -50,6 +50,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <utility>
+#include <vector>
+
 #include <signal.h>
 
 #include <libtest/signal.h>
@@ -61,13 +64,31 @@
 using namespace libtest;
 
 struct socket_st {
-  std::vector<int> fd;
+  typedef std::vector< std::pair< int, in_port_t> > socket_port_t;
+  socket_port_t _pair;
+
+  void release(in_port_t _arg)
+  {
+    for (socket_port_t::iterator iter= _pair.begin();
+         iter != _pair.end();
+         ++iter)
+    {
+      if ((*iter).second == _arg)
+      {
+        shutdown((*iter).first, SHUT_RDWR);
+        close((*iter).first);
+      }
+    }
+  }
 
   ~socket_st()
   {
-    for(std::vector<int>::iterator iter= fd.begin(); iter != fd.end(); iter++)
+    for (socket_port_t::iterator iter= _pair.begin();
+         iter != _pair.end();
+         ++iter)
     {
-      close(*iter);
+      shutdown((*iter).first, SHUT_RDWR);
+      close((*iter).first);
     }
   }
 };
@@ -88,13 +109,18 @@ in_port_t default_port()
   return global_port;
 }
 
+void release_port(in_port_t arg)
+{
+  all_socket_fd.release(arg);
+}
+
 in_port_t get_free_port()
 {
   in_port_t ret_port= in_port_t(0);
 
   int retries= 1024;
 
-  while (retries--)
+  while (--retries)
   {
     int sd;
     if ((sd= socket(AF_INET, SOCK_STREAM, 0)) != -1)
@@ -119,7 +145,7 @@ in_port_t get_free_port()
         }
       }
 
-      all_socket_fd.fd.push_back(sd);
+      all_socket_fd._pair.push_back(std::make_pair(sd, ret_port));
     }
 
     if (ret_port > 1024)
@@ -129,9 +155,19 @@ in_port_t get_free_port()
   }
 
   // We handle the case where if we max out retries, we still abort.
-  if (ret_port <= 1024)
+  if (retries == 0)
+  {
+    fatal_message("No port could be found, exhausted retry");
+  }
+
+  if (ret_port == 0)
   {
     fatal_message("No port could be found");
+  }
+
+  if (ret_port <= 1024)
+  {
+    fatal_message("No port could be found, though some where available below or at 1024");
   }
 
   return ret_port;

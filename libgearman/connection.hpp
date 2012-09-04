@@ -66,9 +66,9 @@ struct gearman_connection_st
   gearman_connection_st *next;
   gearman_connection_st *prev;
   void *context;
-  struct addrinfo *addrinfo;
+  struct addrinfo *_addrinfo;
   struct addrinfo *addrinfo_next;
-  char *send_buffer_ptr;
+  const char *send_buffer_ptr;
   char *recv_buffer_ptr;
   gearman_packet_st _packet;
   char host[GEARMAN_NI_MAXHOST];
@@ -114,9 +114,9 @@ struct gearman_connection_st
     return _recv_packet;
   }
 
-  void set_recv_packet(gearman_packet_st* arg)
+  void reset_recv_packet()
   {
-    _recv_packet= arg;
+    _recv_packet= NULL;
   }
 
 private:

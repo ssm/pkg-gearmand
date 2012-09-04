@@ -39,7 +39,7 @@
 
 #pragma once
 
-#include <libgearman/assert.hpp>
+struct gearman_result_st;
 
 #include <libgearman-1.0/gearman.h>
 
@@ -58,12 +58,14 @@
 #include <libgearman/vector.hpp>
 #include <libgearman/unique.hpp>
 #include <libgearman/add.hpp>
+#include <libgearman/is.hpp>
 #include <libgearman/result.hpp>
 #include <libgearman/actions.hpp>
-#include <libgearman/is.hpp>
 #include <libgearman/string.hpp>
 #include <libgearman/command.h>
 #include <libgearman/task.hpp>
 #include <libgearman/job.h>
+
+#include <libgearman/status.hpp>
 
 #include <libgearman/protocol/submit.h>

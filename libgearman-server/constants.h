@@ -1,9 +1,39 @@
-/* Gearman server and library
- * Copyright (C) 2008 Brian Aker, Eric Day
- * All rights reserved.
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -20,6 +50,7 @@
 #endif
 
 #include <libgearman-1.0/limits.h>
+#include <libgearman-1.0/priority.h>
 #include <libgearman-server/verbose.h>
 
 /**
@@ -54,22 +85,6 @@
 #define GEARMAN_TEXT_RESPONSE_SIZE 8192
 
 /** @} */
-
-/**
- * @ingroup gearman_job
- * Priority levels for a job.
- */
-enum gearmand_job_priority_t
-{
-  GEARMAND_JOB_PRIORITY_HIGH,
-  GEARMAND_JOB_PRIORITY_NORMAL,
-  GEARMAND_JOB_PRIORITY_LOW,
-  GEARMAND_JOB_PRIORITY_MAX /* Always add new commands before this. */
-};
-
-#ifndef __cplusplus
-typedef enum gearmand_job_priority_t gearmand_job_priority_t;
-#endif
 
 /** @} */
 
@@ -124,7 +139,7 @@ typedef gearmand_error_t (gearman_queue_add_fn)(gearman_server_st *server,
                                                 size_t function_name_size,
                                                 const void *data,
                                                 size_t data_size,
-                                                gearmand_job_priority_t priority,
+                                                gearman_job_priority_t priority,
                                                 int64_t when);
 
 typedef gearmand_error_t (gearman_queue_flush_fn)(gearman_server_st *server,
@@ -151,14 +166,6 @@ typedef gearmand_error_t (gearmand_event_watch_fn)(gearmand_io_st *con,
 
 typedef struct gearmand_packet_st gearmand_packet_st;
 
-typedef size_t (gearmand_packet_pack_fn)(const gearmand_packet_st *packet,
-                                         gearman_server_con_st *con,
-                                         void *data, size_t data_size,
-                                         gearmand_error_t *ret_ptr);
-typedef size_t (gearmand_packet_unpack_fn)(gearmand_packet_st *packet,
-                                           gearman_server_con_st *con, const void *data,
-                                           size_t data_size,
-                                           gearmand_error_t *ret_ptr);
 typedef void (gearmand_connection_protocol_context_free_fn)(gearman_server_con_st *con,
                                                             void *context);
 

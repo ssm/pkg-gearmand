@@ -40,6 +40,10 @@
 #include <libgearman/command.h>
 #include <libgearman/strcommand.h>
 
+#include "libgearman/assert.hpp"
+
+#include <cstdlib>
+
 const char *gearman_strcommand(gearman_command_t command)
 {
   switch(command)
@@ -85,7 +89,11 @@ const char *gearman_strcommand(gearman_command_t command)
   case GEARMAN_COMMAND_SUBMIT_REDUCE_JOB_BACKGROUND: return "GEARMAN_COMMAND_SUBMIT_REDUCE_JOB_BACKGROUND";
   case GEARMAN_COMMAND_GRAB_JOB_ALL: return "GEARMAN_COMMAND_GRAB_JOB_ALL";
   case GEARMAN_COMMAND_JOB_ASSIGN_ALL: return "GEARMAN_COMMAND_JOB_ASSIGN_ALL";
-  default:
   case GEARMAN_COMMAND_MAX: return "GEARMAN_COMMAND_MAX";
+  case GEARMAN_COMMAND_GET_STATUS_UNIQUE: return "GEARMAN_COMMAND_GET_STATUS_UNIQUE";
+  case GEARMAN_COMMAND_STATUS_RES_UNIQUE: return "GEARMAN_COMMAND_STATUS_RES_UNIQUE";
   }
+
+  assert(0); // We should never reach this
+  abort();
 }

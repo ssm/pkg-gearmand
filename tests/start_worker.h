@@ -44,6 +44,7 @@
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include "tests/workers/v2/called.h"
 
 struct worker_handle_st
 {
@@ -95,7 +96,7 @@ LIBTEST_API
   struct worker_handle_st *test_worker_start(in_port_t port, 
 					     const char *namespace_key,
 					     const char *function_name,
-					     gearman_function_t &worker_fn,
+					     const gearman_function_t &worker_fn,
 					     void *context,
 					     gearman_worker_options_t options,
                int timeout= 0);

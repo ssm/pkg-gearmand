@@ -1,9 +1,39 @@
-/* Gearman server and library
- * Copyright (C) 2008-2009 Brian Aker, Eric Day
- * All rights reserved.
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -40,8 +70,7 @@ void gearmand_initialize_thread_logging(const char *identity)
 {
   (void) pthread_once(&intitialize_log_once, create_log);
 
-  void *ptr;
-  if ((ptr= pthread_getspecific(logging_key)) == NULL)
+  if (pthread_getspecific(logging_key) == NULL)
   {
     const char *key_to_use= strdup(identity);
     (void) pthread_setspecific(logging_key, key_to_use);
@@ -50,6 +79,7 @@ void gearmand_initialize_thread_logging(const char *identity)
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 #endif
 
 /**
@@ -80,9 +110,6 @@ static void gearmand_log(const char *position, const char *func /* func */,
   }
 
   struct tm current_tm;
-  const char *current_time_str_ptr;
-  char current_time_str[27];
-
   if (current_epoch.tv_sec == 0)
   {
     (void)gettimeofday(&current_epoch, NULL);
@@ -90,22 +117,7 @@ static void gearmand_log(const char *position, const char *func /* func */,
 
   if ((gmtime_r(&current_epoch.tv_sec, &current_tm) == NULL))
   {
-    current_time_str_ptr = "NA";
-  }
-  else
-  {
-    snprintf(current_time_str, sizeof(current_time_str), "%04d-%02d-%02d %02d:%02d:%02d.%06d",
-             int(1900 + current_tm.tm_year), current_tm.tm_mon, current_tm.tm_mday, current_tm.tm_hour,
-             current_tm.tm_min, current_tm.tm_sec, int(current_epoch.tv_usec));
-    current_time_str_ptr = current_time_str;
-  }
-
-  if (Gearmand() == NULL)
-  {
-    fprintf(stderr, "%s %s %7s: ", current_time_str_ptr, position,  gearmand_verbose_name(verbose));
-    vfprintf(stderr, format, args);
-    fprintf(stderr, "\n");
-    return;
+    memset(&current_epoch, 0, sizeof(current_epoch));
   }
 
   (void) pthread_once(&intitialize_log_once, create_log);
@@ -117,16 +129,19 @@ static void gearmand_log(const char *position, const char *func /* func */,
     identity= "[  main ]";
   }
 
+  char log_buffer[GEARMAN_MAX_ERROR_SIZE*2] = { 0 };
   if (Gearmand() && Gearmand()->log_fn)
   {
-    char log_buffer[GEARMAN_MAX_ERROR_SIZE*2];
     char *log_buffer_ptr= log_buffer;
     size_t remaining_size= sizeof(log_buffer);
 
     {
-      int length= snprintf(log_buffer, sizeof(log_buffer), "%s %s ", current_time_str_ptr, identity);
+      int length= snprintf(log_buffer, sizeof(log_buffer), "%04d-%02d-%02d %02d:%02d:%02d.%06d %s ",
+                           int(1900 + current_tm.tm_year), current_tm.tm_mon, current_tm.tm_mday, current_tm.tm_hour,
+                           current_tm.tm_min, current_tm.tm_sec, int(current_epoch.tv_usec),
+                           identity);
       // We just return whatever we have if this occurs
-      if (length < -1 || (size_t)length >= sizeof(log_buffer))
+      if (length <= 0 or (size_t)length >= sizeof(log_buffer))
       {
         remaining_size= 0;
       }
@@ -140,7 +155,7 @@ static void gearmand_log(const char *position, const char *func /* func */,
     if (remaining_size)
     {
       int length= vsnprintf(log_buffer_ptr, remaining_size, format, args);
-      if (length < -1 or size_t(length) >= remaining_size)
+      if (length <= 0 or size_t(length) >= remaining_size)
       { 
         remaining_size= 0;
       }
@@ -154,8 +169,10 @@ static void gearmand_log(const char *position, const char *func /* func */,
     if (remaining_size and error_arg != GEARMAN_SUCCESS)
     {
       int length= snprintf(log_buffer_ptr, remaining_size, " %s(%s)", func, gearmand_strerror(error_arg));
-      if (length < -1 or size_t(length) >= remaining_size)
-      { }
+      if (length <= 0 or size_t(length) >= remaining_size)
+      {
+        remaining_size= 0;
+      }
       else
       {
         remaining_size-= size_t(length);
@@ -165,17 +182,25 @@ static void gearmand_log(const char *position, const char *func /* func */,
 
     if (remaining_size and position and verbose != GEARMAND_VERBOSE_INFO)
     {
-      snprintf(log_buffer_ptr, remaining_size, " -> %s", position);
+      int length= snprintf(log_buffer_ptr, remaining_size, " -> %s", position);
+      if (length <= 0 or size_t(length) >= remaining_size)
+      {
+        remaining_size= 0;
+      }
     }
 
     // Make sure this is null terminated
-    log_buffer[sizeof(log_buffer)]= 0;
+    log_buffer[sizeof(log_buffer) -1]= 0;
+  }
 
+  if (Gearmand() and Gearmand()->log_fn)
+  {
     Gearmand()->log_fn(log_buffer, verbose, (void *)Gearmand()->log_context);
   }
   else
   {
-    fprintf(stderr, "%s %s %7s: ", current_time_str_ptr, identity,  gearmand_verbose_name(verbose));
+    fprintf(stderr, "%s -> %s",
+            log_buffer,  gearmand_verbose_name(verbose));
     vfprintf(stderr, format, args);
     fprintf(stderr, "\n");
   }

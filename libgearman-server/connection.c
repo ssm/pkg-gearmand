@@ -1,9 +1,39 @@
-/* Gearman server and library
- * Copyright (C) 2008 Brian Aker, Eric Day
- * All rights reserved.
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -49,7 +79,8 @@ gearman_server_con_st *gearman_server_con_add(gearman_server_thread_st *thread, 
   return con;
 }
 
-static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thread, gearmand_con_st *dcon,
+static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thread,
+                                                  gearmand_con_st *dcon,
                                                   gearmand_error_t *ret)
 {
   gearman_server_con_st *con;
@@ -61,10 +92,10 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
   }
   else
   {
-    con= (gearman_server_con_st *)malloc(sizeof(gearman_server_con_st));
+    con= build_gearman_server_con_st();
     if (con == NULL)
     {
-      gearmand_perror("malloc");
+      gearmand_perror("new() build_gearman_server_con_st");
       *ret= GEARMAN_MEMORY_ALLOCATION_FAILURE;
       return NULL;
     }
@@ -117,21 +148,26 @@ static gearman_server_con_st * _server_con_create(gearman_server_thread_st *thre
   strcpy(con->id, "-");
   con->timeout_event= NULL;
 
-  con->protocol.context= NULL;
-  con->protocol.context_free_fn= NULL;
-  con->protocol.packet_pack_fn= gearmand_packet_pack;
-  con->protocol.packet_unpack_fn= gearmand_packet_unpack;
+  con->protocol= NULL;
 
   int error;
-  if (! (error= pthread_mutex_lock(&thread->lock)))
+  if ((error= pthread_mutex_lock(&thread->lock)) == 0)
   {
     GEARMAN_LIST_ADD(thread->con, con,);
-    (void) pthread_mutex_unlock(&thread->lock);
+    if ((error= pthread_mutex_unlock(&thread->lock)))
+    {
+      errno= error;
+      gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "pthread_mutex_unlock(%d), programming error, please report", error);
+      gearman_server_con_free(con);
+
+      *ret= GEARMAN_ERRNO;
+      return NULL;
+    }
   }
   else
   {
-    errno= error;
-    gearmand_perror("pthread_mutex_lock");
+    assert(error);
+    gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "pthread_mutex_lock(%d), programming error, please report", error);
     gearman_server_con_free(con);
 
     *ret= GEARMAN_ERRNO;
@@ -182,10 +218,7 @@ void gearman_server_con_free(gearman_server_con_st *con)
   
   gearmand_io_free(&(con->con));
 
-  if (con->protocol.context != NULL && con->protocol.context_free_fn != NULL)
-  {
-    con->protocol.context_free_fn(con, (void *)con->protocol.context);
-  }
+  gearman_server_con_protocol_release(con);
 
   if (con->packet != NULL)
   {
@@ -238,27 +271,29 @@ void gearman_server_con_free(gearman_server_con_st *con)
   if (thread->free_con_count < GEARMAN_MAX_FREE_SERVER_CON)
   {
     GEARMAN_LIST_ADD(thread->free_con, con,)
+
+    con->is_cleaned_up = true;
+    return;
   }
-  else
-  {
-    gearmand_debug("free");
-    free(con);
-  }
-  con->is_cleaned_up = true;
+
+  destroy_gearman_server_con_st(con);
 }
 
 gearmand_io_st *gearman_server_con_con(gearman_server_con_st *con)
 {
+  assert(con);
   return &con->con;
 }
 
 gearmand_con_st *gearman_server_con_data(gearman_server_con_st *con)
 {
+  assert(con);
   return gearman_io_context(&(con->con));
 }
 
 const char *gearman_server_con_id(gearman_server_con_st *con)
 {
+  assert(con);
   return con->id;
 }
 
@@ -477,28 +512,11 @@ gearman_server_con_proc_next(gearman_server_thread_st *thread)
   return con;
 }
 
-void gearmand_connection_set_protocol(gearman_server_con_st *connection, void *context,
-                                      gearmand_connection_protocol_context_free_fn *free_fn,
-                                      gearmand_packet_pack_fn *pack,
-                                      gearmand_packet_unpack_fn *unpack)
-{
-  connection->protocol.context= context;
-  connection->protocol.context_free_fn= free_fn;
-  connection->protocol.packet_pack_fn= pack;
-  connection->protocol.packet_unpack_fn= unpack;
-}
-
-void *gearmand_connection_protocol_context(const gearman_server_con_st *connection)
-{
-  return connection->protocol.context;
-}
-
 static void _server_job_timeout(int fd, short event, void *arg)
 {
+  (void)fd;
+  (void)event;
   gearman_server_job_st *job= (gearman_server_job_st *)arg;
-
-  fd= fd;
-  event= event;
 
   /* A timeout has ocurred on a job, re-queue it */
   gearmand_log_warning(GEARMAN_DEFAULT_LOG_PARAM,
@@ -531,35 +549,48 @@ gearmand_error_t gearman_server_con_add_job_timeout(gearman_server_con_st *con, 
 
     /* It makes no sense to add a timeout to a connection that has no workers for a job */
     assert(worker);
-    if (worker && worker->timeout)
+    if (worker)
     {
-      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Adding timeout on %s for %s (%d)",
-                         job->function->function_name,
-                         job->job_handle,
-                         worker->timeout);
-
-      if (con->timeout_event == NULL)
+      // We treat 0 and -1 as being the same (i.e. no timer)
+      if (worker->timeout > 0)
       {
-        gearmand_con_st *dcon= con->con.context;
-        con->timeout_event= (struct event *)malloc(sizeof(struct event));
+        if (worker->timeout < 1000)
+        {
+          worker->timeout= 1000;
+        }
+
+        gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Adding timeout on %s for %s (%dl)",
+                           job->function->function_name,
+                           job->job_handle,
+                           worker->timeout);
         if (con->timeout_event == NULL)
         {
-          return gearmand_gerror("creating timeout event", GEARMAN_MEMORY_ALLOCATION_FAILURE);
+          gearmand_con_st *dcon= con->con.context;
+          con->timeout_event= (struct event *)malloc(sizeof(struct event));
+          if (con->timeout_event == NULL)
+          {
+            return gearmand_gerror("creating timeout event", GEARMAN_MEMORY_ALLOCATION_FAILURE);
+          }
+          timeout_set(con->timeout_event, _server_job_timeout, job);
+          event_base_set(dcon->thread->base, con->timeout_event);
         }
-        timeout_set(con->timeout_event, _server_job_timeout, job);
-        event_base_set(dcon->thread->base, con->timeout_event);
+
+        /* XXX Right now, if a worker has diff timeouts for functions I think
+          this will overwrite any existing timeouts on that event. One
+          solution to that would be to record the timeout from last time,
+          and only set this one if it is longer than that one. */
+
+        struct timeval timeout_tv = { 0 , 0 };
+        timeout_tv.tv_sec= worker->timeout;
+        timeout_add(con->timeout_event, &timeout_tv);
       }
-
-      /* XXX Right now, if a worker has diff timeouts for functions I think
-        this will overwrite any existing timeouts on that event. One
-        solution to that would be to record the timeout from last time,
-        and only set this one if it is longer than that one. */
-
-      struct timeval timeout_tv = { 0 , 0 };
-      timeout_tv.tv_sec= worker->timeout;
-      timeout_add(con->timeout_event, &timeout_tv);
+      else if (con->timeout_event) // Delete the timer if it exists
+      {
+        gearman_server_con_delete_timeout(con);
+      }
     }
   }
+
   return GEARMAN_SUCCESS;
 }
 

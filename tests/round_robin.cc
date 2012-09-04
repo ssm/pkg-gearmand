@@ -106,7 +106,7 @@ static test_return_t queue_add(void *object)
   for (uint32_t x= 0; x < 10; x++)
   {
     test_compare(GEARMAN_SUCCESS,
-                 gearman_client_do_background(&client, x % 2 ? "queue1" : "queue2", NULL,
+                 gearman_client_do_background(&client, (x % 2) ? "queue1" : "queue2", NULL,
                                               value, value_length,
                                               job_handle));
 
@@ -211,6 +211,7 @@ struct Limit
 // GEARMAN_SUCCESS
 static gearman_return_t job_retry_WORKER(gearman_job_st* job, void *context_arg)
 {
+  (void)(job);
   assert(gearman_job_workload_size(job) == 0);
   assert(gearman_job_workload(job) == NULL);
   Limit *limit= (Limit*)context_arg;
@@ -381,9 +382,9 @@ collection_st collection[] ={
   {0, 0, 0, 0}
 };
 
-void get_world(Framework *world)
+void get_world(libtest::Framework *world)
 {
-  world->collections= collection;
-  world->_create= world_create;
-  world->_destroy= world_destroy;
+  world->collections(collection);
+  world->create(world_create);
+  world->destroy(world_destroy);
 }

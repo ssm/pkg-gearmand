@@ -1,9 +1,39 @@
-/* Gearman server and library
- * Copyright (C) 2008 Brian Aker, Eric Day
- * All rights reserved.
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -13,6 +43,7 @@
 
 #include <config.h>
 #include <libgearman-server/common.h>
+#include <libgearman-server/plugins/base.h>
 
 #include <cstring>
 #include <cerrno>
@@ -118,7 +149,7 @@ static size_t _connection_read(gearman_server_con_st *con, void *data, size_t da
   return size_t(read_size);
 }
 
-gearmand_error_t gearmand_connection_recv_data(gearman_server_con_st *con, void *data, size_t data_size)
+static gearmand_error_t gearmand_connection_recv_data(gearman_server_con_st *con, void *data, size_t data_size)
 {
   gearmand_io_st *connection= &con->con;
 
@@ -136,9 +167,13 @@ gearmand_error_t gearmand_connection_recv_data(gearman_server_con_st *con, void 
   if (connection->recv_buffer_size > 0)
   {
     if (connection->recv_buffer_size < data_size)
+    {
       recv_size= connection->recv_buffer_size;
+    }
     else
+    {
       recv_size= data_size;
+    }
 
     memcpy(data, connection->recv_buffer_ptr, recv_size);
     connection->recv_buffer_ptr+= recv_size;
@@ -187,24 +222,24 @@ static gearmand_error_t _connection_flush(gearman_server_con_st *con)
 
         if (write_size == 0) // detect infinite loop?
         {
-          gearmand_log_debug("send() sent zero bytes to peer %s:%s",
+          gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "send() sent zero bytes to peer %s:%s",
                              connection->context == NULL ? "-" : connection->context->host,
                              connection->context == NULL ? "-" : connection->context->port);
           continue;
         }
         else if (write_size == -1)
         {
-          gearmand_error_t gret;
-
           switch (errno)
           {
           case EAGAIN:
-            gret= gearmand_io_set_events(con, POLLOUT);
-            if (gret != GEARMAN_SUCCESS)
             {
-              return gret;
+              gearmand_error_t gret= gearmand_io_set_events(con, POLLOUT);
+              if (gret != GEARMAN_SUCCESS)
+              {
+                return gret;
+              }
+              return GEARMAN_IO_WAIT;
             }
-            return GEARMAN_IO_WAIT;
 
           case EINTR:
             continue;
@@ -224,6 +259,11 @@ static gearmand_error_t _connection_flush(gearman_server_con_st *con)
           _connection_close(connection);
           return GEARMAN_ERRNO;
         }
+
+        gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "send() %u bytes to peer %s:%s",
+                           uint32_t(write_size),
+                           connection->context == NULL ? "-" : connection->context->host,
+                           connection->context == NULL ? "-" : connection->context->port);
 
         connection->send_buffer_size-= static_cast<size_t>(write_size);
         if (connection->send_state == gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_FLUSH_DATA)
@@ -411,10 +451,11 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
     /* Pack first part of packet, which is everything but the payload. */
     while (1)
     {
-      send_size= con->protocol.packet_pack_fn(packet, con,
-                                              connection->send_buffer + connection->send_buffer_size,
-                                              GEARMAN_SEND_BUFFER_SIZE -
-                                              connection->send_buffer_size, &ret);
+      send_size= con->protocol->pack(packet,
+                                     con,
+                                     connection->send_buffer +connection->send_buffer_size,
+                                     GEARMAN_SEND_BUFFER_SIZE -connection->send_buffer_size,
+                                     ret);
       if (ret == GEARMAN_SUCCESS)
       {
         connection->send_buffer_size+= send_size;
@@ -441,8 +482,7 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
       connection->send_state= gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_PRE_FLUSH;
 
     case gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_PRE_FLUSH:
-      ret= _connection_flush(con);
-      if (ret != GEARMAN_SUCCESS)
+      if ((ret= _connection_flush(con)) != GEARMAN_SUCCESS)
       {
         return ret;
       }
@@ -459,9 +499,12 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
     {
       connection->send_data_offset= GEARMAN_SEND_BUFFER_SIZE - connection->send_buffer_size;
       if (connection->send_data_offset > packet->data_size)
+      {
         connection->send_data_offset= packet->data_size;
+      }
 
-      memcpy(connection->send_buffer + connection->send_buffer_size, packet->data,
+      memcpy(connection->send_buffer +connection->send_buffer_size,
+             packet->data,
              connection->send_data_offset);
       connection->send_buffer_size+= connection->send_data_offset;
 
@@ -477,8 +520,7 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
     connection->send_state= gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_FORCE_FLUSH;
 
   case gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_FORCE_FLUSH:
-    ret= _connection_flush(con);
-    if (ret != GEARMAN_SUCCESS)
+    if ((ret= _connection_flush(con)) != GEARMAN_SUCCESS)
     {
       return ret;
     }
@@ -510,7 +552,8 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
   case gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_FLUSH:
   case gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_FLUSH_DATA:
     ret= _connection_flush(con);
-    if (ret == GEARMAN_SUCCESS && connection->options.close_after_flush)
+    if (ret == GEARMAN_SUCCESS and
+        connection->options.close_after_flush)
     {
       _connection_close(connection);
       ret= GEARMAN_LOST_CONNECTION;
@@ -568,9 +611,11 @@ gearmand_error_t gearman_io_recv(gearman_server_con_st *con, bool recv_data)
 
       if (connection->recv_buffer_size > 0)
       {
-	size_t recv_size= con->protocol.packet_unpack_fn(connection->recv_packet, con,
-							 connection->recv_buffer_ptr,
-							 connection->recv_buffer_size, &ret);
+        assert(con->protocol);
+        size_t recv_size= con->protocol->unpack(connection->recv_packet,
+                                                con,
+                                                connection->recv_buffer_ptr,
+                                                connection->recv_buffer_size, ret);
         connection->recv_buffer_ptr+= recv_size;
         connection->recv_buffer_size-= recv_size;
         if (gearmand_success(ret))
