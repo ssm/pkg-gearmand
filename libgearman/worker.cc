@@ -37,17 +37,22 @@
  */
 
 #include <config.h>
+
 #include <libgearman/common.h>
 #include <libgearman/function/base.hpp>
 #include <libgearman/function/make.hpp>
 
-#include <cassert>
+#include "libgearman/pipe.h"
+
+#include "libgearman/assert.hpp"
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <unistd.h>
 #include <fcntl.h>
+#include <cerrno>
 
 /**
  * @addtogroup gearman_worker_static Static Worker Declarations
@@ -64,8 +69,10 @@ static inline struct _worker_function_st *_function_exist(gearman_worker_st *wor
   {
     if (function_length == function->function_length)
     {
-      if (not memcmp(function_name, function->function_name, function_length))
+      if (memcmp(function_name, function->function_name, function_length) == 0)
+      {
         break;
+      }
     }
   }
 
@@ -305,6 +312,7 @@ void gearman_worker_add_options(gearman_worker_st *worker,
   {
     worker->grab_job.command= GEARMAN_COMMAND_GRAB_JOB_UNIQ;
     gearman_return_t rc= gearman_packet_pack_header(&(worker->grab_job));
+    (void)(rc);
     assert(gearman_success(rc));
     worker->options.grab_uniq= true;
   }
@@ -313,6 +321,7 @@ void gearman_worker_add_options(gearman_worker_st *worker,
   {
     worker->grab_job.command= GEARMAN_COMMAND_GRAB_JOB_ALL;
     gearman_return_t rc= gearman_packet_pack_header(&(worker->grab_job));
+    (void)(rc);
     assert(gearman_success(rc));
     worker->options.grab_all= true;
   }
@@ -1149,42 +1158,15 @@ static gearman_worker_st *_worker_allocate(gearman_worker_st *worker, bool is_cl
 #endif
   }
 
-  if (pipe(worker->universal.wakeup_fd) != 0)
+  if (setup_shutdown_pipe(worker->universal.wakeup_fd) == false)
   {
-    delete worker;
+    if (worker->options.allocated)
+    {
+      delete worker;
+    }
 
     return NULL;
   }
-
-  int returned_flags;
-  if ((returned_flags= fcntl(worker->universal.wakeup_fd[0], F_GETFL, 0)) < 0)
-  {
-    close(worker->universal.wakeup_fd[0]);
-    close(worker->universal.wakeup_fd[1]);
-    delete worker;
-
-    return NULL;
-  }
-
-  if (fcntl(worker->universal.wakeup_fd[0], F_SETFL, returned_flags | O_NONBLOCK) < 0)
-  {
-    close(worker->universal.wakeup_fd[0]);
-    close(worker->universal.wakeup_fd[1]);
-    delete worker;
-
-    return NULL;
-  }
-
-#ifdef F_SETNOSIGPIPE
-  if (fcntl(worker->universal.wakeup_fd[1], F_SETNOSIGPIPE, 0) < 0)
-  {
-    close(worker->universal.wakeup_fd[0]);
-    close(worker->universal.wakeup_fd[1]);
-    delete worker;
-
-    return NULL;
-  }
-#endif
 
   return worker;
 }
@@ -1356,7 +1338,7 @@ gearman_id_t gearman_worker_id(gearman_worker_st *self)
 {
   if (self == NULL)
   {
-    gearman_id_t handle= { INVALID_SOCKET };
+    gearman_id_t handle= { INVALID_SOCKET, INVALID_SOCKET };
     return handle;
   }
 
@@ -1372,4 +1354,9 @@ gearman_return_t gearman_worker_set_identifier(gearman_worker_st *worker,
                                                const char *id, size_t id_size)
 {
   return gearman_set_identifier(worker->universal, id, id_size);
+}
+
+const char *gearman_worker_namespace(gearman_worker_st *self)
+{
+  return gearman_univeral_namespace(self->universal);
 }

@@ -42,6 +42,13 @@
 #define __PRETTY_FUNCTION__ __func__
 #endif
 
+#define YATL_STRINGIFY(x) #x
+#define YATL_TOSTRING(x) YATL_STRINGIFY(x)
+#define YATL_AT __FILE__ ":" YATL_TOSTRING(__LINE__)
+#define YATL_AT_PARAM __func__, AT
+#define YATL_UNIQUE __FILE__ ":" YATL_TOSTRING(__LINE__) "_unique"
+#define YATL_UNIQUE_FUNC_NAME __FILE__ ":" YATL_TOSTRING(__LINE__) "_unique_func"
+
 #define LIBYATL_DEFAULT_PARAM __FILE__, __LINE__, __PRETTY_FUNCTION__
 
 namespace libtest {
@@ -94,7 +101,7 @@ private:
 class disconnected : std::runtime_error
 {
 public:
-  disconnected(const char *file, int line, const char *func, const char *instance, const in_port_t port, const char *format, ...);
+  disconnected(const char *file, int line, const char *func, const std::string&, const in_port_t port, const char *format, ...);
 
   const char* what() const throw()
   {
@@ -108,10 +115,28 @@ public:
   static uint32_t disabled_counter();
   static void increment_disabled_counter();
 
+  int line()
+  {
+    return _line;
+  }
+
+  const char* file()
+  {
+    return _file;
+  }
+
+  const char* func()
+  {
+    return _func;
+  }
+
 private:
   char _error_message[BUFSIZ];
   in_port_t _port;
   char _instance[1024];
+  int _line;
+  const char*  _file;
+  const char* _func;
 };
 
 

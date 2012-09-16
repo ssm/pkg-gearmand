@@ -1,11 +1,39 @@
-/* Gearman server and library
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Copyright (C) 2011 Data Differential LLC
- * Copyright (C) 2008 Brian Aker, Eric Day
- * All rights reserved.
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #include <config.h>
@@ -38,7 +66,7 @@
 
 #include <libgearman-server/gearmand.h>
 #include <libgearman-server/plugins.h>
-#include <libgearman-server/queue.h>
+#include <libgearman-server/queue.hpp>
 
 #define GEARMAND_LOG_REOPEN_TIME 60
 
@@ -67,7 +95,6 @@ extern "C" {
 static bool _set_signals(void);
 }
 
-static void _shutdown_handler(int signal_arg);
 static void _log(const char *line, gearmand_verbose_t verbose, void *context);
 
 int main(int argc, char *argv[])
@@ -81,7 +108,6 @@ int main(int argc, char *argv[])
   std::string user;
   std::string log_file;
   std::string pid_file;
-  std::string port;
   std::string protocol;
   std::string queue_type;
   std::string verbose_string= "ERROR";
@@ -111,13 +137,10 @@ int main(int argc, char *argv[])
    "Number of attempts to run the job before the job server removes it. This is helpful to ensure a bad job does not crash all available workers. Default is no limit.")
 
   ("log-file,l", boost::program_options::value(&log_file)->default_value(LOCALSTATEDIR"/log/gearmand.log"),
-   "Log file to write errors and information to. If the log-file paramater is specified as 'stderr', then output will go to stderr")
+   "Log file to write errors and information to. If the log-file paramater is specified as 'stderr', then output will go to stderr. If 'none', then no logfile will be generated.")
 
   ("listen,L", boost::program_options::value(&host),
    "Address the server should listen on. Default is INADDR_ANY.")
-
-  ("port,p", boost::program_options::value(&port)->default_value(GEARMAN_DEFAULT_TCP_PORT_STRING),
-   "Port the server should listen on.")
 
   ("pid-file,P", boost::program_options::value(&pid_file)->default_value(GEARMAND_PID),
    "File to write process ID out to.")
@@ -128,7 +151,7 @@ int main(int argc, char *argv[])
   ("round-robin,R", boost::program_options::bool_switch(&opt_round_robin)->default_value(false),
    "Assign work in round-robin order per worker connection. The default is to assign work in the order of functions added by the worker.")
 
-  ("queue-type,q", boost::program_options::value(&queue_type),
+  ("queue-type,q", boost::program_options::value(&queue_type)->default_value("builtin"),
    "Persistent queue type to use.")
 
   ("config-file", boost::program_options::value(&config_file)->default_value(GEARMAND_CONFIG),
@@ -156,6 +179,9 @@ int main(int argc, char *argv[])
 
   gearmand::protocol::HTTP http;
   all.add(http.command_line_options());
+
+  gearmand::protocol::Gear gear;
+  all.add(gear.command_line_options());
 
   gearmand::plugins::initialize(all);
 
@@ -202,7 +228,7 @@ int main(int argc, char *argv[])
 
         for (std::vector<std::string>::iterator iter= args.begin();
              iter != args.end();
-             iter++)
+             ++iter)
         {
           std::cerr << *iter << std::endl;
         }
@@ -298,7 +324,7 @@ int main(int argc, char *argv[])
   }
 
   gearmand_st *_gearmand= gearmand_create(host.empty() ? NULL : host.c_str(),
-                                          port.c_str(), threads, backlog,
+                                          threads, backlog,
                                           static_cast<uint8_t>(job_retries),
                                           static_cast<uint8_t>(worker_wakeup),
                                           _log, &log_info, verbose,
@@ -319,6 +345,14 @@ int main(int argc, char *argv[])
 
       return EXIT_FAILURE;
     }
+  }
+
+  if (gear.start(_gearmand) != GEARMAN_SUCCESS)
+  {
+    error::message("Error while enabling Gear protocol module");
+    gearmand_free(_gearmand);
+
+    return EXIT_FAILURE;
   }
 
   if (protocol.compare("http") == 0)
@@ -409,6 +443,25 @@ static bool _switch_user(const char *user)
   return false;
 }
 
+static void _shutdown_handler(int signal_arg)
+{
+  if (signal_arg == SIGUSR1)
+  {
+    gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN_GRACEFUL);
+  }
+  else
+  {
+    gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN);
+  }
+}
+
+static void _reset_log_handler(int) // signal_arg
+{
+  gearmand_log_info_st *log_info= static_cast<gearmand_log_info_st *>(Gearmand()->log_context);
+
+  log_info->reset();
+}
+
 extern "C" {
 static bool _set_signals(void)
 {
@@ -443,20 +496,15 @@ static bool _set_signals(void)
     return true;
   }
 
+  sa.sa_handler= _reset_log_handler;
+  if (sigaction(SIGHUP, &sa, 0) == -1)
+  {
+    error::perror("Could not set SIGHUP handler.");
+    return true;
+  }
+
   return false;
 }
-}
-
-static void _shutdown_handler(int signal_arg)
-{
-  if (signal_arg == SIGUSR1)
-  {
-    gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN_GRACEFUL);
-  }
-  else
-  {
-    gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN);
-  }
 }
 
 static void _log(const char *mesg, gearmand_verbose_t verbose, void *context)

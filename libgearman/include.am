@@ -1,6 +1,6 @@
 # vim:ft=automake
 # Gearman server and library 
-# Copyright (C) 2011 Data Differential, http://datadifferential.com/
+# Copyright (C) 2011 - 2012 Data Differential, http://datadifferential.com/
 # Copyright (C) 2009-2010 Brian Aker, Eric Day, Monty Taylor All rights
 # Copyright (C) 2008 Brian Aker, Eric Day 
 #
@@ -12,7 +12,9 @@
 
 nobase_include_HEADERS+= libgearman/gearman.h
 
+noinst_HEADERS+= libgearman/uuid.hpp
 noinst_HEADERS+= libgearman/job.h
+noinst_HEADERS+= libgearman/pipe.h
 noinst_HEADERS+= \
 		 libgearman/actions.hpp \
 		 libgearman/add.hpp \
@@ -39,6 +41,7 @@ noinst_HEADERS+= \
 		 libgearman/protocol/submit.h \
 		 libgearman/result.hpp \
 		 libgearman/run.hpp \
+		 libgearman/status.hpp \
 		 libgearman/strcommand.h \
 		 libgearman/string.hpp \
 		 libgearman/task.hpp \
@@ -90,6 +93,7 @@ libgearman_libgearman_la_SOURCES= \
 				  libgearman/protocol/submit.cc \
 				  libgearman/result.cc \
 				  libgearman/run.cc \
+				  libgearman/status.cc \
 				  libgearman/strcommand.cc \
 				  libgearman/strerror.cc \
 				  libgearman/string.cc \
@@ -99,6 +103,9 @@ libgearman_libgearman_la_SOURCES= \
 				  libgearman/universal.cc \
 				  libgearman/vector.cc \
 				  libgearman/worker.cc
+
+libgearman_libgearman_la_SOURCES+= libgearman/pipe.cc
+libgearman_libgearman_la_SOURCES+= libgearman/uuid.cc
 
 libgearman_libgearman_la_CXXFLAGS= -DBUILDING_LIBGEARMAN
 

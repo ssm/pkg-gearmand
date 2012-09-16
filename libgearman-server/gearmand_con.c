@@ -1,9 +1,39 @@
-/* Gearman server and library
- * Copyright (C) 2008 Brian Aker, Eric Day
- * All rights reserved.
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -30,10 +60,39 @@
  * @{
  */
 
-static void _con_ready(int fd, short events, void *arg);
-
 static gearmand_error_t _con_add(gearmand_thread_st *thread,
-                                 gearmand_con_st *con);
+                                 gearmand_con_st *dcon)
+{
+  gearmand_error_t ret= GEARMAN_SUCCESS;
+  dcon->server_con= gearman_server_con_add(&(thread->server_thread), dcon, &ret);
+
+  assert(dcon->server_con || ret != GEARMAN_SUCCESS);
+  assert(! dcon->server_con || ret == GEARMAN_SUCCESS);
+
+  if (dcon->server_con == NULL)
+  {
+    gearmand_sockfd_close(dcon->fd);
+
+    return ret;
+  }
+
+  if (dcon->add_fn)
+  {
+    ret= (*dcon->add_fn)(dcon->server_con);
+    if (gearmand_failed(ret))
+    {
+      gearman_server_con_free(dcon->server_con);
+
+      gearmand_sockfd_close(dcon->fd);
+
+      return ret;
+    }
+  }
+
+  GEARMAN_LIST_ADD(thread->dcon, dcon,)
+
+  return GEARMAN_SUCCESS;
+}
 
 /** @} */
 
@@ -54,10 +113,10 @@ gearmand_error_t gearmand_con_create(gearmand_st *gearmand, int fd,
   }
   else
   {
-    dcon= (gearmand_con_st *)malloc(sizeof(gearmand_con_st));
+    dcon= build_gearmand_con_st(); 
     if (dcon == NULL)
     {
-      gearmand_perror("malloc");
+      gearmand_perror("new build_gearmand_con_st");
       gearmand_sockfd_close(fd);
 
       return GEARMAN_MEMORY_ALLOCATION_FAILURE;
@@ -72,8 +131,10 @@ gearmand_error_t gearmand_con_create(gearmand_st *gearmand, int fd,
   dcon->prev= NULL;
   dcon->server_con= NULL;
   dcon->add_fn= NULL;
-  strncpy(dcon->host, host, NI_MAXHOST - 1);
-  strncpy(dcon->port, port, NI_MAXSERV - 1);
+  strncpy(dcon->host, host, NI_MAXHOST);
+  dcon->host[NI_MAXHOST -1]= 0;
+  strncpy(dcon->port, port, NI_MAXSERV);
+  dcon->port[NI_MAXSERV -1]= 0;
   dcon->add_fn= add_fn;
 
   /* If we are not threaded, just add the connection now. */
@@ -85,7 +146,9 @@ gearmand_error_t gearmand_con_create(gearmand_st *gearmand, int fd,
 
   /* We do a simple round-robin connection queue algorithm here. */
   if (gearmand->thread_add_next == NULL)
+  {
     gearmand->thread_add_next= gearmand->thread_list;
+  }
 
   dcon->thread= gearmand->thread_add_next;
 
@@ -101,7 +164,14 @@ gearmand_error_t gearmand_con_create(gearmand_st *gearmand, int fd,
     uint32_t free_dcon_count;
     gearmand_con_st *free_dcon_list;
 
-    (void ) pthread_mutex_lock(&(dcon->thread->lock));
+    int error;
+    if ((error= pthread_mutex_lock(&(dcon->thread->lock))) != 0)
+    {
+      errno= error;
+      gearmand_perror("pthread_mutex_lock");
+      gearmand_fatal("Lock could not be taken on dcon->thread->, shutdown to occur");
+      gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN);
+    }
 
     GEARMAN_LIST_ADD(dcon->thread->dcon_add, dcon,)
 
@@ -117,7 +187,9 @@ gearmand_error_t gearmand_con_create(gearmand_st *gearmand, int fd,
        to lock around the count check, worst case it was already picked up and
        we send an extra byte. */
     if (dcon->thread->dcon_add_count == 1)
+    {
       gearmand_thread_wakeup(dcon->thread, GEARMAND_WAKEUP_CON);
+    }
 
     /* Put the free connection structures we grabbed on the main list. */
     while (free_dcon_list != NULL)
@@ -182,7 +254,7 @@ void gearmand_con_free(gearmand_con_st *dcon)
     {
       /* Lock here because the main thread may be emptying this. */
       int error;
-      if (not (error=  pthread_mutex_lock(&(dcon->thread->lock))))
+      if ((error=  pthread_mutex_lock(&(dcon->thread->lock))) == 0)
       {
         GEARMAN_LIST_ADD(dcon->thread->free_dcon, dcon,);
         (void ) pthread_mutex_unlock(&(dcon->thread->lock));
@@ -196,8 +268,7 @@ void gearmand_con_free(gearmand_con_st *dcon)
   }
   else
   {
-    gearmand_debug("free");
-    free(dcon);
+    destroy_gearmand_con_st(dcon);
   }
 }
 
@@ -205,14 +276,16 @@ void gearmand_con_check_queue(gearmand_thread_st *thread)
 {
   /* Dirty check is fine here, wakeup is always sent after add completes. */
   if (thread->dcon_add_count == 0)
+  {
     return;
+  }
 
   /* We want to add new connections inside the lock because other threads may
      walk the thread's dcon_list while holding the lock. */
   while (thread->dcon_add_list != NULL)
   {
     int error;
-    if (not (error= pthread_mutex_lock(&(thread->lock))))
+    if ((error= pthread_mutex_lock(&(thread->lock))) == 0)
     {
       gearmand_con_st *dcon= thread->dcon_add_list;
       GEARMAN_LIST_DEL(thread->dcon_add, dcon,);
@@ -240,115 +313,4 @@ void gearmand_con_check_queue(gearmand_thread_st *thread)
       gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN);
     }
   }
-}
-
-gearmand_error_t gearmand_connection_watch(gearmand_io_st *con, short events,
-                                           void *context __attribute__ ((unused)))
-{
-  (void) context;
-  gearmand_con_st *dcon;
-  short set_events= 0;
-
-  dcon= (gearmand_con_st *)gearman_io_context(con);
-
-  if (events & POLLIN)
-    set_events|= EV_READ;
-  if (events & POLLOUT)
-    set_events|= EV_WRITE;
-
-  if (dcon->last_events != set_events)
-  {
-    if (dcon->last_events)
-    {
-      if (event_del(&(dcon->event)) < 0)
-      {
-        gearmand_perror("event_del");
-        assert(! "event_del");
-      }
-    }
-    event_set(&(dcon->event), dcon->fd, set_events | EV_PERSIST, _con_ready, dcon);
-    event_base_set(dcon->thread->base, &(dcon->event));
-
-    if (event_add(&(dcon->event), NULL) < 0)
-    {
-      gearmand_perror("event_add");
-      return GEARMAN_EVENT;
-    }
-
-    dcon->last_events= set_events;
-  }
-
-  gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
-                     "%15s:%5s Watching  %6s %s",
-                     dcon->host, dcon->port,
-                     events & POLLIN ? "POLLIN" : "",
-                     events & POLLOUT ? "POLLOUT" : "");
-
-  return GEARMAN_SUCCESS;
-}
-
-/*
- * Private definitions
- */
-
-static void _con_ready(int fd __attribute__ ((unused)), short events,
-                       void *arg)
-{
-  gearmand_con_st *dcon= (gearmand_con_st *)arg;
-  short revents= 0;
-
-  if (events & EV_READ)
-    revents|= POLLIN;
-  if (events & EV_WRITE)
-    revents|= POLLOUT;
-
-  gearmand_error_t ret= gearmand_io_set_revents(dcon->server_con, revents);
-  if (gearmand_failed(ret))
-  {
-    gearmand_gerror("gearmand_io_set_revents", ret);
-    gearmand_con_free(dcon);
-    return;
-  }
-
-  gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, 
-                     "%15s:%5s Ready     %6s %s",
-                     dcon->host, dcon->port,
-                     revents & POLLIN ? "POLLIN" : "",
-                     revents & POLLOUT ? "POLLOUT" : "");
-
-  gearmand_thread_run(dcon->thread);
-}
-
-static gearmand_error_t _con_add(gearmand_thread_st *thread,
-                                 gearmand_con_st *dcon)
-{
-  gearmand_error_t ret= GEARMAN_SUCCESS;
-  dcon->server_con= gearman_server_con_add(&(thread->server_thread), dcon, &ret);
-
-  assert(dcon->server_con || ret != GEARMAN_SUCCESS);
-  assert(! dcon->server_con || ret == GEARMAN_SUCCESS);
-
-  if (not dcon->server_con)
-  {
-    gearmand_sockfd_close(dcon->fd);
-
-    return ret;
-  }
-
-  if (dcon->add_fn)
-  {
-    ret= (*dcon->add_fn)(dcon->server_con);
-    if (gearmand_failed(ret))
-    {
-      gearman_server_con_free(dcon->server_con);
-
-      gearmand_sockfd_close(dcon->fd);
-
-      return ret;
-    }
-  }
-
-  GEARMAN_LIST_ADD(thread->dcon, dcon,)
-
-  return GEARMAN_SUCCESS;
 }

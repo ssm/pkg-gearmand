@@ -41,7 +41,8 @@
 
 #include <libgearman-1.0/visibility.h>
 #include <libgearman/command.h>
-#include <cassert>
+
+#include "libgearman/assert.hpp"
 
 /**
  * Command info. Update GEARMAN_MAX_COMMAND_ARGS to the largest number in the
@@ -89,7 +90,9 @@ gearman_command_info_st gearmand_command_info_list[GEARMAN_COMMAND_MAX]=
   { "GEARMAN_COMMAND_SUBMIT_REDUCE_JOB", 4, true },
   { "GEARMAN_COMMAND_SUBMIT_REDUCE_JOB_BACKGROUND", 4, true },
   { "GEARMAN_COMMAND_GRAB_JOB_ALL",    0, false  },
-  { "GEARMAN_COMMAND_JOB_ASSIGN_ALL",    4, true  }
+  { "GEARMAN_COMMAND_JOB_ASSIGN_ALL",    4, true  },
+  { "GEARMAN_COMMAND_GET_STATUS_UNIQUE", 1, false },
+  { "GEARMAN_COMMAND_STATUS_RES_UNIQUE", 6, false }
 };
 
 gearman_command_info_st *gearman_command_info(gearman_command_t command)

@@ -80,7 +80,7 @@ static test_return_t collection_cleanup(void *object)
 
 static void *world_create(server_startup_st& servers, test_return_t& error)
 {
-  if (has_memcached_support() == false)
+  if (has_memcached() == false or has_libmemcached() == false)
   {
     error= TEST_SKIPPED;
     return NULL;
@@ -93,7 +93,7 @@ static void *world_create(server_startup_st& servers, test_return_t& error)
     return NULL;
   }
 
-  return new Context(default_port(), servers);
+  return new Context(libtest::get_free_port(), servers);
 }
 
 static bool world_destroy(void *object)
@@ -126,9 +126,9 @@ collection_st collection[] ={
   {0, 0, 0, 0}
 };
 
-void get_world(Framework *world)
+void get_world(libtest::Framework *world)
 {
-  world->collections= collection;
-  world->_create= world_create;
-  world->_destroy= world_destroy;
+  world->collections(collection);
+  world->create(world_create);
+  world->destroy(world_destroy);
 }

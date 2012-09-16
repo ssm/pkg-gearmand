@@ -41,34 +41,37 @@
 
 using namespace libtest;
 
+#include <libgearman/gearman.h>
+#include "tests/start_worker.h"
+
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
-
-#include <libgearman/gearman.h>
-#include "tests/start_worker.h"
-#include "tests/workers.h"
 
 #include <tests/basic.h>
 #include <tests/context.h>
+
+#include "tests/workers/v2/echo_or_react.h"
 
 // Prototypes
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
 
-static char url[1024]= { 0 };
+static char host_url[1024]= { 0 };
 #define WORKER_FUNCTION_NAME "httpd_worker"
 
 static test_return_t curl_no_function_TEST(void *)
 {
   Application curl("/usr/bin/curl");
-  curl.add_option(url);
+  curl.add_option(host_url);
 
   test_compare(Application::SUCCESS, curl.run());
-  test_compare(Application::SUCCESS, curl.wait(false));
+  test_compare(Application::SUCCESS, curl.join());
 
   return TEST_SUCCESS;
 }
@@ -77,11 +80,12 @@ static test_return_t curl_function_no_body_TEST(void *)
 {
   Application curl("/usr/bin/curl");
   char worker_url[1024];
-  snprintf(worker_url, sizeof(worker_url), "%s%s", url, WORKER_FUNCTION_NAME);
+  snprintf(worker_url, sizeof(worker_url), "%s%s", host_url, WORKER_FUNCTION_NAME);
   curl.add_option(worker_url);
+  curl.add_option("--header", "\"X-Gearman-Unique: curl_function_no_body_TEST\"");
 
   test_compare(Application::SUCCESS, curl.run());
-  test_compare(Application::SUCCESS, curl.wait(false));
+  test_compare(Application::SUCCESS, curl.join());
   test_zero(curl.stdout_result_length());
 
   return TEST_SUCCESS;
@@ -89,22 +93,34 @@ static test_return_t curl_function_no_body_TEST(void *)
 
 static test_return_t curl_function_TEST(void *)
 {
+  // Cleanup previous run
+  unlink("var/tmp/curl_function_TEST.out");
+
   Application curl("/usr/bin/curl");
   char worker_url[1024];
-  snprintf(worker_url, sizeof(worker_url), "%s%s", url, WORKER_FUNCTION_NAME);
-  curl.add_option(worker_url);
+  snprintf(worker_url, sizeof(worker_url), "%s%s", host_url, WORKER_FUNCTION_NAME);
+  curl.add_option("--header", "\"X-Gearman-Unique: curl_function_TEST\"");
   curl.add_option("--data", "fubar");
+  curl.add_option("--silent");
+  curl.add_option("--show-error");
+  curl.add_option("--output", "var/tmp/curl_function_TEST.out");
+  curl.add_option(worker_url);
 
   test_compare(Application::SUCCESS, curl.run());
-  test_compare(Application::SUCCESS, curl.wait(false));
+  test_compare(Application::SUCCESS, curl.join());
   test_zero(curl.stdout_result_length());
+
+  struct stat stat_buffer;
+  test_zero(stat("var/tmp/curl_function_TEST.out", &stat_buffer));
+  test_true(stat_buffer.st_size >= off_t(146));
+  test_zero(unlink("var/tmp/curl_function_TEST.out"));
 
   return TEST_SUCCESS;
 }
 
 static test_return_t GET_TEST(void *)
 {
-  libtest::http::GET get(url);
+  libtest::http::GET get(host_url);
 
   test_compare(true, get.execute());
 
@@ -113,7 +129,7 @@ static test_return_t GET_TEST(void *)
 
 static test_return_t HEAD_TEST(void *)
 {
-  libtest::http::HEAD head(url);
+  libtest::http::HEAD head(host_url);
 
   test_compare(true, head.execute());
 
@@ -124,16 +140,16 @@ static test_return_t HEAD_TEST(void *)
 static void *world_create(server_startup_st& servers, test_return_t& error)
 {
   in_port_t http_port= libtest::get_free_port();
-  int length= snprintf(url, sizeof(url), "http://localhost:%d/", int(http_port));
-  fatal_assert(length > 0 and sizeof(length) < sizeof(url));
+  int length= snprintf(host_url, sizeof(host_url), "http://localhost:%d/", int(http_port));
+  fatal_assert(length > 0 and sizeof(length) < sizeof(host_url));
 
   char buffer[1024];
   length= snprintf(buffer, sizeof(buffer), "--http-port=%d", int(http_port));
-  fatal_assert(length > 0 and sizeof(length) < sizeof(url));
+  fatal_assert(length > 0 and sizeof(length) < sizeof(buffer));
   const char *argv[]= { "--protocol=http", buffer, 0 };
   if (server_startup(servers, "gearmand", libtest::default_port(), 2, argv) == false)
   {
-    error= TEST_FAILURE;
+    error= TEST_SKIPPED;
     return NULL;
   }
 
@@ -167,8 +183,8 @@ static test_return_t check_for_curl(void *)
 
 test_st curl_TESTS[] ={
   { "curl /", 0, curl_no_function_TEST },
-  { "curl /"WORKER_FUNCTION_NAME, 0, curl_function_no_body_TEST },
-  { "curl /"WORKER_FUNCTION_NAME" --data=fubar", 0, curl_function_TEST },
+  { "curl /" WORKER_FUNCTION_NAME, 0, curl_function_no_body_TEST },
+  { "curl /" WORKER_FUNCTION_NAME " --data=fubar", 0, curl_function_TEST },
   { 0, 0, 0 }
 };
 
@@ -194,9 +210,9 @@ collection_st collection[] ={
   { 0, 0, 0, 0 }
 };
 
-void get_world(Framework *world)
+void get_world(libtest::Framework *world)
 {
-  world->collections= collection;
-  world->_create= world_create;
-  world->_destroy= world_destroy;
+  world->collections(collection);
+  world->create(world_create);
+  world->destroy(world_destroy);
 }

@@ -1,3 +1,40 @@
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
+ *
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
 /**
  * @file
  * @brief Redis Queue Storage Definitions
@@ -18,7 +55,7 @@ static gearmand_error_t _hiredis_add(gearman_server_st *server, void *context,
                                              const char *function_name,
                                              size_t function_name_size,
                                              const void *data, size_t data_size,
-                                             gearmand_job_priority_t priority,
+                                             gearman_job_priority_t priority,
                                              int64_t when);
 
 static gearmand_error_t _hiredis_flush(gearman_server_st *server, void *context);
@@ -100,8 +137,8 @@ void initialize_redis()
 
 typedef std::vector<char> vchar_t;
 #define GEARMAN_QUEUE_GEARMAND_DEFAULT_PREFIX "_gear_"
+#define GEARMAN_QUEUE_GEARMAND_DEFAULT_PREFIX_SIZE sizeof(GEARMAN_QUEUE_GEARMAND_DEFAULT_PREFIX)
 #define GEARMAN_KEY_LITERAL "%s-%.*s-%*s"
-#define GEARMAN_KEY_SCAN_LITERAL "%*s-%s-%s"
 
 static size_t build_key(vchar_t &key,
                         const char *unique,
@@ -109,11 +146,16 @@ static size_t build_key(vchar_t &key,
                         const char *function_name,
                         size_t function_name_size)
 {
-  key.resize(function_name_size +unique_size +sizeof(GEARMAN_QUEUE_GEARMAND_DEFAULT_PREFIX) +4);
+  key.resize(function_name_size +unique_size +GEARMAN_QUEUE_GEARMAND_DEFAULT_PREFIX_SIZE +4);
   int key_size= snprintf(&key[0], key.size(), GEARMAN_KEY_LITERAL,
                          GEARMAN_QUEUE_GEARMAND_DEFAULT_PREFIX,
                          (int)function_name_size, function_name,
                          (int)unique_size, unique);
+  if (size_t(key_size) >= key.size() or key_size <= 0)
+  {
+    assert(0);
+    return -1;
+  }
 
   return key.size();
 }
@@ -135,14 +177,14 @@ static size_t build_key(vchar_t &key,
  * Private definitions
  */
 
-static gearmand_error_t _hiredis_add(gearman_server_st *server, void *context,
-                                             const char *unique,
-                                             size_t unique_size,
-                                             const char *function_name,
-                                             size_t function_name_size,
-                                             const void *data, size_t data_size,
-                                             gearmand_job_priority_t priority,
-                                             int64_t when)
+static gearmand_error_t _hiredis_add(gearman_server_st *, void *context,
+                                     const char *unique,
+                                     size_t unique_size,
+                                     const char *function_name,
+                                     size_t function_name_size,
+                                     const void *data, size_t data_size,
+                                     gearman_job_priority_t,
+                                     int64_t when)
 {
   gearmand::plugins::queue::Hiredis *queue= (gearmand::plugins::queue::Hiredis *)context;
 
@@ -213,9 +255,28 @@ static gearmand_error_t _hiredis_replay(gearman_server_st *server, void *context
 
   for (size_t x= 0; x < reply->elements; x++)
   {
+    char prefix[GEARMAN_QUEUE_GEARMAND_DEFAULT_PREFIX_SIZE];
     char function_name[GEARMAN_FUNCTION_MAX_SIZE];
     char unique[GEARMAN_MAX_UNIQUE_SIZE];
-    int ret= sscanf(reply->element[x]->str, GEARMAN_KEY_SCAN_LITERAL, function_name, unique);
+
+    char fmt_str[100] = "";    
+    int fmt_str_length= snprintf(fmt_str, sizeof(fmt_str), "%%%ds-%%%ds-%%%ds",
+                                 int(GEARMAN_QUEUE_GEARMAND_DEFAULT_PREFIX_SIZE),
+                                 int(GEARMAN_FUNCTION_MAX_SIZE),
+                                 int(GEARMAN_MAX_UNIQUE_SIZE));
+    if (fmt_str_length <= 0 or size_t(fmt_str_length) >= sizeof(fmt_str))
+    {
+      assert(fmt_str_length != 1);
+      return gearmand_gerror("snprintf() failed to produce a valud fmt_str for redis key", GEARMAN_QUEUE_ERROR);
+    }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+    int ret= sscanf(reply->element[x]->str,
+                    fmt_str,
+                    prefix,
+                    function_name,
+                    unique);
+#pragma GCC diagnostic pop
     if (ret == 0)
     {
       continue;
@@ -231,7 +292,7 @@ static gearmand_error_t _hiredis_replay(gearman_server_st *server, void *context
                    unique, strlen(unique),
                    function_name, strlen(function_name),
                    get_reply->str, get_reply->len,
-                   GEARMAND_JOB_PRIORITY_NORMAL, 0);
+                   GEARMAN_JOB_PRIORITY_NORMAL, 0);
     freeReplyObject(get_reply);
   }
   freeReplyObject(reply);
