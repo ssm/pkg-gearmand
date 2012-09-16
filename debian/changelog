@@ -1,3 +1,15 @@
+gearmand (0.38-1) UNRELEASED; urgency=low
+
+  * Imported Upstream version 0.38
+  * Update build dependency for libmemcached-dev to version >= 1.0
+    (Closes: #681768)
+  * Refresh patch gearmand_hurd.patch
+  * Remove patch "support-gcc-4.7.patch", it is included upstream
+  * Add build dependency on libboost-system-dev
+  * debian/watch: Check for updates from the stable branch only
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 16 Sep 2012 20:59:54 +0200
+
 gearmand (0.33-2) unstable; urgency=low
 
   * Add patch to support gcc/g++ 4.7 (Closes: #678903)
