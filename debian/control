@@ -78,8 +78,7 @@ Description: API Documentation for the Gearman Library
 
 Package: gearman-job-server
 Architecture: any
-Pre-Depends: adduser
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, adduser
 Description: Job server for the Gearman distributed job queue
  Gearman is a system to farm out work to other machines, dispatching function
  calls to machines that are better suited to do work, to do work in parallel,

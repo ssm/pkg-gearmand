@@ -2,9 +2,35 @@
 
 set -e
 
-GROUP="gearman"
 USER="gearman"
+GROUP="gearman"
 LOGDIR="/var/log/gearman-job-server"
-chown $USER:$GROUP $LOGDIR
+DATADIR="/var/lib/gearman"
+
+create_user() {
+    if ! getent passwd $USER > /dev/null; then
+        adduser --quiet --system --group --disabled-login --no-create-home \
+            --home $DATADIR $USER
+    fi
+}
+
+set_permissions() {
+    chown $USER:$GROUP $LOGDIR
+    chown $USER:$GROUP $DATADIR
+}
+
+case "$1" in
+    configure)
+        create_user
+        set_permissions
+        ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with unknown argument '$1'" >&2
+        exit 1
+        ;;
+esac
 
 #DEBHELPER#

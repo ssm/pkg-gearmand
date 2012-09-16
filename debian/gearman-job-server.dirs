@@ -1,2 +1,3 @@
 /var/log/gearman-job-server
+/var/lib/gearman
 lib/systemd/system
