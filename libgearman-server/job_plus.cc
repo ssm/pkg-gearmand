@@ -36,9 +36,13 @@
  */
 
 #include <config.h>
+
 #include <libgearman-server/common.h>
+#include <libgearman-server/list.h>
 
 #include <cstring>
+#include <memory>
+#include <cassert>
 
 /**
  * Generate hash key for job handles and unique IDs.
@@ -79,23 +83,62 @@ void _server_con_worker_list_append(gearman_server_worker_st *list,
   }
 }
 
+void destroy_gearman_server_job_st(gearman_server_job_st* arg)
+{
+  gearmand_debug("delete gearman_server_con_st");
+  delete arg;
+}
+
+gearman_server_job_st *gearman_server_job_get_by_unique(gearman_server_st *server,
+                                                        const char *unique,
+                                                        const size_t unique_length,
+                                                        gearman_server_con_st *worker_con)
+{
+  (void)unique_length;
+  for (size_t x= 0; x < GEARMAND_JOB_HASH_SIZE; x++)
+  {
+    for (gearman_server_job_st *server_job= server->job_hash[x];
+         server_job != NULL;
+         server_job= server_job->next)
+    {
+      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "COMPARE unique \"%s\"(%u) == \"%s\"(%u)",
+                         bool(server_job->unique[0]) ? server_job->unique :  "<null>", uint32_t(strlen(server_job->unique)),
+                         unique, uint32_t(unique_length));
+
+      if (bool(server_job->unique[0]) and
+          (strcmp(server_job->unique, unique) == 0))
+      {
+        /* Check to make sure the worker asking for the job still owns the job. */
+        if (worker_con != NULL and
+            (server_job->worker == NULL or server_job->worker->con != worker_con))
+        {
+          return NULL;
+        }
+
+        return server_job;
+      }
+    }
+  }
+
+  return NULL;
+}
+
 gearman_server_job_st *gearman_server_job_get(gearman_server_st *server,
                                               const char *job_handle,
+                                              const size_t job_handle_length,
                                               gearman_server_con_st *worker_con)
 {
-  uint32_t key;
-
-  key= _server_job_hash(job_handle, strlen(job_handle));
+  uint32_t key= _server_job_hash(job_handle, job_handle_length);
 
   for (gearman_server_job_st *server_job= server->job_hash[key % GEARMAND_JOB_HASH_SIZE];
        server_job != NULL; server_job= server_job->next)
   {
-    if (server_job->job_handle_key == key &&
-        !strcmp(server_job->job_handle, job_handle))
+    if (server_job->job_handle_key == key and
+        strncmp(server_job->job_handle, job_handle, GEARMAND_JOB_HANDLE_SIZE) == 0)
     {
       /* Check to make sure the worker asking for the job still owns the job. */
-      if (worker_con != NULL &&
-          (server_job->worker == NULL || server_job->worker->con != worker_con))
+      if (worker_con != NULL and
+          (server_job->worker == NULL or server_job->worker->con != worker_con))
       {
         return NULL;
       }
@@ -115,9 +158,9 @@ gearman_server_job_st * gearman_server_job_peek(gearman_server_con_st *server_co
   {
     if (server_worker->function->job_count != 0)
     {
-      for (gearmand_job_priority_t priority= GEARMAND_JOB_PRIORITY_HIGH;
-           priority != GEARMAND_JOB_PRIORITY_MAX;
-           priority= gearmand_job_priority_t(int(priority) +1))
+      for (gearman_job_priority_t priority= GEARMAN_JOB_PRIORITY_HIGH;
+           priority != GEARMAN_JOB_PRIORITY_MAX;
+           priority= gearman_job_priority_t(int(priority) +1))
       {
         gearman_server_job_st *server_job;
         server_job= server_worker->function->job_list[priority];
@@ -159,13 +202,11 @@ gearman_server_job_st *gearman_server_job_take(gearman_server_con_st *server_con
 {
   for (gearman_server_worker_st *server_worker= server_con->worker_list; server_worker; server_worker= server_worker->con_next)
   {
-    gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Jobs available %lu", (unsigned long)(server_worker->function->job_count));
-    if (server_worker->function->job_count)
+    if (server_worker->function and server_worker->function->job_count)
     {
-      if (server_worker == NULL)
-      {
-        return NULL;
-      }
+      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Jobs available for %.*s: %lu",
+                         (int)server_worker->function->function_name_size, server_worker->function->function_name,
+                         (unsigned long)(server_worker->function->job_count));
 
       if (Server->flags.round_robin)
       {
@@ -178,9 +219,9 @@ gearman_server_job_st *gearman_server_job_take(gearman_server_con_st *server_con
         }
       }
 
-      gearmand_job_priority_t priority;
-      for (priority= GEARMAND_JOB_PRIORITY_HIGH; priority < GEARMAND_JOB_PRIORITY_LOW;
-           priority= gearmand_job_priority_t(int(priority) +1))
+      gearman_job_priority_t priority;
+      for (priority= GEARMAN_JOB_PRIORITY_HIGH; priority < GEARMAN_JOB_PRIORITY_LOW;
+           priority= gearman_job_priority_t(int(priority) +1))
       {
         if (server_worker->function->job_list[priority])
         {
@@ -188,12 +229,12 @@ gearman_server_job_st *gearman_server_job_take(gearman_server_con_st *server_con
         }
       }
 
-      gearman_server_job_st *server_job= server_job= server_worker->function->job_list[priority];
+      gearman_server_job_st *server_job= server_worker->function->job_list[priority];
       gearman_server_job_st *previous_job= server_job;
   
       int64_t current_time= (int64_t)time(NULL);
   
-      while (server_job && server_job->when != 0 && server_job->when > current_time)
+      while (server_job and server_job->when != 0 and server_job->when > current_time)
       {
         previous_job= server_job;
         server_job= server_job->function_next;  
@@ -241,23 +282,35 @@ void *_proc(void *data)
 {
   gearman_server_st *server= (gearman_server_st *)data;
 
-  gearmand_initialize_thread_logging("[ proc ]");
+  gearmand_initialize_thread_logging("[  proc ]");
 
   while (1)
   {
-    (void) pthread_mutex_lock(&(server->proc_lock));
+    if (pthread_mutex_lock(&(server->proc_lock)) == -1)
+    {
+      gearmand_fatal("pthread_mutex_lock()");
+      return NULL;
+    }
+
     while (server->proc_wakeup == false)
     {
       if (server->proc_shutdown)
       {
-        (void) pthread_mutex_unlock(&(server->proc_lock));
+        if (pthread_mutex_unlock(&(server->proc_lock)) == -1)
+        {
+          gearmand_fatal("pthread_mutex_unlock()");
+          assert(!"pthread_mutex_lock");
+        }
         return NULL;
       }
 
       (void) pthread_cond_wait(&(server->proc_cond), &(server->proc_lock));
     }
     server->proc_wakeup= false;
-    (void) pthread_mutex_unlock(&(server->proc_lock));
+    if (pthread_mutex_unlock(&(server->proc_lock)) == -1)
+    {
+      gearmand_fatal("pthread_mutex_unlock()");
+    }
 
     for (gearman_server_thread_st *thread= server->thread_list; thread != NULL; thread= thread->next)
     {
@@ -302,4 +355,50 @@ void *_proc(void *data)
       }
     }
   }
+}
+
+gearman_server_job_st * gearman_server_job_create(gearman_server_st *server)
+{
+  gearman_server_job_st *server_job;
+
+  if (server->free_job_count > 0)
+  {
+    server_job= server->free_job_list;
+    gearmand_server_free_job_list_free(server, server_job);
+  }
+  else
+  {
+    server_job= new (std::nothrow) gearman_server_job_st;
+    if (server_job == NULL)
+    {
+      return NULL;
+    }
+  }
+
+  server_job->ignore_job= false;
+  server_job->job_queued= false;
+  server_job->retries= 0;
+  server_job->priority= GEARMAN_JOB_PRIORITY_NORMAL;
+  server_job->job_handle_key= 0;
+  server_job->unique_key= 0;
+  server_job->client_count= 0;
+  server_job->numerator= 0;
+  server_job->denominator= 0;
+  server_job->data_size= 0;
+  server_job->next= NULL;
+  server_job->prev= NULL;
+  server_job->unique_next= NULL;
+  server_job->unique_prev= NULL;
+  server_job->worker_next= NULL;
+  server_job->worker_prev= NULL;
+  server_job->function= NULL;
+  server_job->function_next= NULL;
+  server_job->data= NULL;
+  server_job->client_list= NULL;
+  server_job->worker= NULL;
+  server_job->job_handle[0]= 0;
+  server_job->unique[0]= 0;
+  server_job->unique_length= 0;
+
+  return server_job;
 }

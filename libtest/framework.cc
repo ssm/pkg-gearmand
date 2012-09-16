@@ -43,28 +43,33 @@
 #include <fnmatch.h>
 #include <iostream>
 
-using namespace libtest;
+namespace libtest {
 
-Framework::Framework(libtest::SignalThread& signal,
+Framework::Framework(libtest::SignalThread& signal_,
+                     const std::string& name_,
                      const std::string& only_run_arg,
                      const std::string& wildcard_arg) :
-  collections(NULL),
   _total(0),
   _success(0),
   _skipped(0),
   _failed(0),
   _create(NULL),
   _destroy(NULL),
+  _on_error(NULL),
   _runner(NULL),
   _socket(false),
   _creators_ptr(NULL),
-  _signal(signal),
+  _signal(signal_),
   _only_run(only_run_arg),
-  _wildcard(wildcard_arg)
+  _wildcard(wildcard_arg),
+  _name(name_)
 {
   get_world(this);
+}
 
-  for (collection_st *next= collections; next and next->name; next++)
+void Framework::collections(collection_st* collections_)
+{
+  for (collection_st *next= collections_; next and next->name; next++)
   {
     _collection.push_back(new Collection(this, next));
   }
@@ -83,7 +88,7 @@ Framework::~Framework()
 
   for (std::vector<Collection*>::iterator iter= _collection.begin();
        iter != _collection.end();
-       iter++)
+       ++iter)
   {
     delete *iter;
   }
@@ -103,7 +108,7 @@ void Framework::exec()
 {
   for (std::vector<Collection*>::iterator iter= _collection.begin();
        iter != _collection.end() and (_signal.is_shutdown() == false);
-       iter++)
+       ++iter)
   {
     if (_only_run.empty() == false and
         fnmatch(_only_run.c_str(), (*iter)->name(), 0))
@@ -133,16 +138,23 @@ void Framework::exec()
     }
     catch (libtest::fatal& e)
     {
+      _failed++;
       stream::cerr(e.file(), e.line(), e.func()) << e.mesg();
     }
     catch (libtest::disconnected& e)
     {
+      _failed++;
       Error << "Unhandled disconnection occurred:" << e.what();
       throw;
     }
-
-    Outn();
+    catch (...)
+    {
+      _failed++;
+      throw;
+    }
   }
+
+  void xml(const std::string& testsuites_name, std::ostream& output);
 }
 
 uint32_t Framework::sum_total()
@@ -150,7 +162,7 @@ uint32_t Framework::sum_total()
   uint32_t count= 0;
   for (std::vector<Collection*>::iterator iter= _collection.begin();
        iter != _collection.end();
-       iter++)
+       ++iter)
   {
     count+= (*iter)->total();
   }
@@ -163,7 +175,7 @@ uint32_t Framework::sum_success()
   uint32_t count= 0;
   for (std::vector<Collection*>::iterator iter= _collection.begin();
        iter != _collection.end();
-       iter++)
+       ++iter)
   {
     count+= (*iter)->success();
   }
@@ -176,7 +188,7 @@ uint32_t Framework::sum_skipped()
   uint32_t count= 0;
   for (std::vector<Collection*>::iterator iter= _collection.begin();
        iter != _collection.end();
-       iter++)
+       ++iter)
   {
     count+= (*iter)->skipped();
   }
@@ -189,7 +201,7 @@ uint32_t Framework::sum_failed()
   uint32_t count= 0;
   for (std::vector<Collection*>::iterator iter= _collection.begin();
        iter != _collection.end();
-       iter++)
+       ++iter)
   {
     count+= (*iter)->failed();
   }
@@ -218,3 +230,5 @@ test_return_t Framework::create()
 
   return rc;
 }
+
+} // namespace libtest

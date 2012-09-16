@@ -34,29 +34,22 @@
  *
  */
 
-/*
-  Random send failing library for testing send failures.
-  LD_PRELOAD="/usr/lib/libdl.so ./util/libhostile_send.so" ./binary
-*/
+#include <config.h>
 
-#define _GNU_SOURCE
-#include <dlfcn.h>
-
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <time.h>
-
-
+#include <libhostile/function.h>
 #include <libhostile/initialize.h>
 
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 static int not_until= 500;
 
 static struct function_st __function;
 
-static pthread_once_t function_lookup_once = PTHREAD_ONCE_INIT;
+static pthread_once_t function_lookup_once= PTHREAD_ONCE_INIT;
 static void set_local(void)
 {
   __function= set_function("setsockopt", "HOSTILE_SETSOCKOPT");
@@ -68,16 +61,23 @@ int setsockopt(int sockfd, int level, int optname,
   hostile_initialize();
   (void) pthread_once(&function_lookup_once, set_local);
 
-  if (__function.frequency)
+  if (is_called() == false)
   {
-    if (--not_until < 0 && random() % __function.frequency)
+    if (__function.frequency)
     {
-      shutdown(sockfd, SHUT_RDWR);
-      close(sockfd);
-      errno= EBADF;
-      return -1;
+      if (--not_until < 0 && random() % __function.frequency)
+      {
+        shutdown(sockfd, SHUT_RDWR);
+        close(sockfd);
+        errno= EBADF;
+        return -1;
+      }
     }
   }
 
-  return __function.function.setsockopt(sockfd, level, optname, optval, optlen);
+  set_called();
+  int ret= __function.function.setsockopt(sockfd, level, optname, optval, optlen);
+  reset_called();
+
+  return ret;
 }

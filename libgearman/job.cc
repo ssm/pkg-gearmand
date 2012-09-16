@@ -40,7 +40,8 @@
 #include <config.h>
 #include <libgearman/common.h>
 
-#include <cassert>
+#include "libgearman/assert.hpp"
+
 #include <cstdio>
 #include <cstring>
 #include <memory>
@@ -231,7 +232,6 @@ bool gearman_job_build_reducer(gearman_job_st *job, gearman_aggregator_fn *aggre
 
 gearman_return_t gearman_job_send_data(gearman_job_st *job, const void *data, size_t data_size)
 {
-  gearman_return_t ret;
   const void *args[2];
   size_t args_size[2];
 
@@ -249,12 +249,14 @@ gearman_return_t gearman_job_send_data(gearman_job_st *job, const void *data, si
     args_size[0]= job->assigned.arg_size[0];
     args[1]= data;
     args_size[1]= data_size;
-    ret= gearman_packet_create_args(job->worker->universal, job->work,
-                                    GEARMAN_MAGIC_REQUEST,
-                                    GEARMAN_COMMAND_WORK_DATA,
-                                    args, args_size, 2);
+    gearman_return_t ret= gearman_packet_create_args(job->worker->universal, job->work,
+                                                     GEARMAN_MAGIC_REQUEST,
+                                                     GEARMAN_COMMAND_WORK_DATA,
+                                                     args, args_size, 2);
     if (gearman_failed(ret))
+    {
       return ret;
+    }
 
     job->options.work_in_use= true;
   }
@@ -542,28 +544,44 @@ void *gearman_job_take_workload(gearman_job_st *job, size_t *data_size)
 
 void gearman_job_free(gearman_job_st *job)
 {
-  if (not job)
+  if (job == NULL)
+  {
     return;
+  }
 
   if (job->options.assigned_in_use)
+  {
     gearman_packet_free(&(job->assigned));
+  }
 
   if (job->options.work_in_use)
+  {
     gearman_packet_free(&(job->work));
+  }
 
   if (job->worker->job_list == job)
+  {
     job->worker->job_list= job->next;
+  }
+
   if (job->prev)
+  {
     job->prev->next= job->next;
+  }
+
   if (job->next)
+  {
     job->next->prev= job->prev;
+  }
   job->worker->job_count--;
 
   delete job->reducer;
   job->reducer= NULL;
 
   if (job->options.allocated)
+  {
     delete job;
+  }
 }
 
 /*

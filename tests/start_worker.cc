@@ -40,6 +40,7 @@
 #include <config.h>
 
 #include <libtest/test.hpp>
+#include <libhostile/hostile.h>
 
 #include <cassert>
 #include <cstring>
@@ -79,23 +80,23 @@ struct context_st {
   boost::barrier* _sync_point;
 
   context_st(worker_handle_st* handle_arg,
-             gearman_function_t& arg,
+             const gearman_function_t& func_arg,
              in_port_t port_arg,
              const std::string& namespace_key_arg,
              const std::string& function_name_arg,
              void *context_arg,
              gearman_worker_options_t& options_arg,
              int timeout_arg) :
-    port(port_arg),
     handle(handle_arg),
+    port(port_arg),
     options(options_arg),
-    worker_fn(arg),
+    worker_fn(func_arg),
     namespace_key(namespace_key_arg),
     function_name(function_name_arg),
     context(context_arg),
-    _sync_point(handle_arg->sync_point()),
     magic(CONTEXT_MAGIC_MARKER),
-    _timeout(timeout_arg)
+    _timeout(timeout_arg),
+    _sync_point(handle_arg->sync_point())
   {
   }
 
@@ -180,7 +181,7 @@ static void thread_runner(context_st* con)
 
     if (success == false)
     {
-      Error << "gearman_worker_set_server_option() failed";
+      Out << "gearman_worker_set_server_option() failed";
       context->fail();
       return;
     }
@@ -237,7 +238,7 @@ static void thread_runner(context_st* con)
 worker_handle_st *test_worker_start(in_port_t port, 
                                     const char *namespace_key,
                                     const char *function_name,
-                                    gearman_function_t &worker_fn,
+                                    const gearman_function_t &worker_fn,
                                     void *context_arg,
                                     gearman_worker_options_t options,
                                     int timeout)
@@ -295,13 +296,13 @@ void worker_handle_st::wait()
 
 void worker_handle_st::set_shutdown()
 {
-  boost::mutex::scoped_lock(_shutdown_lock);
+  boost::lock_guard<boost::mutex> lock(_shutdown_lock);
   _shutdown= true;
 }
 
 bool worker_handle_st::is_shutdown()
 {
-  boost::mutex::scoped_lock(_shutdown_lock);
+  boost::lock_guard<boost::mutex> lock(_shutdown_lock);
   return _shutdown;
 }
 
@@ -358,7 +359,9 @@ void worker_handles_st::kill_all()
 
 void worker_handles_st::reset()
 {
-  for (std::vector<worker_handle_st *>::iterator iter= _workers.begin(); iter != _workers.end(); iter++)
+  for (std::vector<worker_handle_st *>::iterator iter= _workers.begin(); 
+       iter != _workers.end();
+       ++iter)
   {
     delete *iter;
   }

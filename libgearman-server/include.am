@@ -1,6 +1,6 @@
 # vim:ft=automake
 # Gearman server and library
-# Copyright (C) 2011 Data Differential, http://datadifferential.com/
+# Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
 # Copyright (C) 2008 Brian Aker, Eric Day
 # Copyright (C) 2009 Brian Aker, Eric Day, Monty Taylor
 # All rights reserved.
@@ -25,6 +25,9 @@ include libgearman-server/plugins/include.am
 noinst_LTLIBRARIES+= libgearman-server/libgearman-server.la
 
 
+noinst_HEADERS+= libgearman-server/connection.hpp
+noinst_HEADERS+= libgearman-server/queue.h
+noinst_HEADERS+= libgearman-server/queue.hpp
 noinst_HEADERS+= libgearman-server/text.h
 noinst_HEADERS+= \
 		 libgearman-server/byte.h \
@@ -46,7 +49,6 @@ noinst_HEADERS+= \
 		 libgearman-server/log.h \
 		 libgearman-server/packet.h \
 		 libgearman-server/plugins.h \
-		 libgearman-server/queue.h \
 		 libgearman-server/server.h \
 		 libgearman-server/struct/port.h \
 		 libgearman-server/thread.h \
@@ -60,11 +62,13 @@ libgearman_server_libgearman_server_la_SOURCES+= \
 						 libgearman-server/byteorder.cc \
 						 libgearman-server/client.cc \
 						 libgearman-server/connection.c \
+						 libgearman-server/connection_plus.cc \
 						 libgearman-server/connection_list.cc \
 						 libgearman-server/fifo.c \
 						 libgearman-server/function.cc \
 						 libgearman-server/gearmand.cc \
 						 libgearman-server/gearmand_con.c \
+						 libgearman-server/gearmand_con_plus.cc \
 						 libgearman-server/gearmand_thread.cc \
 						 libgearman-server/hash.c \
 						 libgearman-server/io.cc \
@@ -75,7 +79,7 @@ libgearman_server_libgearman_server_la_SOURCES+= \
 						 libgearman-server/packet.cc \
 						 libgearman-server/plugins.cc \
 						 libgearman-server/queue.cc \
-						 libgearman-server/server.c \
+						 libgearman-server/server.cc \
 						 libgearman-server/thread.c \
 						 libgearman-server/timer.cc \
 						 libgearman-server/wakeup.cc \

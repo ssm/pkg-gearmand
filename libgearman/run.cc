@@ -39,9 +39,11 @@
 #include <config.h>
 #include <libgearman/common.h>
 
-#include <cassert>
+#include "libgearman/assert.hpp"
+
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 gearman_return_t _client_run_task(gearman_task_st *task)
 {
@@ -61,8 +63,7 @@ gearman_return_t _client_run_task(gearman_task_st *task)
     {
       task->client->new_tasks--;
       task->client->running_tasks--;
-      gearman_universal_set_error(task->client->universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers added");
-      return GEARMAN_NO_SERVERS;
+      return gearman_universal_set_error(task->client->universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers added");
     }
 
     for (task->con= task->client->universal.con_list; task->con;
@@ -77,8 +78,7 @@ gearman_return_t _client_run_task(gearman_task_st *task)
     if (task->con == NULL)
     {
       task->client->options.no_new= true;
-      gearman_gerror(task->client->universal, GEARMAN_IO_WAIT);
-      return GEARMAN_IO_WAIT;
+      return gearman_gerror(task->client->universal, GEARMAN_IO_WAIT);
     }
 
     task->client->new_tasks--;
@@ -231,7 +231,8 @@ gearman_return_t _client_run_task(gearman_task_st *task)
         }
       }
     }
-    else if (task->recv->command == GEARMAN_COMMAND_WORK_STATUS ||
+    else if (task->recv->command == GEARMAN_COMMAND_WORK_STATUS or
+             task->recv->command == GEARMAN_COMMAND_STATUS_RES_UNIQUE or
              task->recv->command == GEARMAN_COMMAND_STATUS_RES)
     {
       uint8_t x;
@@ -239,14 +240,45 @@ gearman_return_t _client_run_task(gearman_task_st *task)
       if (task->recv->command == GEARMAN_COMMAND_STATUS_RES)
       {
         if (atoi(static_cast<char *>(task->recv->arg[1])) == 0)
+        {
           task->options.is_known= false;
+        }
         else
+        {
           task->options.is_known= true;
+        }
 
         if (atoi(static_cast<char *>(task->recv->arg[2])) == 0)
+        {
           task->options.is_running= false;
+        }
         else
+        {
           task->options.is_running= true;
+        }
+
+        x= 3;
+      }
+      else if (task->recv->command == GEARMAN_COMMAND_STATUS_RES_UNIQUE)
+      {
+        strncpy(task->unique, task->recv->arg[0], GEARMAN_MAX_UNIQUE_SIZE);
+        if (atoi(static_cast<char *>(task->recv->arg[1])) == 0)
+        {
+          task->options.is_known= false;
+        }
+        else
+        {
+          task->options.is_known= true;
+        }
+
+        if (atoi(static_cast<char *>(task->recv->arg[2])) == 0)
+        {
+          task->options.is_running= false;
+        }
+        else
+        {
+          task->options.is_running= true;
+        }
 
         x= 3;
       }
@@ -256,11 +288,25 @@ gearman_return_t _client_run_task(gearman_task_st *task)
       }
 
       task->numerator= uint32_t(atoi(static_cast<char *>(task->recv->arg[x])));
-      char status_buffer[11]; /* Max string size to hold a uint32_t. */
-      snprintf(status_buffer, 11, "%.*s",
-               int(task->recv->arg_size[x + 1]),
-               static_cast<char *>(task->recv->arg[x + 1]));
-      task->denominator= uint32_t(atoi(status_buffer));
+
+      // denomitor
+      {
+        char status_buffer[11]; /* Max string size to hold a uint32_t. */
+        snprintf(status_buffer, 11, "%.*s",
+                 int(task->recv->arg_size[x + 1]),
+                 static_cast<char *>(task->recv->arg[x + 1]));
+        task->denominator= uint32_t(atoi(status_buffer));
+      }
+
+      // client_count
+      if (task->recv->command == GEARMAN_COMMAND_STATUS_RES_UNIQUE)
+      {
+        char status_buffer[11]; /* Max string size to hold a uint32_t. */
+        snprintf(status_buffer, 11, "%.*s",
+                 int(task->recv->arg_size[x +2]),
+                 static_cast<char *>(task->recv->arg[x +2]));
+        task->client_count= uint32_t(atoi(status_buffer));
+      }
 
   case GEARMAN_TASK_STATE_STATUS:
       if (task->func.status_fn)
@@ -274,6 +320,11 @@ gearman_return_t _client_run_task(gearman_task_st *task)
       }
 
       if (task->send.command == GEARMAN_COMMAND_GET_STATUS)
+      {
+        break;
+      }
+
+      if (task->send.command == GEARMAN_COMMAND_GET_STATUS_UNIQUE)
       {
         break;
       }

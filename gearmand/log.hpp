@@ -69,7 +69,10 @@ struct gearmand_log_info_st
       if (filename.compare("stderr") == 0)
       {
         fd= STDERR_FILENO;
+        opt_file= true;
       }
+      else if (filename.compare("none") == 0)
+      { }
       else
       {
         fd= open(filename.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0644);
@@ -80,10 +83,9 @@ struct gearmand_log_info_st
 
           char error_mesg[1024];
           int error_mesg_length= snprintf(error_mesg, sizeof(error_mesg),
-                                          "Could not open log file \"%.*s\", from \"%s\", switching to stderr. Open failed with (%s)", 
+                                          "Could not open log file \"%.*s\", from \"%s\", switching to stderr.",
                                           int(filename.size()), filename.c_str(), 
-                                          cwd,
-                                          strerror(errno));
+                                          cwd);
           if (opt_syslog)
           {
             syslog(LOG_ERR, "%.*s", error_mesg_length, error_mesg);
@@ -92,9 +94,9 @@ struct gearmand_log_info_st
 
           fd= STDERR_FILENO;
         }
-      }
 
-      opt_file= true;
+        opt_file= true;
+      }
     }
 
     init_success= true;
@@ -103,6 +105,18 @@ struct gearmand_log_info_st
   bool initialized() const
   {
     return init_success;
+  }
+
+  void reset()
+  {
+    int new_fd= open(filename.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0644);
+
+    if (new_fd != -1)
+    {
+      int old_fd= fd;
+      fd= new_fd;
+      close(old_fd);
+    }
   }
 
   int file() const
@@ -121,11 +135,11 @@ struct gearmand_log_info_st
         error::perror("Could not write to log file.");
         if (opt_syslog)
         {
-          char buffer[1024];
-          char *ptr_buffer= getcwd(buffer, sizeof(buffer));
+          char getcwd_buffer[1024];
+          char *ptr_buffer= getcwd(getcwd_buffer, sizeof(getcwd_buffer));
           syslog(LOG_ERR, "Could not open log file \"%.*s\", from \"%s\", open failed with (%s)", 
                  int(filename.size()), filename.c_str(), 
-                 buffer,
+                 ptr_buffer,
                  strerror(errno));
         }
       }

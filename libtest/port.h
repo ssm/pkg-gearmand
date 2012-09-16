@@ -40,6 +40,8 @@
 
 #pragma once
 
+#define LIBTEST_FAIL_PORT 23
+
 namespace libtest {
 
 LIBTEST_API
@@ -47,5 +49,8 @@ in_port_t default_port();
 
 LIBTEST_API
 in_port_t get_free_port();
+
+LIBTEST_API
+void release_port(in_port_t arg);
 
 } // namespace libtest

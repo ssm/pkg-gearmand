@@ -39,5 +39,11 @@
 
 #include <libtest/test.h>
 
-test_return_t unique_compare_test(void *);
+test_return_t unique_SETUP(void *);
 
+test_return_t unique_compare_test(void *);
+test_return_t coalescence_TEST(void*);
+test_return_t coalescence_by_data_TEST(void*);
+test_return_t coalescence_by_data_FAIL_TEST(void*);
+test_return_t gearman_client_unique_status_TEST(void*);
+test_return_t gearman_client_unique_status_NOT_FOUND_TEST(void *object);

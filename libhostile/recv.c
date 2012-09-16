@@ -36,25 +36,19 @@
 
 #include <config.h>
 
-/*
-  Random recv failing library for testing recv() failures.
-  LD_PRELOAD="/usr/lib/libdl.so ./util/libhostile_recv.so" ./binary
-*/
-
-#include <dlfcn.h>
+#include <libhostile/function.h>
+#include <libhostile/initialize.h>
 
 #include <assert.h>
 #include <errno.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <time.h>
-#include <stdbool.h>
-
-#include <libhostile/initialize.h>
-
+#include <unistd.h>
 
 static int not_until= 500;
 
@@ -64,6 +58,22 @@ static pthread_once_t function_lookup_once = PTHREAD_ONCE_INIT;
 static void set_local(void)
 {
   __function= set_function("recv", "HOSTILE_RECV");
+}
+
+void set_recv_corrupt(bool arg, int frequency, int not_until_arg)
+{
+  if (arg)
+  {
+    __function.frequency= frequency;
+    not_until= not_until_arg;
+    __function._corrupt= arg;
+  }
+  else
+  {
+    __function.frequency= 0;
+    not_until= 0;
+    __function._corrupt= false;
+  }
 }
 
 void set_recv_close(bool arg, int frequency, int not_until_arg)
@@ -77,6 +87,7 @@ void set_recv_close(bool arg, int frequency, int not_until_arg)
   {
     __function.frequency= 0;
     not_until= 0;
+    __function._corrupt= false;
   }
 }
 
@@ -87,10 +98,15 @@ ssize_t recv(int sockfd, void *buf, size_t len, int flags)
 
   (void) pthread_once(&function_lookup_once, set_local);
 
-  if (is_getaddrinfo() == false && __function.frequency)
+  bool corrupt= false;
+  if (is_called() == false && __function.frequency)
   {
-    if (--not_until < 0 && rand() % __function.frequency)
+    if (false)
     {
+    }
+    else if (--not_until < 0 && rand() % __function.frequency)
+    {
+      __function._used++;
       shutdown(sockfd, SHUT_RDWR);
       close(sockfd);
       errno= 0;
@@ -101,6 +117,14 @@ ssize_t recv(int sockfd, void *buf, size_t len, int flags)
     }
   }
 
-  return __function.function.recv(sockfd, buf, len, flags);
-}
+  set_called();
+  ssize_t ret= __function.function.recv(sockfd, buf, len, flags);
+  reset_called();
 
+  if (corrupt)
+  {
+    memset(buf, 'd', len);
+  }
+
+  return ret;
+}

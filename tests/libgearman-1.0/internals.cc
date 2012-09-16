@@ -43,7 +43,6 @@
 
 using namespace libtest;
 
-#include <cassert>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -78,9 +77,7 @@ static test_return_t init_test(void *)
   gearman_universal_st gear;
 
   gearman_universal_initialize(gear);
-  test_false(gear.options.dont_track_packets);
   test_false(gear.options.non_blocking);
-  test_false(gear.options.stored_non_blocking);
   test_false(gear._namespace);
 
   gearman_universal_free(gear);
@@ -100,9 +97,7 @@ static test_return_t clone_test(void *)
     gearman_universal_clone(destination, gear);
 
     { // Test all of the flags
-      test_truth(destination.options.dont_track_packets == gear.options.dont_track_packets);
       test_truth(destination.options.non_blocking == gear.options.non_blocking);
-      test_truth(destination.options.stored_non_blocking == gear.options.stored_non_blocking);
     }
     test_truth(destination._namespace == gear._namespace);
     test_truth(destination.verbose == gear.verbose);
@@ -170,9 +165,7 @@ static test_return_t state_option_test(void *)
 
   gearman_universal_initialize(universal);
   { // Initial Allocated, no changes
-    test_false(universal.options.dont_track_packets);
     test_false(universal.options.non_blocking);
-    test_false(universal.options.stored_non_blocking);
   }
   gearman_universal_free(universal);
 
@@ -186,9 +179,7 @@ static test_return_t state_option_on_create_test(void *)
 
   gearman_universal_initialize(universal, options);
   { // Initial Allocated, no changes
-    test_truth(universal.options.dont_track_packets);
     test_truth(universal.options.non_blocking);
-    test_false(universal.options.stored_non_blocking);
   }
   gearman_universal_free(universal);
 
@@ -238,32 +229,24 @@ static test_return_t state_option_set_test(void *)
 
   gearman_universal_initialize(universal, options);
   { // Initial Allocated, no changes
-    test_truth(universal.options.dont_track_packets);
     test_truth(universal.options.non_blocking);
-    test_false(universal.options.stored_non_blocking);
   }
 
   test_truth(gearman_universal_is_non_blocking(universal));
 
   gearman_universal_initialize(universal);
   { // Initial Allocated, no changes
-    test_false(universal.options.dont_track_packets);
     test_false(universal.options.non_blocking);
-    test_false(universal.options.stored_non_blocking);
   }
 
   gearman_universal_add_options(universal, GEARMAN_DONT_TRACK_PACKETS);
   { // Initial Allocated, no changes
-    test_truth(universal.options.dont_track_packets);
     test_false(universal.options.non_blocking);
-    test_false(universal.options.stored_non_blocking);
   }
 
   gearman_universal_remove_options(universal, GEARMAN_DONT_TRACK_PACKETS);
   { // Initial Allocated, no changes
-    test_false(universal.options.dont_track_packets);
     test_false(universal.options.non_blocking);
-    test_false(universal.options.stored_non_blocking);
   }
 
   gearman_universal_free(universal);
@@ -351,6 +334,8 @@ static test_return_t packet_init_test(void *)
 
 static test_return_t gearman_packet_give_data_test(void *)
 {
+  // @note Since this is a give data, ignore any errors that believe there is
+  // an implicit memory leak.
   size_t data_size= test_literal_param_size("Mine!");
   char *data= (char *)calloc(sizeof(char), data_size +1);
   test_true(data);
@@ -367,7 +352,7 @@ static test_return_t gearman_packet_give_data_test(void *)
   gearman_packet_give_data(packet, data, data_size);
 
   test_truth(packet.data == data);
-  test_truth(packet.data_size == data_size);
+  test_compare(packet.data_size, data_size);
   test_truth(packet.options.free_data);
 
   gearman_packet_free(&packet);
@@ -378,6 +363,8 @@ static test_return_t gearman_packet_give_data_test(void *)
 
 static test_return_t gearman_packet_take_data_test(void *)
 {
+  // Since this is a take data, ignore any errors that believe there is an
+  // implicit memory leak.
   size_t data_size= test_literal_param_size("Mine!");
   char *data= (char *)calloc(sizeof(char), data_size +1);
   test_true(data);
@@ -443,15 +430,15 @@ static void *world_create(server_startup_st& servers, test_return_t& error)
   */
   if (server_startup(servers, "gearmand", libtest::default_port(), 0, NULL) == false)
   {
-    error= TEST_FAILURE;
+    error= TEST_SKIPPED;
     return NULL;
   }
 
   return NULL;
 }
 
-void get_world(Framework *world)
+void get_world(libtest::Framework *world)
 {
-  world->collections= collection;
-  world->_create= world_create;
+  world->collections(collection);
+  world->create(world_create);
 }

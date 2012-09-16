@@ -1,9 +1,39 @@
-/* Gearman server and library
- * Copyright (C) 2008 Brian Aker, Eric Day
- * All rights reserved.
+/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+ * 
+ *  Gearmand client and server library.
  *
- * Use and distribution licensed under the BSD license.  See
- * the COPYING file in the parent directory for full text.
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
+ *
+ *      * Redistributions in binary form must reproduce the above
+ *  copyright notice, this list of conditions and the following disclaimer
+ *  in the documentation and/or other materials provided with the
+ *  distribution.
+ *
+ *      * The names of its contributors may not be used to endorse or
+ *  promote products derived from this software without specific prior
+ *  written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -35,9 +65,62 @@ using namespace gearmand;
 
 namespace gearmand { namespace plugins { namespace queue { class Libmemcached;  }}}
 
-static gearmand_error_t
-_initialize(plugins::queue::Libmemcached *queue_obj,
-            gearman_server_st *server);
+namespace gearmand {
+namespace queue {
+
+class LibmemcachedQueue : public gearmand::queue::Context 
+{
+public:
+  LibmemcachedQueue(plugins::queue::Libmemcached* arg, memcached_server_st* servers) :
+    memc_(NULL),
+    clone_(NULL),
+    __queue(arg)
+  { 
+    memc_= memcached_create(NULL);
+    assert(memc_);
+
+    memcached_server_push(memc_, servers);
+  }
+
+  memcached_st* clone()
+  {
+    if (clone_)
+    {
+      clone_= memcached_clone(NULL, memc_);
+    }
+
+    return clone_;
+  }
+
+  ~LibmemcachedQueue()
+  {
+    memcached_free(memc_);
+    memcached_free(clone_);
+  }
+
+  gearmand_error_t add(gearman_server_st *server,
+                       const char *unique, size_t unique_size,
+                       const char *function_name, size_t function_name_size,
+                       const void *data, size_t data_size,
+                       gearman_job_priority_t priority,
+                       int64_t when);
+
+  gearmand_error_t flush(gearman_server_st *server);
+
+  gearmand_error_t done(gearman_server_st *server,
+                        const char *unique, size_t unique_size,
+                        const char *function_name, size_t function_name_size);
+
+  gearmand_error_t replay(gearman_server_st *server);
+
+private:
+  memcached_st* memc_;
+  memcached_st* clone_;
+  gearmand::plugins::queue::Libmemcached *__queue;
+};
+
+} // namespace queue
+} // namespace gearmand
 
 namespace gearmand {
 namespace plugins {
@@ -50,7 +133,6 @@ public:
 
   gearmand_error_t initialize();
 
-  memcached_st memc;
   std::string server_list;
 private:
 
@@ -59,20 +141,32 @@ private:
 Libmemcached::Libmemcached() :
   Queue("libmemcached")
 {
-  memcached_create(&memc);
-
   command_line_options().add_options()
     ("libmemcached-servers", boost::program_options::value(&server_list), "List of Memcached servers to use.");
 }
 
 Libmemcached::~Libmemcached()
 {
-  memcached_free(&memc);
 }
 
 gearmand_error_t Libmemcached::initialize()
 {
-  return _initialize(this, &Gearmand()->server);
+  gearmand_info("Initializing libmemcached module");
+
+  memcached_server_st *servers= memcached_servers_parse(server_list.c_str());
+  if (servers == NULL)
+  {
+    gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "memcached_servers_parse");
+
+    return GEARMAN_QUEUE_ERROR;
+  }
+
+  gearmand::queue::LibmemcachedQueue* exec_queue= new gearmand::queue::LibmemcachedQueue(this, servers);
+  gearman_server_set_queue(&Gearmand()->server, exec_queue);
+
+  memcached_server_list_free(servers);
+
+  return GEARMAN_SUCCESS;
 }
 
 void initialize_libmemcached()
@@ -85,71 +179,19 @@ void initialize_libmemcached()
 } // namespace gearmand
 
 /* Queue callback functions. */
-static gearmand_error_t _libmemcached_add(gearman_server_st *server,
-                                          void *context,
-                                          const char *unique, size_t unique_size,
-                                          const char *function_name, size_t function_name_size,
-                                          const void *data, size_t data_size,
-                                          gearmand_job_priority_t priority,
-					  int64_t when);
 
-static gearmand_error_t _libmemcached_flush(gearman_server_st *server,
-                                            void *context);
+namespace gearmand {
+namespace queue {
 
-static gearmand_error_t _libmemcached_done(gearman_server_st *server,
-                                           void *context,
-                                           const char *unique, size_t unique_size,
-                                           const char *function_name, size_t function_name_size);
-
-static gearmand_error_t _libmemcached_replay(gearman_server_st *server,
-                                             void *context,
-                                             gearman_queue_add_fn *add_fn,
-                                             void *add_context);
-
-/** @} */
-
-/*
- * Public definitions
- */
-
-gearmand_error_t _initialize(plugins::queue::Libmemcached *queue,
-                             gearman_server_st *server)
+gearmand_error_t LibmemcachedQueue::add(gearman_server_st *server,
+                                        const char *unique,
+                                        size_t unique_size,
+                                        const char *function_name,
+                                        size_t function_name_size,
+                                        const void *data, size_t data_size,
+                                        gearman_job_priority_t priority,
+                                        int64_t when)
 {
-
-  gearmand_info("Initializing libmemcached module");
-
-  memcached_server_st *servers= memcached_servers_parse(queue->server_list.c_str());
-  if (servers == NULL)
-  {
-    gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "memcached_servers_parse");
-
-    return GEARMAN_QUEUE_ERROR;
-  }
-
-  memcached_server_push(&queue->memc, servers);
-  memcached_server_list_free(servers);
-
-  gearman_server_set_queue(server, queue, _libmemcached_add, _libmemcached_flush, _libmemcached_done, _libmemcached_replay);
-
-  return GEARMAN_SUCCESS;
-}
-
-/*
- * Static definitions
- */
-
-static gearmand_error_t _libmemcached_add(gearman_server_st *server,
-                                          void *context,
-                                          const char *unique,
-                                          size_t unique_size,
-                                          const char *function_name,
-                                          size_t function_name_size,
-                                          const void *data, size_t data_size,
-                                          gearmand_job_priority_t priority,
-					  int64_t when)
-{
-  gearmand::plugins::queue::Libmemcached *queue= (gearmand::plugins::queue::Libmemcached *)context;
-  memcached_return rc;
   char key[MEMCACHED_MAX_KEY];
   size_t key_length;
 
@@ -166,45 +208,9 @@ static gearmand_error_t _libmemcached_add(gearman_server_st *server,
                                (const char *)function_name, (int)unique_size,
                                (const char *)unique);
 
-  rc= memcached_set(&queue->memc, (const char *)key, key_length,
-                    (const char *)data, data_size, 0, (uint32_t)priority);
+  memcached_return rc= memcached_set(memc_, (const char *)key, key_length,
+                                     (const char *)data, data_size, 0, (uint32_t)priority);
 
-  if (rc != MEMCACHED_SUCCESS)
-    return GEARMAN_QUEUE_ERROR;
-
-  return GEARMAN_SUCCESS;
-}
-
-static gearmand_error_t _libmemcached_flush(gearman_server_st *server,
-                                            void *context)
-{
-  gearmand_debug("libmemcached flush");
-  (void)server;
-  (void)context;
-
-  return GEARMAN_SUCCESS;
-}
-
-static gearmand_error_t _libmemcached_done(gearman_server_st *server,
-                                           void *context,
-                                           const char *unique, size_t unique_size,
-                                           const char *function_name, size_t function_name_size)
-{
-  size_t key_length;
-  char key[MEMCACHED_MAX_KEY];
-  gearmand::plugins::queue::Libmemcached *queue= (gearmand::plugins::queue::Libmemcached *)context;
-  (void)server;
-
-  gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "libmemcached done: %.*s", (uint32_t)unique_size, (char *)unique);
-
-  key_length= (size_t)snprintf(key, MEMCACHED_MAX_KEY, "%s%.*s-%.*s",
-                               GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX,
-                               (int)function_name_size,
-                               (const char *)function_name, (int)unique_size,
-                               (const char *)unique);
-
-  /* For the moment we will assume it happened */
-  memcached_return rc= memcached_delete(&queue->memc, (const char *)key, key_length, 0);
   if (rc != MEMCACHED_SUCCESS)
   {
     return GEARMAN_QUEUE_ERROR;
@@ -213,38 +219,81 @@ static gearmand_error_t _libmemcached_done(gearman_server_st *server,
   return GEARMAN_SUCCESS;
 }
 
-struct replay_context
+gearmand_error_t LibmemcachedQueue::flush(gearman_server_st *)
 {
-  memcached_st clone;
-  gearman_server_st *server;
-  gearman_queue_add_fn *add_fn;
-  void *add_context;
+  gearmand_debug("libmemcached flush");
+
+  return GEARMAN_SUCCESS;
+}
+
+gearmand_error_t LibmemcachedQueue::done(gearman_server_st*,
+                                         const char *unique, size_t unique_size,
+                                         const char *function_name, size_t function_name_size)
+{
+  char key[MEMCACHED_MAX_KEY];
+
+  gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "libmemcached done: %.*s", (uint32_t)unique_size, (char *)unique);
+
+  size_t key_length= (size_t)snprintf(key, MEMCACHED_MAX_KEY, "%s%.*s-%.*s",
+                                      GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX,
+                                      (int)function_name_size,
+                                      (const char *)function_name, (int)unique_size,
+                                      (const char *)unique);
+
+  /* For the moment we will assume it happened */
+  memcached_return rc= memcached_delete(memc_, (const char *)key, key_length, 0);
+  if (rc != MEMCACHED_SUCCESS)
+  {
+    return GEARMAN_QUEUE_ERROR;
+  }
+
+  return GEARMAN_SUCCESS;
+}
+
+class Replay
+{
+public:
+  Replay(LibmemcachedQueue* queue_arg, gearman_server_st* server_arg) :
+    queue_(queue_arg),
+    server_(server_arg)
+  { }
+
+  LibmemcachedQueue* queue()
+  {
+    return queue_;
+  }
+
+  gearman_server_st* server()
+  {
+    return server_;
+  }
+
+private:
+  LibmemcachedQueue* queue_;
+  gearman_server_st* server_;
 };
 
-static memcached_return callback_loader(const memcached_st *ptr __attribute__((unused)),
-                                        memcached_result_st *result __attribute__((unused)),
+static memcached_return callback_loader(const memcached_st*,
+                                        memcached_result_st* result,
                                         void *context)
 {
-  struct replay_context *container= (struct replay_context *)context;
-  const char *key;
-  const char *unique;
-  const char *function;
-  size_t function_len;
-  char *data;
-  size_t data_size;
+  Replay* replay= (Replay*)context;
 
-  key= memcached_result_key_value(result);
+  const char *key= memcached_result_key_value(result);
   if (strncmp(key, GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX, strlen(GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX)))
+  {
     return MEMCACHED_SUCCESS;
+  }
 
-  function= key + strlen(GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX);
+  const char* function= key +strlen(GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX);
 
-  unique= index(function, '-');
-
-  if (! unique)
+  const char* unique= index(function, '-');
+  if (unique == NULL)
+  {
     return MEMCACHED_SUCCESS;
+  }
 
-  function_len = (size_t) (unique-function);
+  size_t function_len= size_t(unique -function);
   unique++;
 
   assert(unique);
@@ -252,44 +301,46 @@ static memcached_return callback_loader(const memcached_st *ptr __attribute__((u
   assert(function);
   assert(function_len);
 
-  data_size= (size_t) memcached_result_length(result);
+  std::vector<char> data;
   /* need to make a copy here ... gearman_server_job_free will free it later */
-  data= (char *)malloc(data_size);
-  if (data == NULL)
+  try {
+    data.resize(memcached_result_length(result));
+  }
+  catch(...)
   {
     gearmand_perror("malloc");
     return MEMCACHED_MEMORY_ALLOCATION_FAILURE;
   } 
-  memcpy(data, memcached_result_value(result), data_size);
+  memcpy(&data[0], memcached_result_value(result), data.size());
 
   /* Currently not looking at failure cases */
-  (void)(*container->add_fn)(container->server, container->add_context,
-                             unique, strlen(unique),
-                             function, function_len,
-                             data, data_size,
-                             static_cast<gearmand_job_priority_t>(memcached_result_flags(result)), 0);
+  replay->queue()->add(replay->server(),
+                       unique, strlen(unique),
+                       function, function_len,
+                       &data[0], data.size(),
+                       static_cast<gearman_job_priority_t>(memcached_result_flags(result)), int64_t(0));
 
 
   return MEMCACHED_SUCCESS;
 }
 
 /* Grab the object and load it into the loader */
-static memcached_return callback_for_key(const memcached_st *ptr __attribute__((unused)),
+static memcached_return callback_for_key(const memcached_st*,
                                          const char *key, size_t key_length,
                                          void *context)
 {
-  struct replay_context *container= (struct replay_context *)context;
+  LibmemcachedQueue *queue= (LibmemcachedQueue*)context;
   memcached_execute_function callbacks[1];
   char *passable[1];
 
   callbacks[0]= (memcached_execute_fn)&callback_loader;
 
   passable[0]= (char *)key;
-  memcached_return_t rc= memcached_mget(&container->clone, passable, &key_length, 1);
+  memcached_return_t rc= memcached_mget(queue->clone(), passable, &key_length, 1);
   (void)rc;
 
   /* Just void errors for the moment, since other treads might have picked up the object. */
-  (void)memcached_fetch_execute(&container->clone, callbacks, context, 1);
+  (void)memcached_fetch_execute(queue->clone(), callbacks, context, 1);
 
   return MEMCACHED_SUCCESS;
 }
@@ -297,31 +348,26 @@ static memcached_return callback_for_key(const memcached_st *ptr __attribute__((
 /*
   If we have any failures for loading values back into replay we just ignore them.
 */
-static gearmand_error_t _libmemcached_replay(gearman_server_st *server, void *context,
-                                             gearman_queue_add_fn *add_fn,
-                                             void *add_context)
+gearmand_error_t LibmemcachedQueue::replay(gearman_server_st *server)
 {
-  gearmand::plugins::queue::Libmemcached *queue= (gearmand::plugins::queue::Libmemcached *)context;
-  struct replay_context container;
-  memcached_st *check_for_failure;
   memcached_dump_func callbacks[1];
 
   callbacks[0]= (memcached_dump_fn)&callback_for_key;
 
   gearmand_info("libmemcached replay start");
 
-  memset(&container, 0, sizeof(struct replay_context));
-  check_for_failure= memcached_clone(&container.clone, &queue->memc);
-  container.server= server;
-  container.add_fn= add_fn;
-  container.add_context= add_context;
+  memcached_st* local_clone= memcached_clone(NULL, memc_);
 
-  assert(check_for_failure);
-
-
-  (void)memcached_dump(&queue->memc, callbacks, (void *)&container, 1);
-
-  memcached_free(&container.clone);
+  if (local_clone)
+  {
+    Replay context(this, server);
+    (void)memcached_dump(local_clone, callbacks, (void *)&context, 1);
+    memcached_free(local_clone);
+  }
 
   return GEARMAN_SUCCESS;
 }
+
+} // queue
+} // gearmand
+
