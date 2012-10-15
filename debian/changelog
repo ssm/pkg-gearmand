@@ -1,4 +1,4 @@
-gearmand (0.41-1) UNRELEASED; urgency=low
+gearmand (0.41-1) experimental; urgency=low
 
   * Imported Upstream version 0.41
   * Soname bump: libgearman6 -> libgearman7
@@ -13,7 +13,7 @@ gearmand (0.41-1) UNRELEASED; urgency=low
   * Track upstream manpage location
   * Disable build tests
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Tue, 04 Sep 2012 07:33:35 +0200
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Mon, 15 Oct 2012 23:18:00 +0200
 
 gearmand (0.33-2) unstable; urgency=low
 
