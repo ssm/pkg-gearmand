@@ -1,4 +1,4 @@
-# generated automatically by aclocal 1.11.3 -*- Autoconf -*-
+# generated automatically by aclocal 1.11.6 -*- Autoconf -*-
 
 # Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
 # 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation,
@@ -38,7 +38,7 @@ AC_DEFUN([AM_AUTOMAKE_VERSION],
 [am__api_version='1.11'
 dnl Some users find AM_AUTOMAKE_VERSION and mistake it for a way to
 dnl require some minimum version.  Point them to the right macro.
-m4_if([$1], [1.11.3], [],
+m4_if([$1], [1.11.6], [],
       [AC_FATAL([Do not call $0, use AM_INIT_AUTOMAKE([$1]).])])dnl
 ])
 
@@ -54,7 +54,7 @@ m4_define([_AM_AUTOCONF_VERSION], [])
 # Call AM_AUTOMAKE_VERSION and AM_AUTOMAKE_VERSION so they can be traced.
 # This function is AC_REQUIREd by AM_INIT_AUTOMAKE.
 AC_DEFUN([AM_SET_CURRENT_AUTOMAKE_VERSION],
-[AM_AUTOMAKE_VERSION([1.11.3])dnl
+[AM_AUTOMAKE_VERSION([1.11.6])dnl
 m4_ifndef([AC_AUTOCONF_VERSION],
   [m4_copy([m4_PACKAGE_VERSION], [AC_AUTOCONF_VERSION])])dnl
 _AM_AUTOCONF_VERSION(m4_defn([AC_AUTOCONF_VERSION]))])
@@ -1045,26 +1045,39 @@ AC_SUBST([am__tar])
 AC_SUBST([am__untar])
 ]) # _AM_PROG_TAR
 
-m4_include([m4/ac_vc_build.m4])
+m4_include([m4/ax_add_am_macro.m4])
+m4_include([m4/ax_am_jobserver.m4])
+m4_include([m4/ax_am_macros.m4])
 m4_include([m4/ax_append_compile_flags.m4])
 m4_include([m4/ax_append_flag.m4])
+m4_include([m4/ax_append_to_file.m4])
+m4_include([m4/ax_assert.m4])
 m4_include([m4/ax_check_compile_flag.m4])
 m4_include([m4/ax_check_library.m4])
 m4_include([m4/ax_check_link_flag.m4])
 m4_include([m4/ax_compare_version.m4])
-m4_include([m4/ax_cxx_header_stdcxx_98.m4])
+m4_include([m4/ax_compiler_vendor.m4])
+m4_include([m4/ax_compiler_version.m4])
+m4_include([m4/ax_count_cpus.m4])
+m4_include([m4/ax_debug.m4])
+m4_include([m4/ax_endian.m4])
+m4_include([m4/ax_file_escapes.m4])
 m4_include([m4/ax_harden_compiler_flags.m4])
+m4_include([m4/ax_hex_version.m4])
 m4_include([m4/ax_lib_curl.m4])
+m4_include([m4/ax_lib_libmemcached.m4])
 m4_include([m4/ax_lib_postgresql.m4])
 m4_include([m4/ax_lib_sqlite3.m4])
 m4_include([m4/ax_path_generic.m4])
+m4_include([m4/ax_print_to_file.m4])
+m4_include([m4/ax_prog_sphinx_build.m4])
 m4_include([m4/ax_pthread.m4])
 m4_include([m4/ax_pthread_timedjoin_np.m4])
+m4_include([m4/ax_uuid.m4])
+m4_include([m4/ax_vcs_checkout.m4])
 m4_include([m4/ax_with_prog.m4])
 m4_include([m4/boost.m4])
 m4_include([m4/bottom.m4])
-m4_include([m4/check_sock_cloexec.m4])
-m4_include([m4/debug.m4])
 m4_include([m4/extensions.m4])
 m4_include([m4/fcntl_flags.m4])
 m4_include([m4/have_cinttypes.m4])
@@ -1073,19 +1086,15 @@ m4_include([m4/have_libpq.m4])
 m4_include([m4/hiredis.m4])
 m4_include([m4/lib-prefix.m4])
 m4_include([m4/libdrizzle.m4])
-m4_include([m4/libmemcached.m4])
 m4_include([m4/libtool.m4])
 m4_include([m4/ltoptions.m4])
 m4_include([m4/ltsugar.m4])
 m4_include([m4/ltversion.m4])
 m4_include([m4/lt~obsolete.m4])
-m4_include([m4/pandora_check_compiler_version.m4])
 m4_include([m4/pandora_enable_dtrace.m4])
 m4_include([m4/pandora_have_better_malloc.m4])
 m4_include([m4/pandora_have_libtokyocabinet.m4])
-m4_include([m4/pandora_header_assert.m4])
 m4_include([m4/pandora_platform.m4])
 m4_include([m4/pkg.m4])
 m4_include([m4/socket_send_flags.m4])
-m4_include([m4/uuid.m4])
 m4_include([m4/visibility.m4])

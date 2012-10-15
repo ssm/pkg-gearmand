@@ -378,11 +378,13 @@ gearmand_error_t gearmand_run(gearmand_st *gearmand)
     }
     while (x < gearmand->threads);
 
-    gearmand->ret= gearman_server_queue_replay(&(gearmand->server));
+    gearmand_debug("replaying queue: begin");
+    gearmand->ret= gearman_server_queue_replay(gearmand->server);
     if (gearmand->ret != GEARMAN_SUCCESS)
     {
-      return gearmand->ret;
+      return gearmand_gerror("failed to reload queue", gearmand->ret);
     }
+    gearmand_debug("replaying queue: end");
   }
 
   gearmand->ret= _watch_events(gearmand);
@@ -430,7 +432,7 @@ void gearmand_wakeup(gearmand_st *gearmand, gearmand_wakeup_t wakeup)
  * Private definitions
  */
 
-static const uint32_t bind_timeout= 6; // Number is not special, but look at INFO messages if you decide to change it.
+static const uint32_t bind_timeout= 20; // Number is not special, but look at INFO messages if you decide to change it.
 
 typedef std::pair<std::string, std::string> host_port_t;
 
@@ -572,7 +574,7 @@ static gearmand_error_t _listen_init(gearmand_st *gearmand)
       uint32_t this_wait;
       uint32_t retry;
       int ret= -1;
-      for (waited= 0, retry= 1; ; retry++, waited+= this_wait)
+      for (waited= 0, retry= 4; ; retry++, waited+= this_wait)
       {
         if (((ret= bind(fd, addrinfo_next->ai_addr, addrinfo_next->ai_addrlen)) == 0) or
             (errno != EADDRINUSE) || (waited >= bind_timeout))

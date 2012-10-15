@@ -27,6 +27,9 @@
 /* Define to 1 if using `alloca.c'. */
 #undef C_ALLOCA
 
+/* Define to 1 to enable assertging code. */
+#undef DASSERT
+
 /* Define to 1 to enable debugging code. */
 #undef DEBUG
 
@@ -35,6 +38,12 @@
 
 /* Another magical number */
 #undef EAI_SYSTEM
+
+/* machine is big-endian */
+#undef ENDIAN_BIG
+
+/* machine is little-endian */
+#undef ENDIAN_LITTLE
 
 /* Name of the gearmand binary used in make test */
 #undef GEARMAND_BINARY
@@ -54,9 +63,6 @@
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
-
-/* Define to 1 if you have the <assert.h> header file. */
-#undef HAVE_ASSERT_H
 
 /* Defined if the requested minimum BOOST version is satisfied */
 #undef HAVE_BOOST
@@ -155,6 +161,12 @@
 
 /* Enable libmemcached support */
 #undef HAVE_LIBMEMCACHED
+
+/* Have libmemcached-1.0/memcached.h */
+#undef HAVE_LIBMEMCACHED_MEMCACHED_H
+
+/* Have libmemcachedutil-1.0/util.h */
+#undef HAVE_LIBMEMCACHED_UTIL_H
 
 /* Define to 1 if you have the `mtmalloc' library (-lmtmalloc). */
 #undef HAVE_LIBMTMALLOC
@@ -285,9 +297,6 @@
 /* Define to 1 if you have the `socket' function. */
 #undef HAVE_SOCKET
 
-/* Check for SOCK_CLOEXEC. */
-#undef HAVE_SOCK_CLOEXEC
-
 /* Have the SQLITE3 library */
 #undef HAVE_SQLITE3
 
@@ -403,6 +412,9 @@
 /* Define to 1 if the system has the type `_Bool'. */
 #undef HAVE__BOOL
 
+/* HEX representation of VERSION */
+#undef HEX_VERSION
+
 /* CPU of Build System */
 #undef HOST_CPU
 
@@ -427,9 +439,6 @@
 
 /* Name of the mysqld binary used in make test */
 #undef MYSQLD_BINARY
-
-/* Define to 1 if assertions should be disabled. */
-#undef NDEBUG
 
 /* Name of package */
 #undef PACKAGE
@@ -463,9 +472,6 @@
 	STACK_DIRECTION < 0 => grows toward lower addresses
 	STACK_DIRECTION = 0 => direction of growth unknown */
 #undef STACK_DIRECTION
-
-/* Define if ISO C++ 1998 header files are present. */
-#undef STDCXX_98_HEADERS
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
@@ -505,6 +511,9 @@
 
 /* Version of Windows */
 #undef WINVER
+
+/* machine is big-endian */
+#undef WORDS_BIGENDIAN
 
 /* Define to 1 if on MINIX. */
 #undef _MINIX

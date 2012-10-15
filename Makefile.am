@@ -5,7 +5,7 @@
 # Use and distribution licensed under the BSD license.  See
 # the COPYING file in this directory for full text.
 
-ACLOCAL_AMFLAGS= -I m4 --install
+ACLOCAL_AMFLAGS= -I m4 --install --force -Wall
 
 bin_PROGRAMS =
 sbin_PROGRAMS = 
@@ -24,6 +24,10 @@ CLEANFILES =
 BUILT_SOURCES =
 TESTS =
 .PHONY =
+
+#includes additional rules from aminclude.am
+@INC_AMINCLUDE@
+DISTCLEANFILES+= aminclude.am
 
 CLEANFILES+= ${BUILT_SOURCES}
 
@@ -45,6 +49,7 @@ include util/include.am
 include tests/include.am
 include support/include.am
 include docs/include.am
+include man/include.am
 
 include m4/include.am
 

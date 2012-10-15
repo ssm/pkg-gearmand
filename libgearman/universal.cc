@@ -2,8 +2,8 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day 
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -324,7 +324,8 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
 
   if (ret == 0)
   {
-    gearman_error(universal, GEARMAN_TIMEOUT, "timeout reached, no servers were available");
+    gearman_universal_set_error(universal, GEARMAN_TIMEOUT, GEARMAN_AT, "timeout reached, %u servers were poll(), no servers were available, pipe:%s",
+                                uint32_t(x), have_shutdown_pipe ? "true" : "false");
     return GEARMAN_TIMEOUT;
   }
 
@@ -516,6 +517,8 @@ static gearman_return_t connection_loop(gearman_universal_st& universal,
     gearman_packet_st *packet_ptr= con->receiving(con->_packet, ret, true);
     if (packet_ptr == NULL)
     {
+      assert(&con->_packet == universal.packet_list);
+      con->options.packet_in_use= false;
       break;
     }
 

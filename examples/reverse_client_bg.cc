@@ -48,6 +48,7 @@
 #include <boost/program_options.hpp>
 
 #include "util/string.hpp"
+#include "gearmand/error.hpp"
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -55,6 +56,9 @@
 
 int main(int args, char *argv[])
 {
+  gearmand::error::init(argv[0]);
+
+  bool wait_for_result= false;
   in_port_t port;
   int timeout;
   std::string host;
@@ -63,8 +67,10 @@ int main(int args, char *argv[])
   boost::program_options::options_description desc("Options");
   desc.add_options()
     ("help", "Options related to the program.")
+    ("verbose", "Send status to stdout")
     ("host,h", boost::program_options::value<std::string>(&host)->default_value("localhost"),"Connect to the host")
     ("port,p", boost::program_options::value<in_port_t>(&port)->default_value(GEARMAN_DEFAULT_TCP_PORT), "Port number use for connection")
+    ("wait", "Submit status job and wait for results.")
     ("timeout,u", boost::program_options::value<int>(&timeout)->default_value(-1), "Timeout in milliseconds")
     ("text", boost::program_options::value<std::string>(&text_to_echo), "Text used for echo")
             ;
@@ -91,6 +97,16 @@ int main(int args, char *argv[])
     return EXIT_SUCCESS;
   }
 
+  if (vm.count("verbose") == 0)
+  {
+    close(STDOUT_FILENO);
+  }
+
+  if (vm.count("wait_for_result"))
+  {
+    wait_for_result= true;
+  }
+
   if (text_to_echo.empty())
   {
     while(std::cin.good())
@@ -103,8 +119,7 @@ int main(int args, char *argv[])
 
     if (text_to_echo.empty())
     {
-      std::cerr << "No text was provided for --text or via stdin" << std::endl;
-      std::cerr << desc << std::endl;
+      gearmand::error::message("No text was provided for --text or via stdin");
       return EXIT_FAILURE;
     }
   }
@@ -112,7 +127,7 @@ int main(int args, char *argv[])
   gearman_client_st client;
   if (gearman_client_create(&client) == NULL)
   {
-    std::cerr << "Memory allocation failure on client creation" << std::endl;
+    gearmand::error::message("Memory allocation failure on client creation");
     return EXIT_FAILURE;
   }
 
@@ -120,15 +135,17 @@ int main(int args, char *argv[])
   ret= gearman_client_add_server(&client, host.c_str(), port);
   if (ret != GEARMAN_SUCCESS)
   {
-    std::cerr << gearman_client_error(&client) << std::endl;
+    gearmand::error::message(gearman_client_error(&client));
     return EXIT_FAILURE;
   }
 
   if (timeout >= 0)
+  {
     gearman_client_set_timeout(&client, timeout);
+  }
 
 
-  gearman_task_attr_t workload= gearman_task_attr_init(GEARMAN_JOB_PRIORITY_NORMAL);
+  gearman_task_attr_t workload= gearman_task_attr_init_background(GEARMAN_JOB_PRIORITY_NORMAL);
 
   gearman_task_st *task;
   gearman_argument_t values[]= {
@@ -136,45 +153,48 @@ int main(int args, char *argv[])
     gearman_argument_make(0, 0, 0, 0)
   };
 
-  if (not (task= gearman_execute(&client, util_literal_param("reverse"), NULL, 0, &workload, values, 0)))
+  if ((task= gearman_execute(&client, util_literal_param("reverse"), NULL, 0, &workload, values, 0)) == NULL)
   {
-    std::cerr << "Failed to process job (" << gearman_client_error(&client) << std::endl;
+    gearmand::error::message("Failed to process job", gearman_client_error(&client));
     gearman_client_free(&client);
     return EXIT_FAILURE;
   }
 
-  std::cout << "Background Job Handle=" << gearman_task_job_handle(task) << std::endl;
-
   int exit_code= EXIT_SUCCESS;
-  bool is_known;
-  do
+  if (wait_for_result)
   {
-    bool is_running;
-    uint32_t numerator;
-    uint32_t denominator;
+    std::cout << "Background Job Handle=" << gearman_task_job_handle(task) << std::endl;
 
-    ret= gearman_client_job_status(&client, gearman_task_job_handle(task),
-                                   &is_known, &is_running,
-                                   &numerator, &denominator);
-    if (gearman_continue(ret)) // Non-blocking event occurred, try again
+    bool is_known;
+    do
     {
-      continue;
-    }
-    else if (gearman_failed(ret))
-    {
-      std::cerr << gearman_client_error(&client) << std::endl;
-      exit_code= EXIT_FAILURE;
-      break;
-    }
+      bool is_running;
+      uint32_t numerator;
+      uint32_t denominator;
 
-    std::cout << std::boolalpha 
-      << "Known =" << is_known
-      << ", Running=" << is_running
-      << ", Percent Complete=" << numerator << "/" <<  denominator << std::endl;
+      ret= gearman_client_job_status(&client, gearman_task_job_handle(task),
+                                     &is_known, &is_running,
+                                     &numerator, &denominator);
+      if (gearman_continue(ret)) // Non-blocking event occurred, try again
+      {
+        continue;
+      }
+      else if (gearman_failed(ret))
+      {
+        gearmand::error::message(gearman_client_error(&client));
+        exit_code= EXIT_FAILURE;
+        break;
+      }
 
-  } while (is_known);
+      std::cout << std::boolalpha 
+        << "Known =" << is_known
+        << ", Running=" << is_running
+        << ", Percent Complete=" << numerator << "/" <<  denominator << std::endl;
 
-  gearman_client_free(&client);
+    } while (is_known);
+
+    gearman_client_free(&client);
+  }
 
   return exit_code;
 }
