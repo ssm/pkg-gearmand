@@ -187,9 +187,6 @@
 /* Define to 1 if you have the `umem' library (-lumem). */
 #undef HAVE_LIBUMEM
 
-/* Define to 1 if LIBUUID is found */
-#undef HAVE_LIBUUID
-
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
 
@@ -371,6 +368,9 @@
 
 /* Define if uuid_generate_time_safe is present in uuid/uuid.h. */
 #undef HAVE_UUID_GENERATE_TIME_SAFE
+
+/* Have uuid/uuid.h */
+#undef HAVE_UUID_UUID_H
 
 /* Define to 1 if you have the `vfork' function. */
 #undef HAVE_VFORK
