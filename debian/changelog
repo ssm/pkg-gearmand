@@ -1,6 +1,7 @@
-gearmand (0.37-1) experimental; urgency=low
+gearmand (0.41-1) UNRELEASED; urgency=low
 
-  * Imported Upstream version 0.37
+  * Imported Upstream version 0.41
+  * Check for updates from the stable branch only
   * Soname bump: libgearman6 -> libgearman7
   * Remove build dependency on libmemcached-dev (Closes: #681768)
     (building with it fails)
