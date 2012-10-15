@@ -6,7 +6,7 @@
 # Use and distribution licensed under the BSD license.  See
 # the COPYING file in this directory for full text.
 
-AC_INIT([gearmand],[0.38],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+AC_INIT([gearmand],[0.39],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -41,6 +41,8 @@ LT_LANG([C++])
 gl_VISIBILITY
 PANDORA_PLATFORM
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
+
+PANDORA_CHECK_CXX_VERSION
 
 AX_CXX_HEADER_STDCXX_98
   if test "$ax_cv_cxx_stdcxx_98" = no; then
@@ -249,13 +251,13 @@ echo ""
 echo "   * Installation prefix:       $prefix"
 echo "   * System type:               $host_vendor-$host_os"
 echo "   * Host CPU:                  $host_cpu"
-echo "   * C Compiler:                $CC"
+echo "   * C Compiler:                $CC_VERSION"
 echo "   * C Flags:                   $CFLAGS"
-echo "   * C++ Compiler:              $CXX"
+echo "   * C++ Compiler:              $CXX_VERSION"
 echo "   * C++ Flags:                 $CXXFLAGS"
 echo "   * CPP Flags:                 $CPPFLAGS"
 echo "   * Assertions enabled:        $ac_cv_assert"
-echo "   * Debug enabled:             $with_debug"
+echo "   * Debug enabled:             $ax_with_debug"
 echo "   * Warnings as failure:       $ac_cv_warnings_as_errors"
 echo "   * Building with libsqlite3   $WANT_SQLITE3"
 echo "   * Building with libdrizzle   $ac_enable_libdrizzle"
@@ -265,3 +267,16 @@ echo "   * Building with tokyocabinet $ac_enable_libtokyocabinet"
 echo "   * Building with libmysql     $found_mysql"
 echo ""
 echo "---"
+
+case "$host_os" in
+  *freebsd*)
+    echo "*****"
+    echo "*"
+    echo "*  NOTE: You are on FreeBSD. BSD make will not work."
+    echo "*"
+    echo "*   use 'gmake' To build libmemcached"
+    echo "*"
+    echo "*****"
+  ;;
+esac
+
