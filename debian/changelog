@@ -1,14 +1,17 @@
 gearmand (0.41-1) UNRELEASED; urgency=low
 
   * Imported Upstream version 0.41
-  * Check for updates from the stable branch only
   * Soname bump: libgearman6 -> libgearman7
-  * Remove build dependency on libmemcached-dev (Closes: #681768)
-    (building with it fails)
+  * Set build dependency on libmemcached-dev to require >= 1.0
+    (Closes: #681768)
   * Add build dependency on libboost-system-dev
-  * Refresh gearmand_hurd.patch
   * Remove support-gcc-4.7.patch, included upstream
   * debian/control: Remove old conflicts/replaces/provides
+  * debian/clean: Clean up config.log after build
+  * debian/watch: Check for updates from the stable branch only
+  * Use "gitpkg" to handle patch generation, in-tree patches has been removed
+  * Track upstream manpage location
+  * Disable build tests
 
  -- Stig Sandbeck Mathisen <ssm@debian.org>  Tue, 04 Sep 2012 07:33:35 +0200
 
