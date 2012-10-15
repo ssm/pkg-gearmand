@@ -159,9 +159,8 @@ gearman_server_job_add_reducer(gearman_server_st *server,
       else
       {
         /* Look up job via unique data when unique = '-'. */
-        key= _server_job_hash(data, data_size);
-        server_job= _server_job_get_unique(server, key, server_function, data,
-                                           data_size);
+        key= _server_job_hash((const char*)data, data_size);
+        server_job= _server_job_get_unique(server, key, server_function, (const char*)data, data_size);
       }
     }
     else
@@ -319,6 +318,7 @@ void gearman_server_job_free(gearman_server_job_st *server_job)
   if (server_job->data != NULL)
   {
     free((void *)(server_job->data));
+    server_job->data= NULL;
   }
 
   while (server_job->client_list != NULL)
@@ -363,11 +363,11 @@ gearmand_error_t gearman_server_job_queue(gearman_server_job_st *job)
       for (client= job->client_list; client != NULL; client= client->job_next)
       {
         gearmand_error_t ret= gearman_server_io_packet_add(client->con, false,
-                                          GEARMAN_MAGIC_RESPONSE,
-                                          GEARMAN_COMMAND_WORK_FAIL,
-                                          job->job_handle,
-                                          (size_t)strlen(job->job_handle),
-                                          NULL);
+                                                           GEARMAN_MAGIC_RESPONSE,
+                                                           GEARMAN_COMMAND_WORK_FAIL,
+                                                           job->job_handle,
+                                                           (size_t)strlen(job->job_handle),
+                                                           NULL);
         if (gearmand_failed(ret))
         {
           return ret;
@@ -392,7 +392,7 @@ gearmand_error_t gearman_server_job_queue(gearman_server_job_st *job)
     }
 
     GEARMAN_LIST_DEL(job->worker->job, job, worker_)
-    job->worker= NULL;
+      job->worker= NULL;
     job->function->job_running--;
     job->function_next= NULL;
     job->numerator= 0;
@@ -426,7 +426,7 @@ gearmand_error_t gearman_server_job_queue(gearman_server_job_st *job)
     }
     while (worker != job->function->worker_list &&
            (Server->worker_wakeup == 0 ||
-           noop_sent < Server->worker_wakeup));
+            noop_sent < Server->worker_wakeup));
 
     job->function->worker_list= worker;
   }

@@ -1,6 +1,6 @@
 Summary: Gearman Server and C Library
 Name: gearmand
-Version: 0.39
+Version: 0.41
 Release: 1
 License: BSD
 Group: System Environment/Libraries
@@ -42,7 +42,7 @@ you will need to install %{name}-devel.
 %prep
 %setup -q
 
-%configure --disable-libpq --disable-libtokyocabinet --disable-libdrizzle --disable-libmemcached
+%configure --disable-libpq --disable-libtokyocabinet --disable-libdrizzle --disable-libmemcached --enable-jobserver=no
 
 
 %build
@@ -58,7 +58,6 @@ mkdir -p $RPM_BUILD_ROOT/var/run/gearmand
 install -m 755 %{SOURCE1} $RPM_BUILD_ROOT/etc/rc.d/init.d/gearmand
 
 %check
-%{__make} %{?_smp_mflags} check
 
 %clean
 %{__rm} -rf %{buildroot}
