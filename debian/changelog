@@ -1,3 +1,9 @@
+gearmand (1.0.1-1) UNRELEASED; urgency=low
+
+  * New upstream release
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Tue, 27 Nov 2012 13:05:44 +0100
+
 gearmand (0.41-1) experimental; urgency=low
 
   * Imported Upstream version 0.41
