@@ -41,8 +41,8 @@
  * @brief Gearmand Connection Definitions
  */
 
-#include <config.h>
-#include <libgearman-server/common.h>
+#include "gear_config.h"
+#include "libgearman-server/common.h"
 #include <libgearman-server/gearmand.h>
 #include <string.h>
 

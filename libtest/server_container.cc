@@ -34,8 +34,9 @@
  *
  */
 
-#include <config.h>
-#include <libtest/common.h>
+#include "gear_config.h"
+
+#include "libtest/common.h"
 
 #include <cassert>
 #include <cerrno>
@@ -75,13 +76,14 @@ void server_startup_st::push_server(Server *arg)
   }
   else
   {
-    char port_str[NI_MAXSERV]= { 0 };
-    snprintf(port_str, sizeof(port_str), "%u", int(arg->port()));
+    libtest::vchar_t port_str;
+    port_str.resize(NI_MAXSERV);
+    snprintf(&port_str[0], port_str.size(), "%u", int(arg->port()));
 
     server_config_string+= "--server=";
     server_config_string+= arg->hostname();
     server_config_string+= ":";
-    server_config_string+= port_str;
+    server_config_string+= &port_str[0];
     server_config_string+= " ";
   }
 
@@ -259,16 +261,6 @@ bool server_startup_st::start_server(const std::string& server_type, in_port_t t
         }
       }
     }
-    else if (server_type.compare("memcached-light") == 0)
-    {
-      if (MEMCACHED_LIGHT_BINARY)
-      {
-        if (HAVE_LIBMEMCACHED)
-        {
-          server= build_memcached_light("localhost", try_port);
-        }
-      }
-    }
 
     if (server == NULL)
     {
@@ -318,7 +310,7 @@ bool server_startup_st::start_server(const std::string& server_type, in_port_t t
         }
       }
   }
-  catch (libtest::disconnected err)
+  catch (libtest::disconnected& err)
   {
     if (fatal::is_disabled() == false and try_port != LIBTEST_FAIL_PORT)
     {
@@ -352,24 +344,6 @@ bool server_startup_st::start_socket_server(const std::string& server_type, cons
     else if (server_type.compare("gearmand") == 0)
     {
       Error << "Socket files are not supported for gearmand yet";
-    }
-    else if (server_type.compare("memcached-sasl") == 0)
-    {
-      if (MEMCACHED_SASL_BINARY)
-      {
-        if (HAVE_LIBMEMCACHED)
-        {
-          server= build_memcached_sasl_socket("localhost", try_port, username(), password());
-        }
-        else
-        {
-          Error << "Libmemcached was not found";
-        }
-      }
-      else
-      {
-        Error << "No memcached binary is available";
-      }
     }
     else if (server_type.compare("memcached") == 0)
     {
