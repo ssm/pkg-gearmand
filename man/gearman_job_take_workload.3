@@ -1,4 +1,4 @@
-.TH "GEARMAN_JOB_TAKE_WORKLOAD" "3" "October 12, 2012" "0.41" "Gearmand"
+.TH "GEARMAN_JOB_TAKE_WORKLOAD" "3" "November 07, 2012" "1.0.1" "Gearmand"
 .SH NAME
 gearman_job_take_workload \- Gearmand Documentation, http://gearman.info/
 .
@@ -113,7 +113,7 @@ returns the \fI\%gearman_job_st\fP workload. The size of it can be determined wi
 \fI\%gearman_job_take_workload()\fP is the same as \fI\%gearman_job_workload()\fP with the exception that the result must be
 \fIfree(3)\fP by the caller.
 .sp
-\fBgearman_worker_grab_job()\fP Takes a job from one of the job servers. It is the responsibility of the caller to free the job once they are done. This interface is used in testing, and is very rarely the correct interface to program against.
+\fI\%gearman_worker_grab_job()\fP Takes a job from one of the job servers. It is the responsibility of the caller to free the job once they are done. This interface is used in testing, and is very rarely the correct interface to program against.
 .SH RETURN VALUE
 .sp
 A value of \fBgearman_return_t\fP  is returned.  On success that value

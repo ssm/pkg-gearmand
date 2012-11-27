@@ -37,7 +37,7 @@
 
 
 
-#include <config.h>
+#include "gear_config.h"
 
 #include <libtest/test.hpp>
 #include <libhostile/hostile.h>
@@ -305,7 +305,6 @@ bool worker_handle_st::is_shutdown()
   boost::lock_guard<boost::mutex> lock(_shutdown_lock);
   return _shutdown;
 }
-
 
 bool worker_handle_st::shutdown()
 {

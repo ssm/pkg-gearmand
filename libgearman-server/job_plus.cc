@@ -35,9 +35,9 @@
  *
  */
 
-#include <config.h>
+#include "gear_config.h"
 
-#include <libgearman-server/common.h>
+#include "libgearman-server/common.h"
 #include <libgearman-server/list.h>
 
 #include <cstring>

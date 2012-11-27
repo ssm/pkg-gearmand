@@ -16,6 +16,7 @@
 @SET_MAKE@
 
 # Gearman server and library
+# Copyright (C) 2011-2012 DataDifferential LLC, http://datadifferential.com/
 # Copyright (C) 2008 Brian Aker, Eric Day
 # All rights reserved.
 #
@@ -80,8 +81,9 @@
 
 # vim:ft=automake
 # Gearman server and library
-# Copyright (C) 2008 Brian Aker, Eric Day
+# Copyright (C) 2010-2012 DataDifferential LLC
 # Copyright (C) 2009 Brian Aker, Eric Day, Monty Taylor
+# Copyright (C) 2008 Brian Aker, Eric Day
 # All rights reserved.
 #
 # Use and distribution licensed under the BSD license.  See
@@ -518,11 +520,12 @@ noinst_PROGRAMS = libtest/unittest$(EXEEXT) libtest/skiptest$(EXEEXT) \
 	docs/libgearman/examples/gearman_client_do_example$(EXEEXT) \
 	docs/libgearman/examples/gearman_execute_example$(EXEEXT) \
 	docs/libgearman/examples/gearman_execute_partition$(EXEEXT)
-DIST_COMMON = README $(am__configure_deps) $(nobase_include_HEADERS) \
-	$(noinst_HEADERS) $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
+DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
+	$(nobase_include_HEADERS) $(noinst_HEADERS) \
+	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/benchmark/include.am $(srcdir)/bin/include.am \
-	$(srcdir)/config.in $(srcdir)/docs/include.am \
-	$(srcdir)/examples/include.am $(srcdir)/gearmand/include.am \
+	$(srcdir)/docs/include.am $(srcdir)/examples/include.am \
+	$(srcdir)/gear_config.in $(srcdir)/gearmand/include.am \
 	$(srcdir)/libgearman-1.0/include.am \
 	$(srcdir)/libgearman-1.0/t/include.am \
 	$(srcdir)/libgearman-server/error/include.am \
@@ -602,8 +605,8 @@ DIST_COMMON = README $(am__configure_deps) $(nobase_include_HEADERS) \
 @BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@	libtest/gearmand.cc \
 @BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@	util/instance.cc \
 @BUILDING_GEARMAN_FALSE@@HAVE_LIBGEARMAN_TRUE@	util/operation.cc
-@TARGET_HOSTILE_TRUE@am__append_22 = $(DL_LIB) $(RT_LIB)
-@TARGET_HOSTILE_TRUE@am__append_23 = -DHAVE_LIBHOSTILE=1 -std=c99
+@TARGET_HOSTILE_TRUE@am__append_22 = @DL_LIB@ @RT_LIB@
+@TARGET_HOSTILE_TRUE@am__append_23 = -DHAVE_LIBHOSTILE=1
 @TARGET_HOSTILE_TRUE@am__append_24 = libhostile/accept.c \
 @TARGET_HOSTILE_TRUE@	libhostile/called.c libhostile/function.c \
 @TARGET_HOSTILE_TRUE@	libhostile/getaddrinfo.c \
@@ -640,14 +643,15 @@ DIST_COMMON = README $(am__configure_deps) $(nobase_include_HEADERS) \
 @HAVE_LIBMYSQL_TRUE@am__append_48 = $(MYSQL_INCLUDE)
 @HAVE_LIBMYSQL_TRUE@am__append_49 = $(MYSQL_LDFLAGS)
 @TARGET_LINUX_TRUE@am__append_50 = -lm
-@TARGET_LINUX_TRUE@am__append_51 = $(DL_LIB) $(RT_LIB)
+@TARGET_LINUX_TRUE@am__append_51 = @DL_LIB@ @RT_LIB@
 @HAVE_LIBDRIZZLE_TRUE@am__append_52 = $(libdrizzle_LIBS)
 @HAVE_LIBDRIZZLE_TRUE@am__append_53 = $(libdrizzle_CFLAGS)
 @HAVE_LIBMEMCACHED_TRUE@am__append_54 = $(LIBMEMCACHED_CFLAGS)
 @HAVE_LIBMEMCACHED_TRUE@am__append_55 = $(LIBMEMCACHED_UTIL_LDFLAGS)
-@HAVE_RECENT_SPHINX_TRUE@am__append_56 = man/gearadmin.1 man/gearman.1
-@HAVE_RECENT_SPHINX_TRUE@am__append_57 = man/gearmand.8
-@HAVE_RECENT_SPHINX_TRUE@am__append_58 = man/gearman_allocator_t.3 \
+@HAVE_RECENT_SPHINX_TRUE@am__append_56 = $(dist_man_MANS)
+@HAVE_RECENT_SPHINX_TRUE@am__append_57 = man/gearadmin.1 man/gearman.1 \
+@HAVE_RECENT_SPHINX_TRUE@	man/gearmand.8 \
+@HAVE_RECENT_SPHINX_TRUE@	man/gearman_allocator_t.3 \
 @HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_memory_allocators.3 \
 @HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_set_memory_allocators.3 \
 @HAVE_RECENT_SPHINX_TRUE@	man/gearman_actions_t.3 \
@@ -805,6 +809,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_add_am_macro.m4 \
 	$(top_srcdir)/m4/ax_am_macros.m4 \
 	$(top_srcdir)/m4/ax_append_compile_flags.m4 \
 	$(top_srcdir)/m4/ax_append_flag.m4 \
+	$(top_srcdir)/m4/ax_append_link_flags.m4 \
 	$(top_srcdir)/m4/ax_append_to_file.m4 \
 	$(top_srcdir)/m4/ax_assert.m4 \
 	$(top_srcdir)/m4/ax_check_compile_flag.m4 \
@@ -822,12 +827,14 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_add_am_macro.m4 \
 	$(top_srcdir)/m4/ax_lib_libmemcached.m4 \
 	$(top_srcdir)/m4/ax_lib_postgresql.m4 \
 	$(top_srcdir)/m4/ax_lib_sqlite3.m4 \
+	$(top_srcdir)/m4/ax_libmemcached.m4 \
 	$(top_srcdir)/m4/ax_path_generic.m4 \
 	$(top_srcdir)/m4/ax_print_to_file.m4 \
 	$(top_srcdir)/m4/ax_prog_sphinx_build.m4 \
 	$(top_srcdir)/m4/ax_pthread.m4 \
 	$(top_srcdir)/m4/ax_pthread_timedjoin_np.m4 \
-	$(top_srcdir)/m4/ax_uuid.m4 \
+	$(top_srcdir)/m4/ax_restore_flags.m4 \
+	$(top_srcdir)/m4/ax_save_flags.m4 $(top_srcdir)/m4/ax_uuid.m4 \
 	$(top_srcdir)/m4/ax_vcs_checkout.m4 \
 	$(top_srcdir)/m4/ax_with_prog.m4 $(top_srcdir)/m4/boost.m4 \
 	$(top_srcdir)/m4/bottom.m4 $(top_srcdir)/m4/extensions.m4 \
@@ -835,12 +842,10 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_add_am_macro.m4 \
 	$(top_srcdir)/m4/have_cinttypes.m4 \
 	$(top_srcdir)/m4/have_cstdint.m4 \
 	$(top_srcdir)/m4/have_libpq.m4 $(top_srcdir)/m4/hiredis.m4 \
-	$(top_srcdir)/m4/lib-prefix.m4 $(top_srcdir)/m4/libdrizzle.m4 \
-	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
-	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
-	$(top_srcdir)/m4/lt~obsolete.m4 \
+	$(top_srcdir)/m4/libdrizzle.m4 $(top_srcdir)/m4/libtool.m4 \
+	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
+	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
 	$(top_srcdir)/m4/pandora_enable_dtrace.m4 \
-	$(top_srcdir)/m4/pandora_have_better_malloc.m4 \
 	$(top_srcdir)/m4/pandora_have_libtokyocabinet.m4 \
 	$(top_srcdir)/m4/pandora_platform.m4 $(top_srcdir)/m4/pkg.m4 \
 	$(top_srcdir)/m4/socket_send_flags.m4 \
@@ -856,7 +861,7 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno config.status.lineno
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = config.h
+CONFIG_HEADER = gear_config.h
 CONFIG_CLEAN_FILES = libtest/version.h docs/conf.py \
 	libgearman-1.0/version.h scripts/gearmand \
 	scripts/gearmand-init scripts/gearmand.xml \
@@ -915,8 +920,7 @@ libgearman_server_libgearman_server_la_DEPENDENCIES =  \
 	$(am__DEPENDENCIES_4) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_5) $(am__DEPENDENCIES_6) \
 	$(am__DEPENDENCIES_7) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__libgearman_server_libgearman_server_la_SOURCES_DIST =  \
 	libgearman-server/error/strerror.cc \
 	libgearman-server/plugins/base.cc \
@@ -1056,6 +1060,7 @@ libgearman_libgearman_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 libgearman_libgearmancore_la_LIBADD =
 am_libgearman_libgearmancore_la_OBJECTS =  \
 	libgearman/libgearman_libgearmancore_la-allocator.lo \
+	libgearman/libgearman_libgearmancore_la-backtrace.lo \
 	libgearman/libgearman_libgearmancore_la-byteorder.lo \
 	libgearman/libgearman_libgearmancore_la-command.lo \
 	libgearman/libgearman_libgearmancore_la-connection.lo \
@@ -1072,8 +1077,6 @@ libgearman_libgearmancore_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-@TARGET_HOSTILE_TRUE@am__DEPENDENCIES_8 = $(am__DEPENDENCIES_1) \
-@TARGET_HOSTILE_TRUE@	$(am__DEPENDENCIES_1)
 am__libhostile_libhostile_la_SOURCES_DIST = libhostile/dummy.c \
 	libhostile/initialize.c libhostile/accept.c \
 	libhostile/called.c libhostile/function.c \
@@ -1104,20 +1107,20 @@ libhostile_libhostile_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(libhostile_libhostile_la_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-@BUILDING_LIBMEMCACHED_FALSE@@HAVE_LIBMEMCACHED_TRUE@am__DEPENDENCIES_9 = $(am__DEPENDENCIES_1)
+@BUILDING_LIBMEMCACHED_FALSE@@HAVE_LIBMEMCACHED_TRUE@am__DEPENDENCIES_8 = $(am__DEPENDENCIES_1)
 am__libtest_libtest_la_SOURCES_DIST = libtest/alarm.cc \
 	libtest/binaries.cc libtest/cmdline.cc libtest/collection.cc \
 	libtest/comparison.cc libtest/core.cc libtest/cpu.cc \
 	libtest/dns.cc libtest/dream.cc libtest/drizzled.cc \
-	libtest/fatal.cc libtest/formatter.cc libtest/framework.cc \
-	libtest/has.cc libtest/http.cc libtest/is_local.cc \
-	libtest/killpid.cc libtest/libtool.cc libtest/main.cc \
-	libtest/port.cc libtest/runner.cc libtest/server.cc \
-	libtest/server_container.cc libtest/signal.cc \
-	libtest/socket.cc libtest/strerror.cc libtest/timer.cc \
-	libtest/tmpfile.cc libtest/vchar.cc libtest/memcached.cc \
-	libtest/blobslap_worker.cc libtest/gearmand.cc \
-	util/instance.cc util/operation.cc
+	libtest/fatal.cc libtest/formatter.cc libtest/client.cc \
+	libtest/framework.cc libtest/has.cc libtest/http.cc \
+	libtest/is_local.cc libtest/killpid.cc libtest/libtool.cc \
+	libtest/main.cc libtest/port.cc libtest/runner.cc \
+	libtest/server.cc libtest/server_container.cc \
+	libtest/signal.cc libtest/socket.cc libtest/strerror.cc \
+	libtest/timer.cc libtest/tmpfile.cc libtest/vchar.cc \
+	libtest/memcached.cc libtest/blobslap_worker.cc \
+	libtest/gearmand.cc util/instance.cc util/operation.cc
 @BUILDING_LIBMEMCACHED_TRUE@am__objects_9 = libtest/libtest_libtest_la-memcached.lo
 @BUILDING_LIBMEMCACHED_FALSE@@HAVE_LIBMEMCACHED_TRUE@am__objects_10 = libtest/libtest_libtest_la-memcached.lo
 @BUILDING_GEARMAN_TRUE@am__objects_11 = libtest/libtest_libtest_la-blobslap_worker.lo \
@@ -1140,6 +1143,7 @@ am_libtest_libtest_la_OBJECTS = libtest/libtest_libtest_la-alarm.lo \
 	libtest/libtest_libtest_la-drizzled.lo \
 	libtest/libtest_libtest_la-fatal.lo \
 	libtest/libtest_libtest_la-formatter.lo \
+	libtest/libtest_libtest_la-client.lo \
 	libtest/libtest_libtest_la-framework.lo \
 	libtest/libtest_libtest_la-has.lo \
 	libtest/libtest_libtest_la-http.lo \
@@ -1217,8 +1221,7 @@ am_bin_gearadmin_OBJECTS = bin/bin_gearadmin-gearadmin.$(OBJEXT) \
 	util/bin_gearadmin-instance.$(OBJEXT) \
 	util/bin_gearadmin-operation.$(OBJEXT)
 bin_gearadmin_OBJECTS = $(am_bin_gearadmin_OBJECTS)
-bin_gearadmin_DEPENDENCIES = $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1)
+bin_gearadmin_DEPENDENCIES = $(am__DEPENDENCIES_1)
 bin_gearadmin_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(bin_gearadmin_CXXFLAGS) $(CXXFLAGS) $(bin_gearadmin_LDFLAGS) \
@@ -1250,9 +1253,9 @@ docs_libgearman_examples_gearman_execute_partition_DEPENDENCIES =  \
 am_examples_echo_client_OBJECTS =  \
 	examples/examples_echo_client-echo_client.$(OBJEXT)
 examples_echo_client_OBJECTS = $(am_examples_echo_client_OBJECTS)
-am__DEPENDENCIES_10 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+am__DEPENDENCIES_9 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	libgearman/libgearman.la
-examples_echo_client_DEPENDENCIES = $(am__DEPENDENCIES_10)
+examples_echo_client_DEPENDENCIES = $(am__DEPENDENCIES_9)
 examples_echo_client_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_echo_client_CXXFLAGS) $(CXXFLAGS) \
@@ -1260,7 +1263,7 @@ examples_echo_client_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 am_examples_echo_worker_OBJECTS =  \
 	examples/examples_echo_worker-echo_worker.$(OBJEXT)
 examples_echo_worker_OBJECTS = $(am_examples_echo_worker_OBJECTS)
-examples_echo_worker_DEPENDENCIES = $(am__DEPENDENCIES_10)
+examples_echo_worker_DEPENDENCIES = $(am__DEPENDENCIES_9)
 examples_echo_worker_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_echo_worker_CXXFLAGS) $(CXXFLAGS) \
@@ -1269,7 +1272,7 @@ am_examples_reverse_client_OBJECTS =  \
 	examples/examples_reverse_client-reverse_client.$(OBJEXT)
 examples_reverse_client_OBJECTS =  \
 	$(am_examples_reverse_client_OBJECTS)
-examples_reverse_client_DEPENDENCIES = $(am__DEPENDENCIES_10)
+examples_reverse_client_DEPENDENCIES = $(am__DEPENDENCIES_9)
 examples_reverse_client_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_reverse_client_CXXFLAGS) $(CXXFLAGS) \
@@ -1277,7 +1280,7 @@ examples_reverse_client_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 am_examples_reverse_client_bg_OBJECTS = examples/examples_reverse_client_bg-reverse_client_bg.$(OBJEXT)
 examples_reverse_client_bg_OBJECTS =  \
 	$(am_examples_reverse_client_bg_OBJECTS)
-examples_reverse_client_bg_DEPENDENCIES = $(am__DEPENDENCIES_10)
+examples_reverse_client_bg_DEPENDENCIES = $(am__DEPENDENCIES_9)
 examples_reverse_client_bg_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_reverse_client_bg_CXXFLAGS) $(CXXFLAGS) \
@@ -1285,7 +1288,7 @@ examples_reverse_client_bg_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 am_examples_reverse_client_cb_OBJECTS = examples/examples_reverse_client_cb-reverse_client_cb.$(OBJEXT)
 examples_reverse_client_cb_OBJECTS =  \
 	$(am_examples_reverse_client_cb_OBJECTS)
-examples_reverse_client_cb_DEPENDENCIES = $(am__DEPENDENCIES_10)
+examples_reverse_client_cb_DEPENDENCIES = $(am__DEPENDENCIES_9)
 examples_reverse_client_cb_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_reverse_client_cb_CXXFLAGS) $(CXXFLAGS) \
@@ -1293,7 +1296,7 @@ examples_reverse_client_cb_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 am_examples_reverse_client_epoch_OBJECTS = examples/examples_reverse_client_epoch-reverse_client_epoch.$(OBJEXT)
 examples_reverse_client_epoch_OBJECTS =  \
 	$(am_examples_reverse_client_epoch_OBJECTS)
-examples_reverse_client_epoch_DEPENDENCIES = $(am__DEPENDENCIES_10)
+examples_reverse_client_epoch_DEPENDENCIES = $(am__DEPENDENCIES_9)
 examples_reverse_client_epoch_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_reverse_client_epoch_CXXFLAGS) $(CXXFLAGS) \
@@ -1302,7 +1305,7 @@ am_examples_reverse_worker_OBJECTS =  \
 	examples/examples_reverse_worker-reverse_worker.$(OBJEXT)
 examples_reverse_worker_OBJECTS =  \
 	$(am_examples_reverse_worker_OBJECTS)
-examples_reverse_worker_DEPENDENCIES = $(am__DEPENDENCIES_10)
+examples_reverse_worker_DEPENDENCIES = $(am__DEPENDENCIES_9)
 examples_reverse_worker_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_reverse_worker_CXXFLAGS) $(CXXFLAGS) \
@@ -1310,7 +1313,7 @@ examples_reverse_worker_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 am_examples_wc_worker_OBJECTS =  \
 	examples/examples_wc_worker-wc_worker.$(OBJEXT)
 examples_wc_worker_OBJECTS = $(am_examples_wc_worker_OBJECTS)
-examples_wc_worker_DEPENDENCIES = $(am__DEPENDENCIES_10)
+examples_wc_worker_DEPENDENCIES = $(am__DEPENDENCIES_9)
 examples_wc_worker_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(examples_wc_worker_CXXFLAGS) $(CXXFLAGS) \
@@ -1324,8 +1327,8 @@ gearmand_gearmand_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(gearmand_gearmand_CXXFLAGS) $(CXXFLAGS) \
 	$(gearmand_gearmand_LDFLAGS) $(LDFLAGS) -o $@
-am__gearmand_hostile_gearmand_SOURCES_DIST = gearmand/gearmand.cc \
-	util/daemon.cc util/pidfile.cc
+am__gearmand_hostile_gearmand_SOURCES_DIST = configmake.h \
+	gearmand/gearmand.cc util/daemon.cc util/pidfile.cc
 am__objects_13 =  \
 	gearmand/gearmand_hostile_gearmand-gearmand.$(OBJEXT) \
 	util/gearmand_hostile_gearmand-daemon.$(OBJEXT) \
@@ -1474,8 +1477,6 @@ am_tests_stress_test_OBJECTS =  \
 	tests/tests_stress_test-burnin.$(OBJEXT) \
 	tests/tests_stress_test-stress_worker.$(OBJEXT)
 tests_stress_test_OBJECTS = $(am_tests_stress_test_OBJECTS)
-@TARGET_LINUX_TRUE@am__DEPENDENCIES_11 = $(am__DEPENDENCIES_1) \
-@TARGET_LINUX_TRUE@	$(am__DEPENDENCIES_1)
 tests_stress_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(tests_stress_test_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
@@ -1615,13 +1616,26 @@ man1dir = $(mandir)/man1
 man3dir = $(mandir)/man3
 man8dir = $(mandir)/man8
 NROFF = nroff
-MANS = $(man1_MANS) $(man3_MANS) $(man8_MANS)
+MANS = $(dist_man_MANS) $(man1_MANS) $(man3_MANS) $(man8_MANS) $(man_MANS)
 DATA = $(pkgconfig_DATA)
 HEADERS = $(nobase_include_HEADERS) $(noinst_HEADERS)
 ETAGS = etags
 CTAGS = ctags
+# If stdout is a non-dumb tty, use colors.  If test -t is not supported,
+# then this fails; a conservative approach.  Of course do not redirect
+# stdout here, just stderr.
 am__tty_colors = \
-red=; grn=; lgn=; blu=; std=
+red=; grn=; lgn=; blu=; std=; \
+test "X$(AM_COLOR_TESTS)" != Xno \
+&& test "X$$TERM" != Xdumb \
+&& { test "X$(AM_COLOR_TESTS)" = Xalways || test -t 1 2>/dev/null; } \
+&& { \
+  red='[0;31m'; \
+  grn='[0;32m'; \
+  lgn='[1;32m'; \
+  blu='[1;34m'; \
+  std='[m'; \
+}
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -1647,7 +1661,6 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BETTER_MALLOC_LIBS = @BETTER_MALLOC_LIBS@
 BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
 BOOST_LDPATH = @BOOST_LDPATH@
 BOOST_PROGRAM_OPTIONS_LDFLAGS = @BOOST_PROGRAM_OPTIONS_LDFLAGS@
@@ -1666,6 +1679,7 @@ BOOST_THREAD_WIN32_LIBS = @BOOST_THREAD_WIN32_LIBS@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CC_VERSION = @CC_VERSION@
+CC_VERSION_VENDOR = @CC_VERSION_VENDOR@
 CFLAGS = @CFLAGS@
 CFLAG_VISIBILITY = @CFLAG_VISIBILITY@
 CPP = @CPP@
@@ -1678,6 +1692,7 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CXX_VERSION = @CXX_VERSION@
+CXX_VERSION_VENDOR = @CXX_VERSION_VENDOR@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -1699,7 +1714,6 @@ FGREP = @FGREP@
 GEARMAN_LIBRARY_VERSION = @GEARMAN_LIBRARY_VERSION@
 GREP = @GREP@
 HAVE_VISIBILITY = @HAVE_VISIBILITY@
-HEX_VERSION = @HEX_VERSION@
 INC_AMINCLUDE = @INC_AMINCLUDE@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -1712,6 +1726,8 @@ LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBEVENT_CPPFLAGS = @LIBEVENT_CPPFLAGS@
 LIBEVENT_LDFLAGS = @LIBEVENT_LDFLAGS@
+LIBGEARMAN_VERSION_HEX = @LIBGEARMAN_VERSION_HEX@
+LIBGEARMAN_VERSION_STRING = @LIBGEARMAN_VERSION_STRING@
 LIBHIREDIS_CPPFLAGS = @LIBHIREDIS_CPPFLAGS@
 LIBHIREDIS_LDFLAGS = @LIBHIREDIS_LDFLAGS@
 LIBM = @LIBM@
@@ -1739,7 +1755,6 @@ MYSQL_CONFIG = @MYSQL_CONFIG@
 MYSQL_INCLUDE = @MYSQL_INCLUDE@
 MYSQL_LDFLAGS = @MYSQL_LDFLAGS@
 MYSQL_VERSION = @MYSQL_VERSION@
-M_LIB = @M_LIB@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
@@ -1847,7 +1862,7 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-ACLOCAL_AMFLAGS = -I m4 --install --force -Wall
+ACLOCAL_AMFLAGS = -I m4
 lib_LTLIBRARIES = libgearman/libgearman.la
 noinst_LTLIBRARIES = libtest/libtest.la libhostile/libhostile.la \
 	benchmark/libbenchmark.la \
@@ -1873,32 +1888,32 @@ nobase_include_HEADERS = libgearman/gearman.h \
 	libgearman-1.0/task_attr.h libgearman-1.0/universal.h \
 	libgearman-1.0/util.h libgearman-1.0/version.h \
 	libgearman-1.0/visibility.h libgearman-1.0/worker.h
-noinst_HEADERS = libtest/formatter.hpp libtest/timer.hpp \
-	libtest/alarm.h libtest/binaries.h libtest/cpu.hpp \
-	libtest/blobslap_worker.h libtest/callbacks.h libtest/dns.hpp \
-	libtest/cmdline.h libtest/collection.h libtest/common.h \
-	libtest/comparison.hpp libtest/core.h libtest/dream.h \
-	libtest/error.h libtest/failed.h libtest/fatal.hpp \
-	libtest/framework.h libtest/gearmand.h libtest/drizzled.h \
-	libtest/get.h libtest/has.hpp libtest/http.hpp \
-	libtest/is_pid.hpp libtest/is_local.hpp libtest/killpid.h \
-	libtest/libtool.hpp libtest/memcached.h libtest/memcached.hpp \
-	libtest/poll_error.hpp libtest/port.h libtest/runner.h \
-	libtest/server.h libtest/server_container.h libtest/signal.h \
-	libtest/socket.hpp libtest/stream.h libtest/strerror.h \
-	libtest/string.hpp libtest/test.h libtest/test.hpp \
-	libtest/tmpfile.hpp libtest/vchar.hpp libtest/version.h \
-	libtest/visibility.h libtest/wait.h libhostile/accept.h \
-	libhostile/action.h libhostile/called.h libhostile/function.h \
-	libhostile/getaddrinfo.h libhostile/hostile.h \
-	libhostile/initialize.h libhostile/malloc.h libhostile/pipe.h \
-	libhostile/poll.h libhostile/realloc.h libhostile/recv.h \
-	libhostile/send.h libhostile/setsockopt.h \
-	libhostile/socket_server.h libhostile/visibility.h \
-	libhostile/write.h benchmark/benchmark.h bin/arguments.h \
-	bin/error.h bin/function.h bin/client.h bin/worker.h \
-	gearmand/error.hpp gearmand/log.hpp \
-	libgearman-server/struct/client.h \
+noinst_HEADERS = libtest/client.hpp libtest/formatter.hpp \
+	libtest/timer.hpp libtest/alarm.h libtest/binaries.h \
+	libtest/cpu.hpp libtest/blobslap_worker.h libtest/callbacks.h \
+	libtest/dns.hpp libtest/cmdline.h libtest/collection.h \
+	libtest/common.h libtest/comparison.hpp libtest/core.h \
+	libtest/dream.h libtest/error.h libtest/failed.h \
+	libtest/fatal.hpp libtest/framework.h libtest/gearmand.h \
+	libtest/drizzled.h libtest/get.h libtest/has.hpp \
+	libtest/http.hpp libtest/is_pid.hpp libtest/is_local.hpp \
+	libtest/killpid.h libtest/libtool.hpp libtest/memcached.h \
+	libtest/memcached.hpp libtest/poll_error.hpp libtest/port.h \
+	libtest/runner.h libtest/server.h libtest/server_container.h \
+	libtest/signal.h libtest/socket.hpp libtest/stream.h \
+	libtest/strerror.h libtest/string.hpp libtest/test.h \
+	libtest/test.hpp libtest/tmpfile.hpp libtest/vchar.hpp \
+	libtest/version.h libtest/visibility.h libtest/wait.h \
+	libhostile/accept.h libhostile/action.h libhostile/called.h \
+	libhostile/function.h libhostile/getaddrinfo.h \
+	libhostile/hostile.h libhostile/initialize.h \
+	libhostile/malloc.h libhostile/pipe.h libhostile/poll.h \
+	libhostile/realloc.h libhostile/recv.h libhostile/send.h \
+	libhostile/setsockopt.h libhostile/socket_server.h \
+	libhostile/visibility.h libhostile/write.h \
+	benchmark/benchmark.h bin/arguments.h bin/error.h \
+	bin/function.h bin/client.h bin/worker.h gearmand/error.hpp \
+	gearmand/log.hpp libgearman-server/struct/client.h \
 	libgearman-server/struct/connection_list.h \
 	libgearman-server/struct/function.h \
 	libgearman-server/struct/gearmand.h \
@@ -1985,24 +2000,23 @@ noinst_HEADERS = libtest/formatter.hpp libtest/timer.hpp \
 	tests/workers/v2/sleep_return_random.h \
 	tests/workers/v2/split.h tests/workers/v2/unique.h \
 	configmake.h
-man1_MANS = $(am__append_56)
-man3_MANS = $(am__append_58)
-man8_MANS = $(am__append_57)
+man1_MANS = 
+man3_MANS = 
+man8_MANS = 
 DISTCLEANFILES = aminclude.am config/top.h
 EXTRA_DIST = libtest/run.gdb libtest/version.h \
 	tests/perl/worker/echo.pl support/gearmand.init \
-	support/gearmand.pc support/gearmand.spec HACKING ${man1_MANS} \
-	${man3_MANS} ${man8_MANS} scripts/README.solaris
-CLEANFILES = ${BUILT_SOURCES} tmp_chroot/etc/* \
-	tmp_chroot/var/drizzle/* tmp_chroot/var/log/* \
-	tmp_chroot/var/run/* tmp_chroot/var/tmp/* tmp_chroot/*.xml \
-	tests/gearman.sql tests/gearman.sql-journal \
+	support/gearmand.pc support/gearmand.spec HACKING \
+	scripts/README.solaris
+CLEANFILES = tmp_chroot tests/gearman.sql tests/gearman.sql-journal \
 	tests/gearmand.log*
-BUILT_SOURCES = libtest/version.h configmake.h
+BUILT_SOURCES = libtest/version.h $(am__append_56) configmake.h
 
 # Should always be first
 TESTS = $(check_PROGRAMS)
 .PHONY = 
+dist_man_MANS = $(am__append_57)
+man_MANS = 
 LIBTOOL_COMMAND = ${abs_top_builddir}/libtool --mode=execute
 VALGRIND_EXEC_COMMAND = $(LIBTOOL_COMMAND) valgrind --error-exitcode=1 --leak-check=yes --track-fds=yes --malloc-fill=A5 --free-fill=DE
 VALGRIND_COMMAND = TESTS_ENVIRONMENT="valgrind" $(VALGRIND_EXEC_COMMAND)
@@ -2016,21 +2030,21 @@ libtest_libtest_la_CXXFLAGS = -DBUILDING_LIBTEST $(PTHREAD_CFLAGS) \
 	$(am__append_10) $(am__append_13)
 libtest_libtest_la_DEPENDENCIES = libtest_tmp_dir libtest/abort \
 	libtest/wait $(am__append_1) $(am__append_14) $(am__append_19)
-libtest_libtest_la_LIBADD = $(PTHREAD_LIBS) $(CURL_LIBS) $(RT_LIB) \
+libtest_libtest_la_LIBADD = $(PTHREAD_LIBS) $(CURL_LIBS) @RT_LIB@ \
 	$(am__append_2) $(am__append_8) $(am__append_12) \
 	$(am__append_15) $(am__append_20)
 libtest_libtest_la_SOURCES = libtest/alarm.cc libtest/binaries.cc \
 	libtest/cmdline.cc libtest/collection.cc libtest/comparison.cc \
 	libtest/core.cc libtest/cpu.cc libtest/dns.cc libtest/dream.cc \
 	libtest/drizzled.cc libtest/fatal.cc libtest/formatter.cc \
-	libtest/framework.cc libtest/has.cc libtest/http.cc \
-	libtest/is_local.cc libtest/killpid.cc libtest/libtool.cc \
-	libtest/main.cc libtest/port.cc libtest/runner.cc \
-	libtest/server.cc libtest/server_container.cc \
-	libtest/signal.cc libtest/socket.cc libtest/strerror.cc \
-	libtest/timer.cc libtest/tmpfile.cc libtest/vchar.cc \
-	$(am__append_3) $(am__append_9) $(am__append_16) \
-	$(am__append_21)
+	libtest/client.cc libtest/framework.cc libtest/has.cc \
+	libtest/http.cc libtest/is_local.cc libtest/killpid.cc \
+	libtest/libtool.cc libtest/main.cc libtest/port.cc \
+	libtest/runner.cc libtest/server.cc \
+	libtest/server_container.cc libtest/signal.cc \
+	libtest/socket.cc libtest/strerror.cc libtest/timer.cc \
+	libtest/tmpfile.cc libtest/vchar.cc $(am__append_3) \
+	$(am__append_9) $(am__append_16) $(am__append_21)
 
 # Declare unittest so that we can append to it
 libtest_unittest_CXXFLAGS = $(am__append_5) $(am__append_11)
@@ -2072,10 +2086,8 @@ bin_gearadmin_SOURCES = \
 
 bin_gearadmin_CXXFLAGS = $(BOOST_CPPFLAGS)
 bin_gearadmin_LDFLAGS = $(BOOST_PROGRAM_OPTIONS_LDFLAGS)
-bin_gearadmin_LDADD = \
-		     $(BOOST_PROGRAM_OPTIONS_LIBS) \
-		     ${BETTER_MALLOC_LIBS}
-
+bin_gearadmin_LDADD = $(BOOST_PROGRAM_OPTIONS_LIBS) \
+	${BETTER_MALLOC_LIBS}
 bin_gearman_SOURCES = \
 		     bin/arguments.cc \
 		     bin/function.cc \
@@ -2131,13 +2143,14 @@ gearmand_gearmand_LDADD = libgearman-server/libgearman-server.la \
 	$(am__append_29) $(am__append_33) $(am__append_37)
 gearmand_gearmand_CXXFLAGS = $(BOOST_CPPFLAGS)
 gearmand_gearmand_DEPENDENCIES =  \
-	libgearman-server/libgearman-server.la configmake.h
+	libgearman-server/libgearman-server.la
 gearmand_gearmand_LDFLAGS = $(BOOST_PROGRAM_OPTIONS_LDFLAGS)
-gearmand_gearmand_SOURCES = gearmand/gearmand.cc util/daemon.cc \
-	util/pidfile.cc
+gearmand_gearmand_SOURCES = configmake.h gearmand/gearmand.cc \
+	util/daemon.cc util/pidfile.cc
 @TARGET_LINUX_TRUE@gearmand_hostile_gearmand_CXXFLAGS =  \
 @TARGET_LINUX_TRUE@	$(gearmand_gearmand_CXXFLAGS)
 @TARGET_LINUX_TRUE@gearmand_hostile_gearmand_DEPENDENCIES =  \
+@TARGET_LINUX_TRUE@	configmake.h \
 @TARGET_LINUX_TRUE@	libgearman-server/libgearman-server.la \
 @TARGET_LINUX_TRUE@	libhostile/libhostile.la
 @TARGET_LINUX_TRUE@gearmand_hostile_gearmand_LDADD = $(DL_lib) \
@@ -2159,7 +2172,7 @@ libgearman_server_libgearman_server_la_LIBADD = $(am__append_27) \
 	$(am__append_32) $(am__append_35) $(am__append_39) \
 	$(am__append_43) $(am__append_45) $(am__append_49) \
 	$(LIBEVENT_LDFLAGS) $(PTHREAD_LIBS) \
-	$(BOOST_PROGRAM_OPTIONS_LIBS) $(M_LIB)
+	$(BOOST_PROGRAM_OPTIONS_LIBS) @LIBM@
 libgearman_server_libgearman_server_la_SOURCES =  \
 	libgearman-server/error/strerror.cc \
 	libgearman-server/plugins/base.cc \
@@ -2190,6 +2203,7 @@ libgearman_server_libgearman_server_la_SOURCES =  \
 	libgearman/strcommand.cc
 libgearman_libgearmancore_la_SOURCES = \
 				      libgearman/allocator.cc \
+				      libgearman/backtrace.cc \
 				      libgearman/byteorder.cc \
 				      libgearman/command.cc \
 				      libgearman/connection.cc \
@@ -2385,14 +2399,14 @@ tests_httpd_test_DEPENDENCIES = $(CLIENT_LDADD)
 tests_httpd_test_LDADD = $(CLIENT_LDADD)
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = support/gearmand.pc
-SPHINXOPTS = ${SPHINX_WARNINGS}
+SPHINXOPTS = ${SPHINX_WARNINGS} -q
 PAPER = 
-SPHINX_BUILDDIR = ${top_builddir}/docs
+SPHINX_BUILDDIR = ${abs_top_builddir}/docs
 
 # Internal variables.
 PAPEROPT_a4 = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
-ALLSPHINXOPTS = -d $(SPHINX_BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) ${top_srcdir}/docs
+ALLSPHINXOPTS = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SPHINX_BUILDDIR)
 docs_libgearman_examples_gearman_execute_example_SOURCES = docs/libgearman/examples/gearman_execute_example.c
 docs_libgearman_examples_gearman_execute_example_LDADD = libgearman/libgearman.la
 docs_libgearman_examples_gearman_execute_partition_SOURCES = docs/libgearman/examples/gearman_execute_partition.c
@@ -2401,7 +2415,7 @@ docs_libgearman_examples_gearman_client_do_example_SOURCES = docs/libgearman/exa
 docs_libgearman_examples_gearman_client_do_example_LDADD = libgearman/libgearman.la
 docs_libgearman_examples_gearman_client_do_background_example_SOURCES = docs/libgearman/examples/gearman_client_do_background_example.c
 docs_libgearman_examples_gearman_client_do_background_example_LDADD = libgearman/libgearman.la
-all: $(BUILT_SOURCES) config.h
+all: $(BUILT_SOURCES) gear_config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
@@ -2442,20 +2456,20 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	$(am__cd) $(srcdir) && $(ACLOCAL) $(ACLOCAL_AMFLAGS)
 $(am__aclocal_m4_deps):
 
-config.h: stamp-h1
+gear_config.h: stamp-h1
 	@if test ! -f $@; then rm -f stamp-h1; else :; fi
 	@if test ! -f $@; then $(MAKE) $(AM_MAKEFLAGS) stamp-h1; else :; fi
 
-stamp-h1: $(srcdir)/config.in $(top_builddir)/config.status
+stamp-h1: $(srcdir)/gear_config.in $(top_builddir)/config.status
 	@rm -f stamp-h1
-	cd $(top_builddir) && $(SHELL) ./config.status config.h
-$(srcdir)/config.in:  $(am__configure_deps) 
+	cd $(top_builddir) && $(SHELL) ./config.status gear_config.h
+$(srcdir)/gear_config.in:  $(am__configure_deps) 
 	($(am__cd) $(top_srcdir) && $(AUTOHEADER))
 	rm -f stamp-h1
 	touch $@
 
 distclean-hdr:
-	-rm -f config.h stamp-h1
+	-rm -f gear_config.h stamp-h1
 libtest/version.h: $(top_builddir)/config.status $(top_srcdir)/libtest/version.h.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 docs/conf.py: $(top_builddir)/config.status $(top_srcdir)/docs/conf.py.in
@@ -2882,6 +2896,9 @@ libgearman/libgearman.la: $(libgearman_libgearman_la_OBJECTS) $(libgearman_libge
 libgearman/libgearman_libgearmancore_la-allocator.lo:  \
 	libgearman/$(am__dirstamp) \
 	libgearman/$(DEPDIR)/$(am__dirstamp)
+libgearman/libgearman_libgearmancore_la-backtrace.lo:  \
+	libgearman/$(am__dirstamp) \
+	libgearman/$(DEPDIR)/$(am__dirstamp)
 libgearman/libgearman_libgearmancore_la-byteorder.lo:  \
 	libgearman/$(am__dirstamp) \
 	libgearman/$(DEPDIR)/$(am__dirstamp)
@@ -2996,6 +3013,8 @@ libtest/libtest_libtest_la-drizzled.lo: libtest/$(am__dirstamp) \
 libtest/libtest_libtest_la-fatal.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-formatter.lo: libtest/$(am__dirstamp) \
+	libtest/$(DEPDIR)/$(am__dirstamp)
+libtest/libtest_libtest_la-client.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-framework.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
@@ -3805,6 +3824,8 @@ mostlyclean-compile:
 	-rm -f libgearman/libgearman_libgearman_la-worker.lo
 	-rm -f libgearman/libgearman_libgearmancore_la-allocator.$(OBJEXT)
 	-rm -f libgearman/libgearman_libgearmancore_la-allocator.lo
+	-rm -f libgearman/libgearman_libgearmancore_la-backtrace.$(OBJEXT)
+	-rm -f libgearman/libgearman_libgearmancore_la-backtrace.lo
 	-rm -f libgearman/libgearman_libgearmancore_la-byteorder.$(OBJEXT)
 	-rm -f libgearman/libgearman_libgearmancore_la-byteorder.lo
 	-rm -f libgearman/libgearman_libgearmancore_la-command.$(OBJEXT)
@@ -3873,6 +3894,8 @@ mostlyclean-compile:
 	-rm -f libtest/libtest_libtest_la-binaries.lo
 	-rm -f libtest/libtest_libtest_la-blobslap_worker.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-blobslap_worker.lo
+	-rm -f libtest/libtest_libtest_la-client.$(OBJEXT)
+	-rm -f libtest/libtest_libtest_la-client.lo
 	-rm -f libtest/libtest_libtest_la-cmdline.$(OBJEXT)
 	-rm -f libtest/libtest_libtest_la-cmdline.lo
 	-rm -f libtest/libtest_libtest_la-collection.$(OBJEXT)
@@ -4139,6 +4162,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearman_la-vector.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearman_la-worker.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-allocator.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-backtrace.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-byteorder.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-command.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libgearman/$(DEPDIR)/libgearman_libgearmancore_la-connection.Plo@am__quote@
@@ -4178,6 +4202,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-alarm.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-binaries.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-blobslap_worker.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-client.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-cmdline.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-collection.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-comparison.Plo@am__quote@
@@ -5033,6 +5058,13 @@ libgearman/libgearman_libgearmancore_la-allocator.lo: libgearman/allocator.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/libgearman_libgearmancore_la-allocator.lo `test -f 'libgearman/allocator.cc' || echo '$(srcdir)/'`libgearman/allocator.cc
 
+libgearman/libgearman_libgearmancore_la-backtrace.lo: libgearman/backtrace.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/libgearman_libgearmancore_la-backtrace.lo -MD -MP -MF libgearman/$(DEPDIR)/libgearman_libgearmancore_la-backtrace.Tpo -c -o libgearman/libgearman_libgearmancore_la-backtrace.lo `test -f 'libgearman/backtrace.cc' || echo '$(srcdir)/'`libgearman/backtrace.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman/$(DEPDIR)/libgearman_libgearmancore_la-backtrace.Tpo libgearman/$(DEPDIR)/libgearman_libgearmancore_la-backtrace.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='libgearman/backtrace.cc' object='libgearman/libgearman_libgearmancore_la-backtrace.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -c -o libgearman/libgearman_libgearmancore_la-backtrace.lo `test -f 'libgearman/backtrace.cc' || echo '$(srcdir)/'`libgearman/backtrace.cc
+
 libgearman/libgearman_libgearmancore_la-byteorder.lo: libgearman/byteorder.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libgearman_libgearmancore_la_CXXFLAGS) $(CXXFLAGS) -MT libgearman/libgearman_libgearmancore_la-byteorder.lo -MD -MP -MF libgearman/$(DEPDIR)/libgearman_libgearmancore_la-byteorder.Tpo -c -o libgearman/libgearman_libgearmancore_la-byteorder.lo `test -f 'libgearman/byteorder.cc' || echo '$(srcdir)/'`libgearman/byteorder.cc
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libgearman/$(DEPDIR)/libgearman_libgearmancore_la-byteorder.Tpo libgearman/$(DEPDIR)/libgearman_libgearmancore_la-byteorder.Plo
@@ -5186,6 +5218,13 @@ libtest/libtest_libtest_la-formatter.lo: libtest/formatter.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='libtest/formatter.cc' object='libtest/libtest_libtest_la-formatter.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-formatter.lo `test -f 'libtest/formatter.cc' || echo '$(srcdir)/'`libtest/formatter.cc
+
+libtest/libtest_libtest_la-client.lo: libtest/client.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-client.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-client.Tpo -c -o libtest/libtest_libtest_la-client.lo `test -f 'libtest/client.cc' || echo '$(srcdir)/'`libtest/client.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-client.Tpo libtest/$(DEPDIR)/libtest_libtest_la-client.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='libtest/client.cc' object='libtest/libtest_libtest_la-client.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-client.lo `test -f 'libtest/client.cc' || echo '$(srcdir)/'`libtest/client.cc
 
 libtest/libtest_libtest_la-framework.lo: libtest/framework.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-framework.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-framework.Tpo -c -o libtest/libtest_libtest_la-framework.lo `test -f 'libtest/framework.cc' || echo '$(srcdir)/'`libtest/framework.cc
@@ -6311,10 +6350,10 @@ clean-libtool:
 
 distclean-libtool:
 	-rm -f libtool config.lt
-install-man1: $(man1_MANS)
+install-man1: $(dist_man_MANS) $(man1_MANS) $(man_MANS)
 	@$(NORMAL_INSTALL)
 	@list1='$(man1_MANS)'; \
-	list2=''; \
+	list2='$(dist_man_MANS) $(man_MANS)'; \
 	test -n "$(man1dir)" \
 	  && test -n "`echo $$list1$$list2`" \
 	  || exit 0; \
@@ -6349,13 +6388,15 @@ uninstall-man1:
 	@$(NORMAL_UNINSTALL)
 	@list='$(man1_MANS)'; test -n "$(man1dir)" || exit 0; \
 	files=`{ for i in $$list; do echo "$$i"; done; \
+	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.1[a-z]*$$/p'; \
 	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
 	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
 	dir='$(DESTDIR)$(man1dir)'; $(am__uninstall_files_from_dir)
-install-man3: $(man3_MANS)
+install-man3: $(dist_man_MANS) $(man3_MANS) $(man_MANS)
 	@$(NORMAL_INSTALL)
 	@list1='$(man3_MANS)'; \
-	list2=''; \
+	list2='$(dist_man_MANS) $(man_MANS)'; \
 	test -n "$(man3dir)" \
 	  && test -n "`echo $$list1$$list2`" \
 	  || exit 0; \
@@ -6390,13 +6431,15 @@ uninstall-man3:
 	@$(NORMAL_UNINSTALL)
 	@list='$(man3_MANS)'; test -n "$(man3dir)" || exit 0; \
 	files=`{ for i in $$list; do echo "$$i"; done; \
+	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.3[a-z]*$$/p'; \
 	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^3][0-9a-z]*$$,3,;x' \
 	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
 	dir='$(DESTDIR)$(man3dir)'; $(am__uninstall_files_from_dir)
-install-man8: $(man8_MANS)
+install-man8: $(dist_man_MANS) $(man8_MANS) $(man_MANS)
 	@$(NORMAL_INSTALL)
 	@list1='$(man8_MANS)'; \
-	list2=''; \
+	list2='$(dist_man_MANS) $(man_MANS)'; \
 	test -n "$(man8dir)" \
 	  && test -n "`echo $$list1$$list2`" \
 	  || exit 0; \
@@ -6431,6 +6474,8 @@ uninstall-man8:
 	@$(NORMAL_UNINSTALL)
 	@list='$(man8_MANS)'; test -n "$(man8dir)" || exit 0; \
 	files=`{ for i in $$list; do echo "$$i"; done; \
+	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.8[a-z]*$$/p'; \
 	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^8][0-9a-z]*$$,8,;x' \
 	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
 	dir='$(DESTDIR)$(man8dir)'; $(am__uninstall_files_from_dir)
@@ -6490,11 +6535,11 @@ ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	mkid -fID $$unique
 tags: TAGS
 
-TAGS:  $(HEADERS) $(SOURCES) config.in $(TAGS_DEPENDENCIES) \
+TAGS:  $(HEADERS) $(SOURCES) gear_config.in $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
 	set x; \
 	here=`pwd`; \
-	list='$(SOURCES) $(HEADERS) config.in $(LISP) $(TAGS_FILES)'; \
+	list='$(SOURCES) $(HEADERS) gear_config.in $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
 	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
 	  done | \
@@ -6512,9 +6557,9 @@ TAGS:  $(HEADERS) $(SOURCES) config.in $(TAGS_DEPENDENCIES) \
 	  fi; \
 	fi
 ctags: CTAGS
-CTAGS:  $(HEADERS) $(SOURCES) config.in $(TAGS_DEPENDENCIES) \
+CTAGS:  $(HEADERS) $(SOURCES) gear_config.in $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
-	list='$(SOURCES) $(HEADERS) config.in $(LISP) $(TAGS_FILES)'; \
+	list='$(SOURCES) $(HEADERS) gear_config.in $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
 	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
 	  done | \
@@ -6806,7 +6851,7 @@ check-am: all-am
 check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(MANS) $(DATA) $(HEADERS) \
-		config.h
+		gear_config.h
 install-binPROGRAMS: install-libLTLIBRARIES
 
 installdirs:
@@ -6971,7 +7016,8 @@ maintainer-clean: maintainer-clean-am
 	-rm -rf $(top_srcdir)/autom4te.cache
 	-rm -rf benchmark/$(DEPDIR) bin/$(DEPDIR) docs/libgearman/examples/$(DEPDIR) examples/$(DEPDIR) gearmand/$(DEPDIR) libgearman-1.0/t/$(DEPDIR) libgearman-server/$(DEPDIR) libgearman-server/error/$(DEPDIR) libgearman-server/plugins/$(DEPDIR) libgearman-server/plugins/protocol/gear/$(DEPDIR) libgearman-server/plugins/protocol/http/$(DEPDIR) libgearman-server/plugins/queue/$(DEPDIR) libgearman-server/plugins/queue/default/$(DEPDIR) libgearman-server/plugins/queue/drizzle/$(DEPDIR) libgearman-server/plugins/queue/libmemcached/$(DEPDIR) libgearman-server/plugins/queue/mysql/$(DEPDIR) libgearman-server/plugins/queue/postgres/$(DEPDIR) libgearman-server/plugins/queue/redis/$(DEPDIR) libgearman-server/plugins/queue/sqlite/$(DEPDIR) libgearman-server/plugins/queue/tokyocabinet/$(DEPDIR) libgearman/$(DEPDIR) libgearman/function/$(DEPDIR) libgearman/protocol/$(DEPDIR) libhostile/$(DEPDIR) libtest/$(DEPDIR) tests/$(DEPDIR) tests/libgearman-1.0/$(DEPDIR) tests/workers/aggregator/$(DEPDIR) tests/workers/v1/$(DEPDIR) tests/workers/v2/$(DEPDIR) util/$(DEPDIR)
 	-rm -f Makefile
-maintainer-clean-am: distclean-am maintainer-clean-generic
+maintainer-clean-am: distclean-am maintainer-clean-generic \
+	maintainer-clean-local
 
 mostlyclean: mostlyclean-am
 
@@ -7012,19 +7058,17 @@ uninstall-man: uninstall-man1 uninstall-man3 uninstall-man8
 	install-pkgconfigDATA install-ps install-ps-am \
 	install-sbinPROGRAMS install-strip installcheck \
 	installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags uninstall uninstall-am uninstall-binPROGRAMS \
-	uninstall-libLTLIBRARIES uninstall-man uninstall-man1 \
-	uninstall-man3 uninstall-man8 uninstall-nobase_includeHEADERS \
-	uninstall-pkgconfigDATA uninstall-sbinPROGRAMS
+	maintainer-clean-generic maintainer-clean-local mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags uninstall uninstall-am \
+	uninstall-binPROGRAMS uninstall-libLTLIBRARIES uninstall-man \
+	uninstall-man1 uninstall-man3 uninstall-man8 \
+	uninstall-nobase_includeHEADERS uninstall-pkgconfigDATA \
+	uninstall-sbinPROGRAMS
 
 
 #includes additional rules from aminclude.am
 @INC_AMINCLUDE@
-
-%.hpp.gch: %.hpp 
-	$(CXXCOMPILE) -c $<
 
 export LIBTOOL_COMMAND
 export VALGRIND_COMMAND
@@ -7044,8 +7088,8 @@ helgrind:
 drd:
 	@echo make check TESTS_ENVIRONMENT="\"$(DRD_COMMAND)\""
 
-.PHONY: distclean-libtest-check
-distclean-libtest-check:
+.PHONY: clean-libtest-check
+clean-libtest-check:
 	-rm -rf tmp_chroot
 
 libtest_tmp_dir: tmp_chroot/var/log tmp_chroot/var/tmp tmp_chroot/var/run tmp_chroot/var/drizzle
@@ -7338,6 +7382,10 @@ valgrind-httpd: tests/httpd_test gearmand/gearmand
 
 bogus:
 
+.PHONY: clean-docs-check
+clean-docs-check:
+	-rm -rf docs/_build docs/doctrees man/.doctrees/
+
 .PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest
 
 @HAVE_SPHINX_TRUE@sphinx-help:
@@ -7359,10 +7407,10 @@ bogus:
 @HAVE_SPHINX_TRUE@	@echo "  linkcheck  to check all external links for integrity"
 @HAVE_SPHINX_TRUE@	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 
-@HAVE_SPHINX_TRUE@docs/_static: 
-@HAVE_SPHINX_TRUE@	@$(mkdir_p) docs/_static
+@HAVE_SPHINX_TRUE@doc_dirs: 
+@HAVE_SPHINX_TRUE@	@$(mkdir_p) $(SPHINX_BUILDDIR)/_static
 
-@HAVE_SPHINX_TRUE@html-local: docs/conf.py docs changes docs/_static
+@HAVE_SPHINX_TRUE@html-local: docs/conf.py docs changes doc_dirs
 @HAVE_SPHINX_TRUE@	PYTHONPATH=${top_srcdir}/docs $(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/html
 @HAVE_SPHINX_TRUE@	@echo
 @HAVE_SPHINX_TRUE@	@echo "Build finished. The HTML pages are in $(SPHINX_BUILDDIR)/html."
@@ -7435,9 +7483,7 @@ bogus:
 @HAVE_SPHINX_TRUE@	@echo "Build finished. The text files are in $(SPHINX_BUILDDIR)/text."
 
 @HAVE_RECENT_SPHINX_TRUE@@HAVE_SPHINX_TRUE@man:
-@HAVE_RECENT_SPHINX_TRUE@@HAVE_SPHINX_TRUE@	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b man $(ALLSPHINXOPTS) ${top_srcdir}/man
-@HAVE_RECENT_SPHINX_TRUE@@HAVE_SPHINX_TRUE@	@echo
-@HAVE_RECENT_SPHINX_TRUE@@HAVE_SPHINX_TRUE@	@echo "Build finished. The manual pages are in ${top_srcdir}/man."
+@HAVE_RECENT_SPHINX_TRUE@@HAVE_SPHINX_TRUE@	PYTHONPATH=$(SPHINX_BUILDDIR)/docs  $(SPHINXBUILD) -b man $(ALLSPHINXOPTS) ${top_builddir}/man
 
 @HAVE_RECENT_SPHINX_FALSE@@HAVE_SPHINX_TRUE@man:
 
@@ -7459,6 +7505,9 @@ bogus:
 
 @HAVE_SPHINX_FALSE@man:
 
+# Build rule for documentation
+@HAVE_RECENT_SPHINX_TRUE@@IS_VCS_CHECKOUT_TRUE@$(dist_man_MANS): man
+
 test: check
 configmake.h: ${top_srcdir}/Makefile.in
 	@echo "Making $@"
@@ -7475,8 +7524,34 @@ configmake.h: ${top_srcdir}/Makefile.in
 	  else \
 	  mv $@-t $@ ; \
 	  fi
-clean-local:
-	-rm -rf docs/_build docs/doctrees
+
+clean-local: clean-libtest-check clean-docs-check
+
+maintainer-clean-local:
+	find . -type f -name '*~' -exec rm -f '{}' \;
+	-rm -f @PACKAGE@-*.rpm
+	-rm -f @PACKAGE@-*.tar.gz
+	-rm -f man/*.1
+	-rm -f man/*.3
+	-rm -f man/*.8
+	-rm Makefile.in
+	-rm aclocal.m4
+	-rm build-aux/config.guess
+	-rm build-aux/config.sub
+	-rm build-aux/depcomp
+	-rm build-aux/install-sh
+	-rm build-aux/ltmain.sh
+	-rm build-aux/missing
+	-rm gear_config.in
+	-rm config.log
+	-rm config.status
+	-rm configure
+	-rm m4/libtool.m4
+	-rm m4/ltoptions.m4
+	-rm m4/ltsugar.m4
+	-rm m4/ltversion.m4
+	-rm m4/lt~obsolete.m4
+	-rmdir build-aux
 
 rpm-build: support/$(PACKAGE).spec clean-rpm
 	$(MAKE) $(AM_MAKEFLAGS) dist

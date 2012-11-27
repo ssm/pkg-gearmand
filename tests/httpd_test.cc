@@ -36,7 +36,7 @@
  */
 
 
-#include <config.h>
+#include "gear_config.h"
 #include <libtest/test.hpp>
 
 using namespace libtest;
@@ -104,6 +104,7 @@ static test_return_t curl_function_TEST(void *)
   curl.add_option("--silent");
   curl.add_option("--show-error");
   curl.add_option("--output", "var/tmp/curl_function_TEST.out");
+  curl.add_option("--connect-timeout", "1");
   curl.add_option(worker_url);
 
   test_compare(Application::SUCCESS, curl.run());
@@ -139,6 +140,12 @@ static test_return_t HEAD_TEST(void *)
 
 static void *world_create(server_startup_st& servers, test_return_t& error)
 {
+  if (valgrind_is_caller())
+  {
+    error= TEST_SKIPPED;
+    return NULL;
+  }
+
   in_port_t http_port= libtest::get_free_port();
   int length= snprintf(host_url, sizeof(host_url), "http://localhost:%d/", int(http_port));
   fatal_assert(length > 0 and sizeof(length) < sizeof(host_url));

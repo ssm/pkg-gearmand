@@ -41,7 +41,8 @@
  * @brief libmemcached Queue Storage Definitions
  */
 
-#include <config.h>
+#include "gear_config.h"
+
 #include <libgearman-server/common.h>
 
 #include <libgearman-server/plugins/queue/base.h>
@@ -108,7 +109,6 @@ public:
 private:
   memcached_st* memc_;
   memcached_st* clone_;
-  gearmand::plugins::queue::Libmemcached *__queue;
 };
 
 } // namespace queue

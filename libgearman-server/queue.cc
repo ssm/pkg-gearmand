@@ -35,13 +35,13 @@
  *
  */
 
-#include <config.h>
+#include "gear_config.h"
 
 #include <iostream>
 
 #include <boost/program_options.hpp>
 
-#include <libgearman-server/common.h>
+#include "libgearman-server/common.h"
 #include <libgearman-server/queue.h>
 #include <libgearman-server/plugins/queue/base.h>
 #include <libgearman-server/queue.hpp>

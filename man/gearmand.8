@@ -1,4 +1,4 @@
-.TH "GEARMAND" "8" "October 12, 2012" "0.41" "Gearmand"
+.TH "GEARMAND" "8" "November 07, 2012" "1.0.1" "Gearmand"
 .SH NAME
 gearmand \- Gearmand Documentation, http://gearman.info/
 .
@@ -260,7 +260,7 @@ The queues are implemented using a modular interface so it is easy to add new da
 A persistent queue module is enabled by passing the \-q or –queue\-type option to gearmand. Run gearmand –help to see which queue modules are supported on your system. If you are missing options for one you would like to use, you will need to install any dependencies and then recompile the gearmand package.
 .SS Extended Protocols
 .sp
-The protocol plugin interface allows you to take over the packet send and recieve functions, allowing you to pack the buffers as required by the protocol. The core read and write functions can (and should) be used by the protocol plugin.
+The protocol plugin interface allows you to take over the packet send and receive functions, allowing you to pack the buffers as required by the protocol. The core read and write functions can (and should) be used by the protocol plugin.
 .SS HTTP
 .sp
 This protocol plugin allows you to map HTTP requests to Gearman jobs. It only provides client job submission currently, but it may be extended to support other request types in the future. The plugin can handle both GET and POST data, the latter being used to send a workload to the job server. The URL being requested is translated into the function being called.

@@ -34,8 +34,9 @@
  *
  */
 
-#include <config.h>
-#include <libtest/common.h>
+#include "gear_config.h"
+
+#include "libtest/common.h"
 
 using namespace libtest;
 
@@ -45,8 +46,12 @@ using namespace libtest;
 #include <fcntl.h>
 #include <fstream>
 #include <memory>
-#include <poll.h>
-#include <spawn.h>
+#ifdef HAVE_POLL_H
+# include <poll.h>
+#endif
+#ifdef HAVE_SPAWN_H
+# include <spawn.h>
+#endif
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
@@ -424,7 +429,7 @@ Application::error_t Application::join()
     }
     else if WIFSIGNALED(_status)
     {
-      if (WTERMSIG(_status) != SIGTERM)
+      if (WTERMSIG(_status) != SIGTERM and WTERMSIG(_status) != SIGHUP)
       {
         _app_exit_state= Application::INVALID_POSIX_SPAWN;
         std::string error_string(built_argv[0]);
@@ -433,8 +438,8 @@ Application::error_t Application::join()
         throw std::runtime_error(error_string);
       }
 
-      _app_exit_state= Application::SIGTERM_KILLED;
-      Error << "waitpid() application terminated at request"
+      // If we terminted it on purpose then it counts as a success.
+      Out << "waitpid() application terminated at request"
         << " pid:" << _pid 
         << " name:" << built_argv[0];
     }
@@ -511,9 +516,10 @@ bool Application::Pipe::read(libtest::vchar_t& arg)
 
   bool data_was_read= false;
 
+  libtest::vchar_t buffer;
+  buffer.resize(1024);
   ssize_t read_length;
-  char buffer[1024]= { 0 };
-  while ((read_length= ::read(_pipe_fd[READ], buffer, sizeof(buffer))))
+  while ((read_length= ::read(_pipe_fd[READ], &buffer[0], buffer.size())))
   {
     if (read_length == -1)
     {
@@ -700,10 +706,11 @@ void Application::create_argv(const char *args[])
     built_argv.push_back(strdup("--free-fill=DE"));
 
     std::string log_file= create_tmpfile("valgrind");
-    char buffer[1024];
-    int length= snprintf(buffer, sizeof(buffer), "--log-file=%s", log_file.c_str());
-    fatal_assert(length > 0 and size_t(length) < sizeof(buffer));
-    built_argv.push_back(strdup(buffer));
+    libtest::vchar_t buffer;
+    buffer.resize(1024);
+    int length= snprintf(&buffer[0], buffer.size(), "--log-file=%s", log_file.c_str());
+    fatal_assert(length > 0 and size_t(length) < buffer.size());
+    built_argv.push_back(strdup(&buffer[0]));
   }
   else if (_use_ptrcheck)
   {
@@ -714,10 +721,11 @@ void Application::create_argv(const char *args[])
     built_argv.push_back(strdup("--error-exitcode=1"));
     built_argv.push_back(strdup("--tool=exp-ptrcheck"));
     std::string log_file= create_tmpfile("ptrcheck");
-    char buffer[1024];
-    int length= snprintf(buffer, sizeof(buffer), "--log-file=%s", log_file.c_str());
-    fatal_assert(length > 0 and size_t(length) < sizeof(buffer));
-    built_argv.push_back(strdup(buffer));
+    libtest::vchar_t buffer;
+    buffer.resize(1024);
+    int length= snprintf(&buffer[0], buffer.size(), "--log-file=%s", log_file.c_str());
+    fatal_assert(length > 0 and size_t(length) < buffer.size());
+    built_argv.push_back(&buffer[0]);
   }
   else if (_use_gdb)
   {

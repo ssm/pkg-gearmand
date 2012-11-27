@@ -1,4 +1,4 @@
-.TH "GEARMAN_CLIENT_JOB_STATUS" "3" "October 12, 2012" "0.41" "Gearmand"
+.TH "GEARMAN_CLIENT_JOB_STATUS" "3" "November 07, 2012" "1.0.1" "Gearmand"
 .SH NAME
 gearman_client_job_status \- Gearmand Documentation, http://gearman.info/
 .
@@ -43,7 +43,7 @@ Link with \-lgearman
 .sp
 \fI\%gearman_client_job_status()\fP is used to find the status of a job via its \fBgearman_job_handle_t\fP. The arguments is_known, is_running, numerator, and denominator are all optional. Unless a Gearman worker has sent numerator/denominator via \fBgearman_job_send_status()\fP, those values will be zero.
 .sp
-If the arguments is_known and is_running are ommitted then the function returns state data via \fBgearman_return_t\fP.
+If the arguments is_known and is_running are omitted then the function returns state data via \fBgearman_return_t\fP.
 .SH RETURN VALUE
 .sp
 \fBgearman_return_t\fP will be returned. \fBGEARMAN_SUCCESS\fP will be returned upon success of the status being updated.

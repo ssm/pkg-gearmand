@@ -34,19 +34,15 @@ drd:
 EXTRA_DIST+= libtest/run.gdb
 EXTRA_DIST+= libtest/version.h
 
-CLEANFILES+= tmp_chroot/etc/*
-CLEANFILES+= tmp_chroot/var/drizzle/*
-CLEANFILES+= tmp_chroot/var/log/*
-CLEANFILES+= tmp_chroot/var/run/*
-CLEANFILES+= tmp_chroot/var/tmp/*
-CLEANFILES+= tmp_chroot/*.xml
+CLEANFILES+= tmp_chroot
 
 BUILT_SOURCES+= libtest/version.h
 
-.PHONY: distclean-libtest-check
-distclean-libtest-check:
+.PHONY: clean-libtest-check
+clean-libtest-check:
 	-rm -rf tmp_chroot
 
+noinst_HEADERS+= libtest/client.hpp
 noinst_HEADERS+= libtest/formatter.hpp
 noinst_HEADERS+= libtest/timer.hpp
 noinst_HEADERS+= libtest/alarm.h
@@ -113,6 +109,7 @@ libtest_libtest_la_SOURCES+= libtest/dream.cc
 libtest_libtest_la_SOURCES+= libtest/drizzled.cc 
 libtest_libtest_la_SOURCES+= libtest/fatal.cc 
 libtest_libtest_la_SOURCES+= libtest/formatter.cc 
+libtest_libtest_la_SOURCES+= libtest/client.cc 
 libtest_libtest_la_SOURCES+= libtest/framework.cc 
 libtest_libtest_la_SOURCES+= libtest/has.cc 
 libtest_libtest_la_SOURCES+= libtest/http.cc 
@@ -138,7 +135,7 @@ libtest_libtest_la_CXXFLAGS+= $(CURL_CFLAGS)
 
 libtest_libtest_la_LIBADD+= $(PTHREAD_LIBS)
 libtest_libtest_la_LIBADD+= $(CURL_LIBS)
-libtest_libtest_la_LIBADD+= $(RT_LIB)
+libtest_libtest_la_LIBADD+= @RT_LIB@
 
 libtest_libtest_la_DEPENDENCIES+= libtest_tmp_dir
 libtest_libtest_la_DEPENDENCIES+=libtest/abort

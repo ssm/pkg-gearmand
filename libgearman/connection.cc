@@ -41,7 +41,7 @@
  * @brief Connection Definitions
  */
 
-#include <config.h>
+#include "gear_config.h"
 #include <libgearman/common.h>
 
 #include "libgearman/assert.hpp"
@@ -100,7 +100,7 @@ gearman_return_t gearman_connection_st::connect_poll()
     {
     case 1:
       {
-        if (fds[0].revents == POLLERR)
+        if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL))
         {
           int err;
           socklen_t len= sizeof (err);
