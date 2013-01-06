@@ -1,8 +1,12 @@
-gearmand (1.0.1-1) UNRELEASED; urgency=low
+gearmand (1.0.2-1) UNRELEASED; urgency=low
 
   * New upstream release
+  * Add persistent storage with MySQL (Closes: #694572)
+  * Add persistent storage with PostgreSQL
+  * Remove GNU/Hurd patch included upstream
+  * Remove typo patch included upstream
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Tue, 27 Nov 2012 13:05:44 +0100
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 06 Jan 2013 22:31:22 +0100
 
 gearmand (0.41-1) experimental; urgency=low
 
