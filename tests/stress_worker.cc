@@ -148,10 +148,36 @@ extern "C" {
   }
 }
 
-static bool join_thread(pthread_t& thread_arg, struct timespec& ts)
+static bool fill_timespec(struct timespec& ts)
+{
+#if defined(HAVE_LIBRT) && HAVE_LIBRT
+  if (HAVE_LIBRT) // This won't be called on OSX, etc,...
+  {
+    if (clock_gettime(CLOCK_REALTIME, &ts) == -1) 
+    {
+      Error << "clock_gettime(CLOCK_REALTIME) " << strerror(errno);
+      return false;
+    }
+  }
+#else
+  {
+    struct timeval tv;
+    if (gettimeofday(&tv, NULL) == -1) 
+    {
+      Error << "gettimeofday() " << strerror(errno);
+      return false;
+    }
+
+    TIMEVAL_TO_TIMESPEC(&tv, &ts);
+  }
+#endif
+
+  return true;
+}
+
+static bool join_thread(pthread_t& thread_arg)
 {
   int error;
-  ts.tv_sec+= 10;
 
   if (HAVE_PTHREAD_TIMEDJOIN_NP)
   {
@@ -159,25 +185,28 @@ static bool join_thread(pthread_t& thread_arg, struct timespec& ts)
     int limit= 2;
     while (--limit)
     {
-      switch ((error= pthread_timedjoin_np(thread_arg, NULL, &ts)))
+      struct timespec ts;
+      if (fill_timespec(ts))
       {
-      case ETIMEDOUT:
-        libtest::dream(1, 0);
-        continue;
+        ts.tv_sec+= 30;
+        switch ((error= pthread_timedjoin_np(thread_arg, NULL, &ts)))
+        {
+        case ETIMEDOUT:
+          continue;
 
-      case 0:
-        return true;
+        case 0:
+          return true;
 
-      case ESRCH:
-        return false;
+        case ESRCH:
+          return false;
 
-      default:
-        Error << "pthread_timedjoin_np() " << strerror(error);
-        return false;
+        default:
+          Error << "pthread_timedjoin_np() " << strerror(error);
+          return false;
+        }
       }
     }
 
-    Out << "pthread_timedjoin_np() " << strerror(error);
     if ((error= pthread_cancel(thread_arg)) != 0)
     {
       Error << "pthread_cancel() " << strerror(error);
@@ -195,6 +224,25 @@ static bool join_thread(pthread_t& thread_arg, struct timespec& ts)
   }
 
   return true;
+}
+
+static test_return_t send_random_port_data_TEST(void* )
+{
+  set_alarm(1200, 0);
+
+  SimpleClient client("localhost", current_server());
+
+  for (size_t x= 0; x < 200; ++x)
+  {
+    libtest::vchar_t message_;
+    libtest::vchar_t response_;
+
+    libtest::vchar::make(message_, size_t(random() % 1024));
+
+    client.send_data(message_, response_);
+  }
+
+  return TEST_SUCCESS;
 }
 
 static test_return_t worker_ramp_exec(const size_t payload_size)
@@ -215,40 +263,17 @@ static test_return_t worker_ramp_exec(const size_t payload_size)
   
   for (size_t x= 0; x < children.size(); x++)
   {
-    struct timespec ts;
+    pthread_t& thread= children[x];
     bool join_success= false;
-    int limit= 2;
+    int limit= 3;
     while (join_success == false and --limit)
     {
-#if defined(HAVE_LIBRT) && HAVE_LIBRT
-      if (HAVE_LIBRT) // This won't be called on OSX, etc,...
-      {
-        if (clock_gettime(CLOCK_REALTIME, &ts) == -1) 
-        {
-          Error << "clock_gettime(CLOCK_REALTIME) " << strerror(errno);
-          continue;
-        }
-
-        join_success= join_thread(children[x], ts);
-      }
-      else
-#endif
-      {
-        struct timeval tv;
-        if (gettimeofday(&tv, NULL) == -1) 
-        {
-          Error << "gettimeofday() " << strerror(errno);
-          continue;
-        }
-
-        TIMEVAL_TO_TIMESPEC(&tv, &ts);
-        join_success= join_thread(children[x], ts);
-      }
+      join_success= join_thread(thread);
     }
 
     if (join_success == false)
     {
-      pthread_cancel(children[x]);
+      pthread_cancel(thread);
       Error << "Something went very wrong, it is likely threads were not cleaned up";
     }
   }
@@ -478,6 +503,10 @@ test_st burnin_TESTS[] ={
   {0, 0, 0}
 };
 
+test_st dos_TESTS[] ={
+  {"send random port data", 0, send_random_port_data_TEST },
+  {0, 0, 0}
+};
 
 test_st worker_TESTS[] ={
   {"first pass", 0, worker_ramp_TEST },
@@ -489,6 +518,7 @@ test_st worker_TESTS[] ={
 
 collection_st collection[] ={
   {"burnin", burnin_setup, burnin_cleanup, burnin_TESTS },
+  {"dos", 0, 0, dos_TESTS },
   {"plain", worker_ramp_SETUP, worker_ramp_TEARDOWN, worker_TESTS },
   {"plain against hostile server", hostile_gearmand_SETUP, worker_ramp_TEARDOWN, worker_TESTS },
   {"hostile recv()", recv_SETUP, resv_TEARDOWN, worker_TESTS },

@@ -34,7 +34,7 @@
  *
  */
 
-#include "gear_config.h"
+#include "libtest/yatlcon.h"
 
 #include "libtest/common.h"
 
@@ -75,8 +75,8 @@ namespace {
     std::stringstream arg_buffer;
 
     for (vchar_ptr_t::iterator iter= built_argv.begin();
-         iter == built_argv.end();
-         iter++)
+         iter != built_argv.end();
+         ++iter)
     {
       arg_buffer << *iter << " ";
     }
@@ -427,7 +427,7 @@ Application::error_t Application::join()
       error_string+= built_argv[0];
       throw std::logic_error(error_string);
     }
-    else if WIFSIGNALED(_status)
+    else if (WIFSIGNALED(_status))
     {
       if (WTERMSIG(_status) != SIGTERM and WTERMSIG(_status) != SIGHUP)
       {
@@ -439,9 +439,14 @@ Application::error_t Application::join()
       }
 
       // If we terminted it on purpose then it counts as a success.
-      Out << "waitpid() application terminated at request"
-        << " pid:" << _pid 
-        << " name:" << built_argv[0];
+#if defined(DEBUG)
+      if (DEBUG)
+      {
+        Out << "waitpid() application terminated at request"
+          << " pid:" << _pid 
+          << " name:" << built_argv[0];
+      }
+#endif
     }
     else
     {

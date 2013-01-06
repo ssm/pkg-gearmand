@@ -11,16 +11,13 @@
 #
 
 tests_httpd_test_SOURCES=
-tests_httpd_test_DEPENDENCIES=
 tests_httpd_test_LDADD=
 
 tests_httpd_test_SOURCES+= tests/httpd_test.cc
 
-tests_httpd_test_DEPENDENCIES+= $(CLIENT_LDADD)
-
 tests_httpd_test_LDADD+= $(CLIENT_LDADD)
 
-check_PROGRAMS+= tests/httpd_test
+#check_PROGRAMS+= tests/httpd_test
 noinst_PROGRAMS+= tests/httpd_test
 
 test-httpd: tests/httpd_test gearmand/gearmand

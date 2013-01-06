@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -77,7 +77,7 @@ struct context_st {
   void *context;
   int magic;
   int _timeout;
-  boost::barrier* _sync_point;
+  libtest::thread::Barrier* _sync_point;
 
   context_st(worker_handle_st* handle_arg,
              const gearman_function_t& func_arg,
@@ -142,10 +142,11 @@ static void thread_runner(context_st* con)
     return;
   }
 
-  Worker worker;
+  Worker worker(context->port);
   if (&worker == NULL)
   {
     Error << "Failed to create Worker";
+    context->fail();
     return;
   }
 
@@ -161,13 +162,6 @@ static void thread_runner(context_st* con)
   if (context->namespace_key.empty() == false)
   {
     gearman_worker_set_namespace(&worker, context->namespace_key.c_str(), context->namespace_key.length());
-  }
-
-  if (gearman_failed(gearman_worker_add_server(&worker, NULL, context->port)))
-  {
-    Error << "gearman_worker_add_server()";
-    context->fail();
-    return;
   }
 
   // Check for a working server by "asking" it for an option
@@ -252,7 +246,7 @@ worker_handle_st *test_worker_start(in_port_t port,
                                       context_arg, options, timeout);
   fatal_assert(context);
 
-  handle->_thread= boost::shared_ptr<boost::thread>(new boost::thread(thread_runner, context));
+  handle->_thread= boost::shared_ptr<libtest::thread::Thread>(new libtest::thread::Thread(thread_runner, context));
   if (bool(handle->_thread) == false)
   {
     delete context;
@@ -266,7 +260,7 @@ worker_handle_st *test_worker_start(in_port_t port,
   return handle;
 }
 
-boost::barrier* worker_handle_st::sync_point()
+libtest::thread::Barrier* worker_handle_st::sync_point()
 {
   return &_sync_point;
 }
@@ -296,13 +290,13 @@ void worker_handle_st::wait()
 
 void worker_handle_st::set_shutdown()
 {
-  boost::lock_guard<boost::mutex> lock(_shutdown_lock);
+  libtest::thread::ScopedLock l(_shutdown_lock);
   _shutdown= true;
 }
 
 bool worker_handle_st::is_shutdown()
 {
-  boost::lock_guard<boost::mutex> lock(_shutdown_lock);
+  libtest::thread::ScopedLock l(_shutdown_lock);
   return _shutdown;
 }
 

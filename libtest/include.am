@@ -12,6 +12,7 @@ DRD_COMMAND= $(LIBTOOL_COMMAND) valgrind --tool=drd
 MASSIF_COMMAND= $(LIBTOOL_COMMAND) valgrind --tool=massif
 GDB_COMMAND= $(LIBTOOL_COMMAND) gdb -f -x libtest/run.gdb
 PTRCHECK_COMMAND= $(LIBTOOL_COMMAND) valgrind --tool=exp-ptrcheck --error-exitcode=1
+PAHOLE_COMMAND= $(LIBTOOL_COMMAND) --mode=execute pahole
 
 export LIBTOOL_COMMAND
 export VALGRIND_COMMAND
@@ -33,8 +34,6 @@ drd:
 
 EXTRA_DIST+= libtest/run.gdb
 EXTRA_DIST+= libtest/version.h
-
-CLEANFILES+= tmp_chroot
 
 BUILT_SOURCES+= libtest/version.h
 
@@ -74,6 +73,7 @@ noinst_HEADERS+= libtest/memcached.h
 noinst_HEADERS+= libtest/memcached.hpp
 noinst_HEADERS+= libtest/poll_error.hpp
 noinst_HEADERS+= libtest/port.h 
+noinst_HEADERS+= libtest/result.hpp 
 noinst_HEADERS+= libtest/runner.h 
 noinst_HEADERS+= libtest/server.h 
 noinst_HEADERS+= libtest/server_container.h 
@@ -84,6 +84,7 @@ noinst_HEADERS+= libtest/strerror.h
 noinst_HEADERS+= libtest/string.hpp 
 noinst_HEADERS+= libtest/test.h 
 noinst_HEADERS+= libtest/test.hpp 
+noinst_HEADERS+= libtest/thread.hpp
 noinst_HEADERS+= libtest/tmpfile.hpp 
 noinst_HEADERS+= libtest/vchar.hpp 
 noinst_HEADERS+= libtest/version.h 
@@ -93,7 +94,7 @@ noinst_HEADERS+= libtest/wait.h
 noinst_LTLIBRARIES+= libtest/libtest.la
 
 libtest_libtest_la_CXXFLAGS=
-libtest_libtest_la_DEPENDENCIES=
+EXTRA_libtest_libtest_la_DEPENDENCIES=
 libtest_libtest_la_LIBADD=
 libtest_libtest_la_SOURCES=
 
@@ -118,6 +119,7 @@ libtest_libtest_la_SOURCES+= libtest/killpid.cc
 libtest_libtest_la_SOURCES+= libtest/libtool.cc 
 libtest_libtest_la_SOURCES+= libtest/main.cc 
 libtest_libtest_la_SOURCES+= libtest/port.cc 
+libtest_libtest_la_SOURCES+= libtest/result.cc 
 libtest_libtest_la_SOURCES+= libtest/runner.cc 
 libtest_libtest_la_SOURCES+= libtest/server.cc 
 libtest_libtest_la_SOURCES+= libtest/server_container.cc 
@@ -129,37 +131,30 @@ libtest_libtest_la_SOURCES+= libtest/tmpfile.cc
 libtest_libtest_la_SOURCES+= libtest/vchar.cc
 
 libtest_libtest_la_CXXFLAGS+= -DBUILDING_LIBTEST
-libtest_libtest_la_CXXFLAGS+= $(PTHREAD_CFLAGS)
+libtest_libtest_la_CXXFLAGS+= @PTHREAD_CFLAGS@
 libtest_libtest_la_CXXFLAGS+= -DLIBTEST_TEMP="\"tmp_chroot\""
 libtest_libtest_la_CXXFLAGS+= $(CURL_CFLAGS)
 
-libtest_libtest_la_LIBADD+= $(PTHREAD_LIBS)
+libtest_libtest_la_LIBADD+= @PTHREAD_LIBS@
 libtest_libtest_la_LIBADD+= $(CURL_LIBS)
 libtest_libtest_la_LIBADD+= @RT_LIB@
 
-libtest_libtest_la_DEPENDENCIES+= libtest_tmp_dir
-libtest_libtest_la_DEPENDENCIES+=libtest/abort
-libtest_libtest_la_DEPENDENCIES+=libtest/wait
+EXTRA_libtest_libtest_la_DEPENDENCIES+= libtest_tmp_dir
+EXTRA_libtest_libtest_la_DEPENDENCIES+=libtest/abort
+EXTRA_libtest_libtest_la_DEPENDENCIES+=libtest/wait
 
 # Declare unittest so that we can append to it
 libtest_unittest_CXXFLAGS=
 libtest_unittest_LDADD=
-libtest_unittest_DEPENDENCIES=
 
 # We are either building in tree, or with
 if BUILDING_LIBMEMCACHED
-libtest_libtest_la_DEPENDENCIES+= libmemcached/libmemcached.la
-libtest_libtest_la_DEPENDENCIES+= libmemcached/libmemcachedutil.la
 libtest_libtest_la_LIBADD+= libmemcached/libmemcached.la
-libtest_libtest_la_LIBADD+= libmemcached/libmemcachedutil.la
 libtest_libtest_la_SOURCES+= libtest/memcached.cc
 libtest_libtest_la_CXXFLAGS+= -DHAVE_LIBMEMCACHED
 
 libtest_unittest_CXXFLAGS+= -DHAVE_LIBMEMCACHED
 libtest_unittest_LDADD+= libmemcached/libmemcached.la
-libtest_unittest_LDADD+= libmemcached/libmemcachedutil.la
-libtest_unittest_DEPENDENCIES+= libmemcached/libmemcached.la
-libtest_unittest_DEPENDENCIES+= libmemcached/libmemcachedutil.la
 else
 if HAVE_LIBMEMCACHED
 libtest_libtest_la_LIBADD+= $(LIBMEMCACHED_UTIL_LDFLAGS)
@@ -178,20 +173,14 @@ libtest_libtest_la_CXXFLAGS+= $(libdrizzle_CFLAGS)
 endif
 
 if BUILDING_GEARMAN
-libtest_libtest_la_DEPENDENCIES+= libgearman/libgearman.la
-libtest_libtest_la_LIBADD+= libgearman/libgearman.la
 libtest_libtest_la_SOURCES+= libtest/blobslap_worker.cc
 libtest_libtest_la_SOURCES+= libtest/gearmand.cc
 libtest_libtest_la_SOURCES+= util/instance.cc
 libtest_libtest_la_SOURCES+= util/operation.cc
 
 libtest_unittest_LDADD+= libgearman/libgearman.la
-libtest_unittest_DEPENDENCIES+= libgearman/libgearman.la
-libtest_unittest_DEPENDENCIES+= gearmand/gearmand
 else
 if HAVE_LIBGEARMAN
-libtest_libtest_la_DEPENDENCIES+= libgearman/libgearman.la
-libtest_libtest_la_LIBADD+= $(libgearman_LIBS)
 libtest_libtest_la_SOURCES+= libtest/blobslap_worker.cc
 libtest_libtest_la_SOURCES+= libtest/gearmand.cc
 libtest_libtest_la_SOURCES+= util/instance.cc
@@ -199,31 +188,14 @@ libtest_libtest_la_SOURCES+= util/operation.cc
 endif
 endif
 
-libtest_tmp_dir: tmp_chroot/var/log tmp_chroot/var/tmp tmp_chroot/var/run tmp_chroot/var/drizzle
+TMP_DIR := tmp_chroot/etc tmp_chroot/var/log tmp_chroot/var/tmp tmp_chroot/var/run tmp_chroot/var/drizzle
 
-tmp_chroot: tmp_chroot/etc
-	@$(mkdir_p) tmp_chroot
+.PHONY: libtest_tmp_dir
+libtest_tmp_dir: | $(TMP_DIR)
 
-tmp_chroot/etc:
-	@$(mkdir_p) tmp_chroot/etc
+$(TMP_DIR):
+	@$(mkdir_p) $(TMP_DIR)
 
-tmp_chroot/var: tmp_chroot
-	@$(mkdir_p) tmp_chroot/var
-
-tmp_chroot/var/log: tmp_chroot/var
-	@$(mkdir_p) tmp_chroot/var/log
-
-tmp_chroot/var/tmp: tmp_chroot/var
-	@$(mkdir_p) tmp_chroot/var/tmp
-
-tmp_chroot/var/drizzle: tmp_chroot/var
-	@$(mkdir_p) tmp_chroot/var/drizzle
-
-tmp_chroot/var/run: tmp_chroot/var
-	@$(mkdir_p) tmp_chroot/var/run
-
-
-libtest_unittest_DEPENDENCIES+= libtest/libtest.la
 libtest_unittest_LDADD+= libtest/libtest.la
 libtest_unittest_SOURCES= libtest/unittest.cc
 check_PROGRAMS+= libtest/unittest
@@ -260,3 +232,16 @@ noinst_PROGRAMS+= libtest/core-count
 
 libtest_abort_SOURCES= libtest/abort.cc
 noinst_PROGRAMS+= libtest/abort
+
+libtest_backtrace_SOURCES=
+libtest_backtrace_LDADD=
+libtest_backtrace_SOURCES+= libtest/backtrace_test.cc
+libtest_backtrace_SOURCES+= libgearman/backtrace.cc
+libtest_backtrace_LDADD+= @DL_LIB@
+noinst_PROGRAMS+= libtest/backtrace
+test-backtrace: libtest/backtrace
+	@libtest/backtrace
+
+gdb-backtrace: libtest/backtrace
+	@$(GDB_COMMAND) libtest/backtrace
+

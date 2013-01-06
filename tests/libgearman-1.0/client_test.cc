@@ -53,7 +53,7 @@ using namespace libtest;
 #define GEARMAN_CORE
 #include <libgearman/gearman.h>
 
-#include <tests/start_worker.h>
+#include "tests/start_worker.h"
 
 #include "tests/workers/v1/echo_or_react.h"
 #include "tests/workers/v1/echo_or_react_chunk.h"
@@ -65,24 +65,24 @@ using namespace libtest;
 #define WORKER_FUNCTION_NAME "client_test"
 #define WORKER_CHUNKED_FUNCTION_NAME "reverse_test"
 
-#include <tests/limits.h>
-#include <tests/do.h>
-#include <tests/client.h>
-#include <tests/server_options.h>
-#include <tests/do_background.h>
-#include <tests/execute.h>
-#include <tests/gearman_client_do_job_handle.h>
-#include <tests/gearman_execute_partition.h>
-#include <tests/protocol.h>
-#include <tests/regression.h>
-#include <tests/task.h>
-#include <tests/unique.h>
+#include "tests/limits.h"
+#include "tests/do.h"
+#include "tests/client.h"
+#include "tests/server_options.h"
+#include "tests/do_background.h"
+#include "tests/execute.h"
+#include "tests/gearman_client_do_job_handle.h"
+#include "tests/gearman_execute_partition.h"
+#include "tests/protocol.h"
+#include "tests/regression.h"
+#include "tests/task.h"
+#include "tests/unique.h"
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
 
-#include <tests/runner.h>
+#include "tests/runner.h"
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -238,6 +238,7 @@ static test_return_t option_test(void *)
     test_false(gear->options.unbuffered_result);
     test_false(gear->options.no_new);
     test_false(gear->options.free_tasks);
+    test_true(gear->options.generate_unique);
   }
 
   /* Set up for default options */
@@ -254,6 +255,7 @@ static test_return_t option_test(void *)
     test_false(gear->options.unbuffered_result);
     test_false(gear->options.no_new);
     test_false(gear->options.free_tasks);
+    test_true(gear->options.generate_unique);
   }
 
   /*
@@ -267,6 +269,7 @@ static test_return_t option_test(void *)
       test_false(gear->options.unbuffered_result);
       test_false(gear->options.no_new);
       test_false(gear->options.free_tasks);
+      test_true(gear->options.generate_unique);
     }
     gearman_client_remove_options(gear, GEARMAN_CLIENT_NO_NEW);
     { // Initial Allocated, no changes
@@ -275,6 +278,7 @@ static test_return_t option_test(void *)
       test_false(gear->options.unbuffered_result);
       test_false(gear->options.no_new);
       test_false(gear->options.free_tasks);
+      test_true(gear->options.generate_unique);
     }
   }
 
@@ -314,6 +318,40 @@ static test_return_t option_test(void *)
       test_false(gear->options.no_new);
       test_false(gear->options.free_tasks);
     }
+
+    // Test setting GEARMAN_CLIENT_GENERATE_UNIQUE
+    {
+      gearman_client_set_options(gear, default_options);
+      { // See if we return to defaults
+        test_truth(gear->options.allocated);
+        test_false(gear->options.non_blocking);
+        test_false(gear->options.unbuffered_result);
+        test_false(gear->options.no_new);
+        test_false(gear->options.free_tasks);
+        test_true(gear->options.generate_unique);
+      }
+
+      gearman_client_remove_options(gear, GEARMAN_CLIENT_GENERATE_UNIQUE);
+      { // Initial Allocated, no changes
+        test_truth(gear->options.allocated);
+        test_false(gear->options.non_blocking);
+        test_false(gear->options.unbuffered_result);
+        test_false(gear->options.no_new);
+        test_false(gear->options.free_tasks);
+        test_false(gear->options.generate_unique);
+      }
+
+      gearman_client_set_options(gear, GEARMAN_CLIENT_GENERATE_UNIQUE);
+      { // See if we return to defaults
+        test_truth(gear->options.allocated);
+        test_false(gear->options.non_blocking);
+        test_false(gear->options.unbuffered_result);
+        test_false(gear->options.no_new);
+        test_false(gear->options.free_tasks);
+        test_true(gear->options.generate_unique);
+      }
+    }
+
     /*
       Reset options to default. Then add an option, and then add more options. Make sure
       the options are all additive.
@@ -326,6 +364,7 @@ static test_return_t option_test(void *)
         test_false(gear->options.unbuffered_result);
         test_false(gear->options.no_new);
         test_false(gear->options.free_tasks);
+        test_true(gear->options.generate_unique);
       }
       gearman_client_add_options(gear, GEARMAN_CLIENT_FREE_TASKS);
       { // All defaults, except timeout_return
@@ -334,6 +373,7 @@ static test_return_t option_test(void *)
         test_false(gear->options.unbuffered_result);
         test_false(gear->options.no_new);
         test_truth(gear->options.free_tasks);
+        test_true(gear->options.generate_unique);
       }
       gearman_client_add_options(gear, (gearman_client_options_t)(GEARMAN_CLIENT_NON_BLOCKING|GEARMAN_CLIENT_UNBUFFERED_RESULT));
       { // GEARMAN_CLIENT_NON_BLOCKING set to default, by default.
@@ -342,6 +382,7 @@ static test_return_t option_test(void *)
         test_truth(gear->options.unbuffered_result);
         test_false(gear->options.no_new);
         test_truth(gear->options.free_tasks);
+        test_true(gear->options.generate_unique);
       }
     }
     /*
@@ -737,8 +778,13 @@ static test_return_t hostname_resolution(void *)
 
   test_compare(GEARMAN_SUCCESS, client->universal.error.rc);
 
+#if defined(TARGET_OS_FREEBSD) && TARGET_OS_FREEBSD
+  test_compare(GEARMAN_TIMEOUT,
+               gearman_client_echo(&client, test_literal_param("foo")));
+#else
   test_compare(GEARMAN_COULD_NOT_CONNECT,
                gearman_client_echo(&client, test_literal_param("foo")));
+#endif
 
   return TEST_SUCCESS;
 }
@@ -1330,6 +1376,19 @@ static test_return_t default_v2_SETUP(void *object)
   return TEST_SUCCESS;
 }
 
+static test_return_t GEARMAN_CLIENT_GENERATE_UNIQUE_SETUP(void *object)
+{
+  client_test_st* test= (client_test_st *)object;
+  test_true(test);
+
+  test_compare(TEST_SUCCESS, default_v2_SETUP(object));
+
+  gearman_client_remove_options(test->client(), GEARMAN_CLIENT_GENERATE_UNIQUE);
+  test_false(gearman_client_has_option(test->client(), GEARMAN_CLIENT_GENERATE_UNIQUE));
+
+  return TEST_SUCCESS;
+}
+
 static test_return_t default_v1_SETUP(void *object)
 {
   gearman_function_t echo_react_fn= gearman_function_create_v1(echo_or_react_worker);
@@ -1387,7 +1446,8 @@ static test_return_t pre_logging(void *object)
 
 static void *world_create(server_startup_st& servers, test_return_t& error)
 {
-  if (server_startup(servers, "gearmand", libtest::default_port(), 0, NULL) == false)
+  const char *argv[]= { "--exceptions", 0 };
+  if (server_startup(servers, "gearmand", libtest::default_port(), 1, argv) == false)
   {
     error= TEST_SKIPPED;
     return NULL;
@@ -1462,6 +1522,7 @@ test_st loop_TESTS[] ={
 
 test_st coalescence_TESTS[] ={
   {"basic coalescence", 0, coalescence_TEST },
+  {"coalescence by hash", 0, coalescence_by_data_hash_TEST },
   {"coalescence by data", 0, coalescence_by_data_TEST },
   {"coalescence by data fail", 0, coalescence_by_data_FAIL_TEST },
   {0, 0, 0}
@@ -1578,6 +1639,7 @@ test_st gearman_task_tests[] ={
   {"gearman_client_add_task_low_background()", 0, gearman_client_add_task_low_background_test},
   {"gearman_client_add_task_high_background()", 0, gearman_client_add_task_high_background_test},
   {"gearman_client_add_task() exception", 0, gearman_client_add_task_exception},
+  {"gearman_client_add_task() exception check returned string", 0, gearman_client_add_task_check_exception_TEST},
   {"gearman_client_add_task() warning", 0, gearman_client_add_task_warning},
   {"gearman_client_add_task(GEARMAN_NO_SERVERS)", 0, gearman_client_add_task_no_servers},
   {"gearman_client_set_task_context_free_fn()", 0, gearman_client_set_task_context_free_fn_test},
@@ -1621,6 +1683,7 @@ collection_st collection[] ={
   {"gearman_task_add_task() chunky v1 workers", chunk_v1_SETUP, 0, gearman_task_tests},
   {"gearman_task_add_task() chunky v2 workers", chunk_v2_SETUP, 0, gearman_task_tests},
   {"gearman_task_add_task(GEARMAN_CLIENT_FREE_TASKS)", pre_free_tasks, 0, gearman_task_tests},
+  {"gearman_task_add_task(GEARMAN_CLIENT_GENERATE_UNIQUE)", GEARMAN_CLIENT_GENERATE_UNIQUE_SETUP, 0, gearman_task_tests},
   {"gearman_task_add_task(GEARMAN_PAUSE)", chunk_v1_SETUP, 0, gearman_task_pause_tests},
   {"gearman_task_add_task(GEARMAN_PAUSE)", chunk_v2_SETUP, 0, gearman_task_pause_tests},
   {"unique", unique_SETUP, 0, unique_tests},

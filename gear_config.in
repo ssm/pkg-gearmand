@@ -48,9 +48,6 @@
 /* Have Gearman Blobslap Worker */
 #undef GEARMAND_BLOBSLAP_WORKER
 
-/* Define to 1 if is found */
-#undef HAVE_
-
 /* Define to 1 if you have `alloca', as a function or macro. */
 #undef HAVE_ALLOCA
 
@@ -70,23 +67,11 @@
 /* Define to 1 if you have <boost/program_options.hpp> */
 #undef HAVE_BOOST_PROGRAM_OPTIONS_HPP
 
-/* Define to 1 if you have <boost/system/error_code.hpp> */
-#undef HAVE_BOOST_SYSTEM_ERROR_CODE_HPP
-
-/* Define to 1 if you have <boost/thread.hpp> */
-#undef HAVE_BOOST_THREAD_HPP
-
 /* Define to 1 if you have the `btowc' function. */
 #undef HAVE_BTOWC
 
 /* Define to 1 if you have the `clock_gettime' function. */
 #undef HAVE_CLOCK_GETTIME
-
-/* Define to 1 if you have the <curl/curl.h> header file. */
-#undef HAVE_CURL_CURL_H
-
-/* Define to 1 if you have the <cxxabi.h> header file. */
-#undef HAVE_CXXABI_H
 
 /* Define to 1 if you have the declaration of `getenv', and to 0 if you don't.
    */
@@ -96,8 +81,17 @@
    don't. */
 #undef HAVE_DECL_STRERROR_R
 
+/* Define to 1 if DL is found */
+#undef HAVE_DL
+
+/* Have dladdr */
+#undef HAVE_DLADDR
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
+
+/* Have dlopen */
+#undef HAVE_DLOPEN
 
 /* Define to 1 if you don't have `vprintf' but do have `_doprnt.' */
 #undef HAVE_DOPRNT
@@ -126,7 +120,10 @@
 /* Define to 1 if you have the `fork' function. */
 #undef HAVE_FORK
 
-/* libgearman support */
+/* define if the compiler supports GCC C++ ABI name demangling */
+#undef HAVE_GCC_ABI_DEMANGLE
+
+/* gearmand binary was found */
 #undef HAVE_GEARMAND_BINARY
 
 /* Define to 1 if you have the `getcwd' function. */
@@ -138,7 +135,7 @@
 /* Define to 1 if you have the `gettimeofday' function. */
 #undef HAVE_GETTIMEOFDAY
 
-/* If Hiredis is available */
+/* Define to 1 if HIREDIS is found */
 #undef HAVE_HIREDIS
 
 /* Define to 1 if you have the <inttypes.h> header file. */
@@ -147,7 +144,7 @@
 /* Define to 1 if you have the `bind' library (-lbind). */
 #undef HAVE_LIBBIND
 
-/* libcurl support */
+/* Define to 1 if LIBCURL is found */
 #undef HAVE_LIBCURL
 
 /* Have dlopen */
@@ -156,17 +153,18 @@
 /* Enable libdrizzle support */
 #undef HAVE_LIBDRIZZLE
 
-/* Define to 1 if LIBEVENT is found */
+/* Define if event_init is present in event.h. */
 #undef HAVE_LIBEVENT
 
 /* libgearman support */
 #undef HAVE_LIBGEARMAN
 
-/* Define to 1 if LIBHIREDIS is found */
-#undef HAVE_LIBHIREDIS
-
 /* Enable libmemcached support */
 #undef HAVE_LIBMEMCACHED
+
+/* Define to 1 if you have the <libmemcached-1.0/types/return.h> header file.
+   */
+#undef HAVE_LIBMEMCACHED_1_0_TYPES_RETURN_H
 
 /* Have libmemcached-1.0/memcached.h */
 #undef HAVE_LIBMEMCACHED_MEMCACHED_H
@@ -189,9 +187,6 @@
 /* Have the SQLITE3 library */
 #undef HAVE_LIBSQLITE3
 
-/* If TokyoCabinet is available */
-#undef HAVE_LIBTOKYOCABINET
-
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
 
@@ -206,6 +201,9 @@
 
 /* If Memcached binary is available */
 #undef HAVE_MEMCACHED_BINARY
+
+/* If Memcached binary with sasl support is available */
+#undef HAVE_MEMCACHED_SASL_BINARY
 
 /* Define to 1 if you have the `memchr' function. */
 #undef HAVE_MEMCHR
@@ -252,7 +250,7 @@
 /* Define to 1 if you have the `pipe' function. */
 #undef HAVE_PIPE
 
-/* Define to 1 if you have the `pipe2' function. */
+/* Have pipe2 */
 #undef HAVE_PIPE2
 
 /* Define to 1 if you have the <poll.h> header file. */
@@ -281,6 +279,9 @@
 
 /* Define to 1 if you have the `setenv' function. */
 #undef HAVE_SETENV
+
+/* Enable code which requires shared library support. Like backtrace(). */
+#undef HAVE_SHARED_ENABLED
 
 /* Define to 1 if you have the <signal.h> header file. */
 #undef HAVE_SIGNAL_H
@@ -366,6 +367,9 @@
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #undef HAVE_SYS_WAIT_H
 
+/* Define to 1 if TOKYOCABINET is found */
+#undef HAVE_TOKYOCABINET
+
 /* Define to 1 if you have the `uname' function. */
 #undef HAVE_UNAME
 
@@ -434,7 +438,7 @@
 /* Name of the mysqld binary used in make test */
 #undef MYSQLD_BINARY
 
-/* Define to 1 to enable assert'ing code. */
+/* Define to 1 to disable assert'ing code. */
 #undef NDEBUG
 
 /* Name of package */
@@ -527,9 +531,6 @@
 
 /* Define to 1 if you need to in order for `stat' and other things to work. */
 #undef _POSIX_SOURCE
-
-/* Cause Sun Studio to not be quite so strict with standards conflicts */
-#undef _STLP_NO_NEW_C_HEADERS
 
 /* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
    <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
@@ -650,7 +651,7 @@
 # define SHUT_WR SD_SEND
 # define SHUT_RDWR SD_BOTH
 #endif
-      
+          
 
 
 

@@ -77,6 +77,7 @@ static gearman_client_st *_client_allocate(gearman_client_st *client, bool is_cl
   client->options.unbuffered_result= false;
   client->options.no_new= false;
   client->options.free_tasks= false;
+  client->options.generate_unique= true;
 
   client->state= GEARMAN_CLIENT_STATE_IDLE;
   client->new_tasks= 0;
@@ -155,7 +156,7 @@ static void *_client_do(gearman_client_st *client, gearman_command_t command,
   }
   do_task_ptr->type= GEARMAN_TASK_KIND_DO;
 
-  gearman_return_t ret= gearman_client_run_block_tasks(client);
+  gearman_return_t ret= gearman_client_run_block_tasks(client, do_task_ptr);
 
   // gearman_client_run_tasks failed
   assert(client->task_list); // Programmer error, we should always have the task that we used for do
@@ -260,7 +261,7 @@ static gearman_return_t _client_do_background(gearman_client_st *client,
   }
   do_task_ptr->type= GEARMAN_TASK_KIND_DO;
 
-  gearman_return_t ret= gearman_client_run_block_tasks(client);
+  gearman_return_t ret= gearman_client_run_block_tasks(client, do_task_ptr);
 
   if (job_handle)
   {
@@ -303,6 +304,7 @@ gearman_client_st *gearman_client_clone(gearman_client_st *client,
   client->options.unbuffered_result= from->options.unbuffered_result;
   client->options.no_new= from->options.no_new;
   client->options.free_tasks= from->options.free_tasks;
+  client->options.generate_unique= from->options.generate_unique;
   client->actions= from->actions;
   client->_do_handle[0]= 0;
 
@@ -377,6 +379,9 @@ gearman_client_options_t gearman_client_options(const gearman_client_st *client)
   if (client->options.free_tasks)
     options|= int(GEARMAN_CLIENT_FREE_TASKS);
 
+  if (client->options.generate_unique)
+    options|= int(GEARMAN_CLIENT_GENERATE_UNIQUE);
+
   return gearman_client_options_t(options);
 }
 
@@ -402,6 +407,9 @@ bool gearman_client_has_option(gearman_client_st *client,
     case GEARMAN_CLIENT_FREE_TASKS:
       return client->options.free_tasks;
 
+    case GEARMAN_CLIENT_GENERATE_UNIQUE:
+      return client->options.generate_unique;
+
     default:
     case GEARMAN_CLIENT_TASK_IN_USE:
     case GEARMAN_CLIENT_MAX:
@@ -421,6 +429,7 @@ void gearman_client_set_options(gearman_client_st *client,
       GEARMAN_CLIENT_NON_BLOCKING,
       GEARMAN_CLIENT_UNBUFFERED_RESULT,
       GEARMAN_CLIENT_FREE_TASKS,
+      GEARMAN_CLIENT_GENERATE_UNIQUE,
       GEARMAN_CLIENT_MAX
     };
 
@@ -458,6 +467,11 @@ void gearman_client_add_options(gearman_client_st *client,
     {
       client->options.free_tasks= true;
     }
+
+    if (options & GEARMAN_CLIENT_GENERATE_UNIQUE)
+    {
+      client->options.generate_unique= true;
+    }
   }
 }
 
@@ -480,6 +494,11 @@ void gearman_client_remove_options(gearman_client_st *client,
     if (options & GEARMAN_CLIENT_FREE_TASKS)
     {
       client->options.free_tasks= false;
+    }
+
+    if (options & GEARMAN_CLIENT_GENERATE_UNIQUE)
+    {
+      client->options.generate_unique= false;
     }
   }
 }
@@ -771,7 +790,7 @@ gearman_status_t gearman_client_unique_status(gearman_client_st *client,
 
   gearman_task_clear_fn(do_task_ptr);
 
-  ret= gearman_client_run_block_tasks(client);
+  ret= gearman_client_run_block_tasks(client, do_task_ptr);
 
   // @note we don't know if our task was run or not, we just know something
   // happened.
@@ -832,7 +851,7 @@ gearman_return_t gearman_client_job_status(gearman_client_st *client,
 
   gearman_task_clear_fn(do_task_ptr);
 
-  ret= gearman_client_run_block_tasks(client);
+  ret= gearman_client_run_block_tasks(client, do_task_ptr);
 
   // @note we don't know if our task was run or not, we just know something
   // happened.
@@ -1316,7 +1335,7 @@ void gearman_client_clear_fn(gearman_client_st *client)
   }
 }
 
-static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
+static inline gearman_return_t _client_run_tasks(gearman_client_st *client, gearman_task_st* exit_task)
 {
   gearman_return_t ret= GEARMAN_MAX_RETURN;
 
@@ -1563,6 +1582,16 @@ static inline gearman_return_t _client_run_tasks(gearman_client_st *client)
           /* Clean up the packet. */
           client->con->free_private_packet();
 
+          /* If exit task is set and matched, exit */
+          if (exit_task)
+          {
+            if (exit_task->result_rc != GEARMAN_UNKNOWN_STATE)
+            {
+              client->state= GEARMAN_CLIENT_STATE_IDLE;
+              return GEARMAN_SUCCESS;
+            }
+          }
+
           /* If all tasks are done, return. */
           if (client->running_tasks == 0)
           {
@@ -1625,7 +1654,7 @@ gearman_return_t gearman_client_run_tasks(gearman_client_st *client)
   {
     PUSH_NON_BLOCKING(client);
 
-    rc= _client_run_tasks(client);
+    rc= _client_run_tasks(client, NULL);
   }
 
   if (rc == GEARMAN_COULD_NOT_CONNECT)
@@ -1636,7 +1665,7 @@ gearman_return_t gearman_client_run_tasks(gearman_client_st *client)
   return rc;
 }
 
-gearman_return_t gearman_client_run_block_tasks(gearman_client_st *client)
+gearman_return_t gearman_client_run_block_tasks(gearman_client_st *client, gearman_task_st* exit_task)
 {
   if (client == NULL)
   {
@@ -1653,7 +1682,7 @@ gearman_return_t gearman_client_run_block_tasks(gearman_client_st *client)
   {
     PUSH_BLOCKING(client);
 
-    rc= _client_run_tasks(client);
+    rc= _client_run_tasks(client, exit_task);
   }
 
   if (gearman_failed(rc))

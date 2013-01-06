@@ -64,9 +64,9 @@
 # endif
 #endif
 
-#include <libgearman-server/gearmand.h>
-#include <libgearman-server/plugins.h>
-#include <libgearman-server/queue.hpp>
+#include "libgearman-server/gearmand.h"
+#include "libgearman-server/plugins.h"
+#include "libgearman-server/queue.hpp"
 
 #define GEARMAND_LOG_REOPEN_TIME 60
 
@@ -84,6 +84,8 @@
 
 #include "gearmand/error.hpp"
 #include "gearmand/log.hpp"
+
+#include "libgearman/backtrace.hpp"
 
 using namespace datadifferential;
 using namespace gearmand;
@@ -116,6 +118,7 @@ int main(int argc, char *argv[])
   std::string config_file;
 
   uint32_t threads;
+  bool opt_exceptions;
   bool opt_round_robin;
   bool opt_daemon;
   bool opt_check_args;
@@ -129,6 +132,9 @@ int main(int argc, char *argv[])
 
   ("daemon,d", boost::program_options::bool_switch(&opt_daemon)->default_value(false),
    "Daemon, detach and run in the background.")
+
+  ("exceptions", boost::program_options::bool_switch(&opt_exceptions)->default_value(false),
+   "Enable protocol exceptions by default.")
 
   ("file-descriptors,f", boost::program_options::value(&fds),
    "Number of file descriptors to allow for the process (total connections will be slightly less). Default is max allowed for user.")
@@ -330,13 +336,14 @@ int main(int argc, char *argv[])
                                           static_cast<uint8_t>(job_retries),
                                           static_cast<uint8_t>(worker_wakeup),
                                           _log, &log_info, verbose,
-                                          opt_round_robin);
+                                          opt_round_robin, opt_exceptions);
   if (_gearmand == NULL)
   {
     error::message("Could not create gearmand library instance.");
     return EXIT_FAILURE;
   }
 
+  assert(queue_type.size());
   if (queue_type.empty() == false)
   {
     gearmand_error_t rc;
@@ -446,7 +453,7 @@ static bool _switch_user(const char *user)
   return false;
 }
 
-static void _shutdown_handler(int signal_arg)
+extern "C" void _shutdown_handler(int signal_arg)
 {
   if (signal_arg == SIGUSR1)
   {
@@ -458,11 +465,26 @@ static void _shutdown_handler(int signal_arg)
   }
 }
 
-static void _reset_log_handler(int) // signal_arg
+extern "C" void _reset_log_handler(int) // signal_arg
 {
   gearmand_log_info_st *log_info= static_cast<gearmand_log_info_st *>(Gearmand()->log_context);
+  
+  log_info->write(GEARMAND_VERBOSE_NOTICE, "SIGHUP, reopening log file");
 
   log_info->reset();
+}
+
+static bool segfaulted= false;
+extern "C" void _crash_handler(int signal_)
+{
+  if (segfaulted)
+  {
+    error::message("Fatal crash while backtracing", strsignal(signal_));
+    _exit(EXIT_FAILURE); /* Quit without running destructors */
+  }
+
+  segfaulted= true;
+  custom_backtrace();
 }
 
 extern "C" {
@@ -504,6 +526,43 @@ static bool _set_signals(void)
   {
     error::perror("Could not set SIGHUP handler.");
     return true;
+  }
+
+  bool in_gdb_libtest= bool(getenv("LIBTEST_IN_GDB"));
+
+  if (in_gdb_libtest == false)
+  {
+    sa.sa_handler= _crash_handler;
+    if (sigaction(SIGSEGV, &sa, NULL) == -1)
+    {
+      error::perror("Could not set SIGSEGV handler.");
+      return true;
+    }
+
+    if (sigaction(SIGABRT, &sa, NULL) == -1)
+    {
+      error::perror("Could not set SIGABRT handler.");
+      return true;
+    }
+
+#ifdef SIGBUS
+    if (sigaction(SIGBUS, &sa, NULL) == -1)
+    {
+      error::perror("Could not set SIGBUS handler.");
+      return true;
+    }
+#endif
+    if (sigaction(SIGILL, &sa, NULL) == -1)
+    {
+      error::perror("Could not set SIGBUS handler.");
+      return true;
+    }
+
+    if (sigaction(SIGFPE, &sa, NULL) == -1)
+    {
+      error::perror("Could not set SIGBUS handler.");
+      return true;
+    }
   }
 
   return false;

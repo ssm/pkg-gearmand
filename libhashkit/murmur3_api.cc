@@ -1,6 +1,6 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
  * 
- *  Gearmand client and server library.
+ *  HashKit library
  *
  *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *  All rights reserved.
@@ -35,33 +35,15 @@
  *
  */
 
-#pragma once
+#include "libhashkit/common.h"
+#include "libhashkit/murmur3.h"
 
-#include <iostream>
-#include <ostream>
-
-static inline std::ostream& operator<<(std::ostream& output, const gearman_task_st& arg)
+uint32_t hashkit_murmur3(const char *key, size_t length, void *)
 {
-  output << " handle:" << arg.job_handle[0] ? arg.job_handle : "unset";
-  output << " state:";
-  switch (arg.state)
-  {
-  case GEARMAN_TASK_STATE_NEW: output << "GEARMAN_TASK_STATE_NEW"; break; 
-  case GEARMAN_TASK_STATE_SUBMIT: output << "GEARMAN_TASK_STATE_SUBMIT"; break; 
-  case GEARMAN_TASK_STATE_WORKLOAD: output << "GEARMAN_TASK_STATE_WORKLOAD"; break; 
-  case GEARMAN_TASK_STATE_WORK: output << "GEARMAN_TASK_STATE_WORK"; break; 
-  case GEARMAN_TASK_STATE_CREATED: output << "GEARMAN_TASK_STATE_CREATED"; break; 
-  case GEARMAN_TASK_STATE_DATA: output << "GEARMAN_TASK_STATE_DATA"; break; 
-  case GEARMAN_TASK_STATE_WARNING: output << "GEARMAN_TASK_STATE_WARNING"; break; 
-  case GEARMAN_TASK_STATE_STATUS: output << "GEARMAN_TASK_STATE_STATUS"; break; 
-  case GEARMAN_TASK_STATE_COMPLETE: output << "GEARMAN_TASK_STATE_COMPLETE"; break; 
-  case GEARMAN_TASK_STATE_EXCEPTION: output << "GEARMAN_TASK_STATE_EXCEPTION"; break; 
-  case GEARMAN_TASK_STATE_FAIL: output << "GEARMAN_TASK_STATE_FAIL"; break; 
-  case GEARMAN_TASK_STATE_FINISHED: output << "GEARMAN_TASK_STATE_FINISHED"; break; 
-  default:
-                                    output << "UNKNOWN";
-                                    break;
-  }
+  const uint32_t seed= (0xdeadbeef * (uint32_t)length);
 
-  return output;
+  uint32_t ret;
+  MurmurHash3_x86_32(key, length, seed, &ret);
+
+  return ret;
 }

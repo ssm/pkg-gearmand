@@ -1,4 +1,4 @@
-.TH "GEARMAN_CLIENT_OPTIONS_T" "3" "November 07, 2012" "1.0.1" "Gearmand"
+.TH "GEARMAN_CLIENT_OPTIONS_T" "3" "December 18, 2012" "1.0.2" "Gearmand"
 .SH NAME
 gearman_client_options_t \- Gearmand Documentation, http://gearman.info/
 .
@@ -85,6 +85,12 @@ Automatically free task objects once they are complete.
 .sp
 Allow the client to read data in chunks rather than have the library buffer
 the entire data result and pass that back.
+.INDENT 0.0
+.TP
+.B GEARMAN_CLIENT_GENERATE_UNIQUE
+.UNINDENT
+.sp
+Generate a unique id for each task created by generating a UUID.
 .SH RETURN VALUE
 .sp
 Various
