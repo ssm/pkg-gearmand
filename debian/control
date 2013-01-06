@@ -18,6 +18,7 @@ Build-Depends:
  libltdl-dev,
  libmemcached-dev (>= 1.0),
  libmysqlclient-dev (>= 5.0),
+ libpq-dev,
  libsasl2-dev,
  libsqlite3-dev (>= 3.0.0),
  libtool,
