@@ -46,12 +46,76 @@
 #include "libgearman/assert.hpp"
 
 #include "libgearman/uuid.hpp"
+#include "libhashkit-1.0/hashkit.h"
 
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+
+namespace {
+
+  bool is_background(gearman_command_t command)
+  {
+    switch (command)
+    {
+    case GEARMAN_COMMAND_SUBMIT_JOB_EPOCH:
+    case GEARMAN_COMMAND_SUBMIT_JOB_SCHED:
+    case GEARMAN_COMMAND_SUBMIT_JOB_BG:
+    case GEARMAN_COMMAND_SUBMIT_JOB_LOW_BG:
+    case GEARMAN_COMMAND_SUBMIT_JOB_HIGH_BG:
+    case GEARMAN_COMMAND_SUBMIT_REDUCE_JOB_BACKGROUND:
+      return true;
+
+    case GEARMAN_COMMAND_SUBMIT_REDUCE_JOB:
+    case GEARMAN_COMMAND_SUBMIT_JOB:
+    case GEARMAN_COMMAND_SUBMIT_JOB_LOW:
+    case GEARMAN_COMMAND_SUBMIT_JOB_HIGH:
+      return true;
+
+    case GEARMAN_COMMAND_ALL_YOURS:
+    case GEARMAN_COMMAND_CANT_DO:
+    case GEARMAN_COMMAND_CAN_DO:
+    case GEARMAN_COMMAND_CAN_DO_TIMEOUT:
+    case GEARMAN_COMMAND_ECHO_REQ:
+    case GEARMAN_COMMAND_ECHO_RES:
+    case GEARMAN_COMMAND_ERROR:
+    case GEARMAN_COMMAND_GET_STATUS:
+    case GEARMAN_COMMAND_GRAB_JOB:
+    case GEARMAN_COMMAND_GRAB_JOB_ALL:
+    case GEARMAN_COMMAND_GRAB_JOB_UNIQ:
+    case GEARMAN_COMMAND_JOB_ASSIGN:
+    case GEARMAN_COMMAND_JOB_ASSIGN_ALL:
+    case GEARMAN_COMMAND_JOB_ASSIGN_UNIQ:
+    case GEARMAN_COMMAND_JOB_CREATED:
+    case GEARMAN_COMMAND_MAX:
+    case GEARMAN_COMMAND_NOOP:
+    case GEARMAN_COMMAND_NO_JOB:
+    case GEARMAN_COMMAND_OPTION_REQ:
+    case GEARMAN_COMMAND_OPTION_RES:
+    case GEARMAN_COMMAND_PRE_SLEEP:
+    case GEARMAN_COMMAND_RESET_ABILITIES:
+    case GEARMAN_COMMAND_SET_CLIENT_ID:
+    case GEARMAN_COMMAND_STATUS_RES:
+    case GEARMAN_COMMAND_TEXT:
+    case GEARMAN_COMMAND_UNUSED:
+    case GEARMAN_COMMAND_WORK_COMPLETE:
+    case GEARMAN_COMMAND_WORK_DATA:
+    case GEARMAN_COMMAND_WORK_EXCEPTION:
+    case GEARMAN_COMMAND_WORK_FAIL:
+    case GEARMAN_COMMAND_WORK_STATUS:
+    case GEARMAN_COMMAND_WORK_WARNING:
+    case GEARMAN_COMMAND_GET_STATUS_UNIQUE:
+    case GEARMAN_COMMAND_STATUS_RES_UNIQUE:
+      assert(0);
+      break;
+    }
+
+    return false;
+  }
+
+} // namespace
 
 gearman_task_st *add_task(gearman_client_st& client,
                           void *context,
@@ -145,7 +209,11 @@ gearman_task_st *add_task(gearman_client_st& client,
   task->context= context;
   task->func= actions;
 
-  if ((task->unique_length= gearman_size(unique)))
+  if (gearman_unique_is_hash(unique))
+  {
+    task->unique_length= snprintf(task->unique, GEARMAN_MAX_UNIQUE_SIZE, "%u", libhashkit_murmur3(gearman_string_param(workload)));
+  }
+  else if ((task->unique_length= gearman_size(unique)))
   {
     if (task->unique_length >= GEARMAN_MAX_UNIQUE_SIZE)
     {
@@ -157,7 +225,15 @@ gearman_task_st *add_task(gearman_client_st& client,
   }
   else
   {
-    safe_uuid_generate(task->unique, task->unique_length);
+    if (client.options.generate_unique or is_background(command))
+    {
+      safe_uuid_generate(task->unique, task->unique_length);
+    }
+    else
+    {
+      task->unique_length= 0;
+      task->unique[0]= 0;
+    }
   }
 
   assert(task->client);
@@ -324,7 +400,11 @@ gearman_task_st *add_reducer_task(gearman_client_st *client,
     args_size[0]= gearman_size(function) + 1;
   }
 
-  if ((task->unique_length= gearman_size(unique)))
+  if (gearman_unique_is_hash(unique))
+  {
+    task->unique_length= snprintf(task->unique, GEARMAN_MAX_UNIQUE_SIZE, "%u", libhashkit_murmur3(gearman_string_param(workload)));
+  }
+  else if ((task->unique_length= gearman_size(unique)))
   {
     if (task->unique_length >= GEARMAN_MAX_UNIQUE_SIZE)
     {
@@ -336,7 +416,15 @@ gearman_task_st *add_reducer_task(gearman_client_st *client,
   }
   else
   {
-    safe_uuid_generate(task->unique, task->unique_length);
+    if (client->options.generate_unique or is_background(command))
+    {
+      safe_uuid_generate(task->unique, task->unique_length);
+    }
+    else
+    {
+      task->unique_length= 0;
+      task->unique[0]= 0;
+    }
   }
 
   args[1]= task->unique;

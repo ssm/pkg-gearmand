@@ -34,7 +34,7 @@
  *
  */
 
-#include "gear_config.h"
+#include "libtest/yatlcon.h"
 #include <libtest/common.h>
 
 #include <libtest/gearmand.h>
@@ -67,10 +67,12 @@ class Gearmand : public libtest::Server
 {
 private:
 public:
-  Gearmand(const std::string& host_arg, in_port_t port_arg, const char* binary= GEARMAND_BINARY);
+  Gearmand(const std::string& host_arg, in_port_t port_arg, bool libtool_, const char* binary);
 
   bool ping()
   {
+    reset_error();
+
     if (out_of_ban_killed())
     {
       return false;
@@ -79,7 +81,14 @@ public:
     SimpleClient client(_hostname, _port);
 
     std::string response;
-    return client.send_message("version", response);
+    bool ret= client.send_message("version", response);
+
+    if (client.is_error())
+    {
+      error(client.error());
+    }
+
+    return ret;
   }
 
   const char *name()
@@ -121,8 +130,8 @@ public:
   bool build(size_t argc, const char *argv[]);
 };
 
-Gearmand::Gearmand(const std::string& host_arg, in_port_t port_arg, const char* binary_arg) :
-  libtest::Server(host_arg, port_arg, binary_arg, true)
+Gearmand::Gearmand(const std::string& host_arg, in_port_t port_arg, bool libtool_, const char* binary_arg) :
+  libtest::Server(host_arg, port_arg, binary_arg, libtool_)
 {
   set_pid_file();
 }
@@ -146,14 +155,28 @@ bool Gearmand::build(size_t argc, const char *argv[])
 
 namespace libtest {
 
-libtest::Server *build_gearmand(const char *hostname, in_port_t try_port)
-{
-  return new Gearmand(hostname, try_port);
-}
-
 libtest::Server *build_gearmand(const char *hostname, in_port_t try_port, const char* binary)
 {
-  return new Gearmand(hostname, try_port, binary);
+  if (binary == NULL)
+  {
+#if defined(GEARMAND_BINARY)
+    binary= GEARMAND_BINARY;
+#endif
+  }
+
+  if (binary == NULL)
+  {
+    return NULL;
+  }
+
+  bool is_libtool_script= true;
+
+  if (binary[0] == '/')
+  {
+    is_libtool_script= false;
+  }
+
+  return new Gearmand(hostname, try_port, is_libtool_script, binary);
 }
 
 }

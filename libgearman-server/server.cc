@@ -237,8 +237,12 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       if (packet->command == GEARMAN_COMMAND_SUBMIT_JOB_EPOCH)
       {
         char *endptr;
-        when= strtoll((char *)packet->arg[1], &endptr, 10);
-        if (when == LONG_MIN or when == LONG_MAX or errno == EINVAL or when > UINT8_MAX or when == 0)
+        // @note stroll will set errno if error, but it might also leave errno
+        // alone if none happens (so a previous call that sets it might cause
+        // an error.
+        errno= 0;
+        when= strtoll((char *)packet->arg[2], &endptr, 10);
+        if (errno)
         {
           return gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "strtoul(%ul)", when);
         }
@@ -403,6 +407,9 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       /* Queue status result packet. */
       if (server_job == NULL)
       {
+        gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,"status,%.*s,unknown,unknown,unknown,unknown",
+                           int(job_handle_length), job_handle);
+
         ret= gearman_server_io_packet_add(server_con, false,
                                           GEARMAN_MAGIC_RESPONSE,
                                           GEARMAN_COMMAND_STATUS_RES,
@@ -430,6 +437,13 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
           gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "snprintf(%d)", denominator_buffer_length);
           return GEARMAN_MEMORY_ALLOCATION_FAILURE;
         }
+
+        gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,"status,%.*s,known,%s,%.*s,%.*s",
+                           int(job_handle_length), job_handle,
+                           server_job->worker == NULL ? "quiet" : "running",
+                           int(numerator_buffer_length), numerator_buffer,
+                           int(denominator_buffer_length), denominator_buffer);
+
 
         ret= gearman_server_io_packet_add(server_con, false,
                                           GEARMAN_MAGIC_RESPONSE,
@@ -777,14 +791,16 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       gearman_server_job_st *server_job= gearman_server_job_get(Server,
                                                                 (char *)(packet->arg[0]), (size_t)strlen(packet->arg[0]),
                                                                 server_con);
+      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
+                         "Exception being sent from: %.*s(%lu)",
+                         server_job->function->function_name_size, server_job->function->function_name, server_job->function->function_name_size);
       if (server_job == NULL)
       {
         return _server_error_packet(server_con, "job_not_found", "Job given in work result not found");
       }
 
       /* Queue the exception packet for all clients. */
-      ret= _server_queue_work_data(server_job, packet,
-                                   GEARMAN_COMMAND_WORK_EXCEPTION);
+      ret= _server_queue_work_data(server_job, packet, GEARMAN_COMMAND_WORK_EXCEPTION);
       if (gearmand_failed(ret))
       {
         gearmand_gerror("_server_queue_work_data", ret);

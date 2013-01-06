@@ -34,7 +34,7 @@
  *
  */
 
-#include "gear_config.h"
+#include "libtest/yatlcon.h"
 #include <libtest/common.h>
 
 namespace libtest {
@@ -62,6 +62,11 @@ bool valgrind_is_caller(void)
 bool gdb_is_caller(void)
 {
   if (bool(getenv("TESTS_ENVIRONMENT")) and strstr(getenv("TESTS_ENVIRONMENT"), "gdb"))
+  {
+    return true;
+  }
+
+  if (bool(getenv("LIBTEST_IN_GDB")))
   {
     return true;
   }

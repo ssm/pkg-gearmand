@@ -7,7 +7,7 @@
 # the COPYING file in this directory for full text.
 
 AC_PREREQ([2.63])
-AC_INIT([gearmand],[1.0.1],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+AC_INIT([gearmand],[1.0.2],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -18,6 +18,7 @@ AC_USE_SYSTEM_EXTENSIONS
 AM_INIT_AUTOMAKE([1.11 color-tests -Wno-portability subdir-objects foreign tar-ustar])
 
 AC_CONFIG_HEADERS([gear_config.h:gear_config.in])dnl Keep filename to 8.3 for MS-DOS.
+AC_SUBST([AUTOHEADER_FILE],[gear_config.h])
 AC_CONFIG_SRCDIR([libgearman/gearman.cc])
 
 GEARMAN_LIBRARY_VERSION=7:0:0
@@ -32,20 +33,23 @@ GEARMAN_LIBRARY_VERSION=7:0:0
 #                |        +- increment if source code has changed
 #                |           set to zero if current is incremented
 #                +- increment if interfaces have been added, removed or changed
-AC_SUBST(GEARMAN_LIBRARY_VERSION)
+AC_SUBST([GEARMAN_LIBRARY_VERSION])
 
 LT_PREREQ([2.2])
 LT_INIT([disable-static])
 LT_LANG([C++])
 
-PANDORA_PLATFORM
+AX_PLATFORM
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 AX_ASSERT
 
-dnl First look for Boost, maybe for a specific minimum version:
-BOOST_REQUIRE([1.39])
-BOOST_PROGRAM_OPTIONS
-BOOST_THREADS
+# First look for Boost, maybe for a specific minimum version:
+AC_DEFUN([CHECK_BOOST],
+         [BOOST_REQUIRE([1.39])
+         BOOST_PROGRAM_OPTIONS])
+CHECK_BOOST
+
+m4_include([libhashkit/include.m4])
 
 AX_CXX_CINTTYPES
 CONFIG_EXTRA
@@ -54,20 +58,20 @@ m4_include([libtest/yatl.m4])
 
 AX_ENABLE_LIBMEMCACHED
 m4_include([m4/memcached_sasl.m4])
-AM_CONDITIONAL([BUILDING_LIBMEMCACHED], false)
+AM_CONDITIONAL([BUILDING_LIBMEMCACHED],false)
 
-AM_CONDITIONAL([BUILDING_GEARMAN], true)
-AM_CONDITIONAL([HAVE_LIBGEARMAN], true)
+AM_CONDITIONAL([BUILDING_GEARMAN],true)
+AM_CONDITIONAL([HAVE_LIBGEARMAN],true)
 AC_SUBST([_WITH_LIBGEARMAN_SUPPORT],["_WITH_LIBGEARMAN_SUPPORT 0"])
-AC_DEFINE([GEARMAND_BINARY],["./gearmand/gearmand"], [Name of the gearmand binary used in make test])
+AC_DEFINE([GEARMAND_BINARY],["./gearmand/gearmand"],[Name of the gearmand binary used in make test])
 AC_DEFINE([HAVE_LIBGEARMAN],[1], [libgearman support])
-AC_DEFINE([HAVE_GEARMAND_BINARY],[1],[libgearman support])
+AC_DEFINE([HAVE_GEARMAND_BINARY],[1],[gearmand binary was found])
 
 AX_LIB_CURL([7.21.7],
-            [AC_CHECK_HEADERS([curl/curl.h], 
-                              [AC_DEFINE([HAVE_LIBCURL], [ 1 ], [libcurl support])],
-                              [AC_DEFINE([HAVE_LIBCURL], [ 0 ], [libcurl support])])],
-                              [AC_DEFINE([HAVE_LIBCURL], [ 0 ], [libcurl support])])
+            [AX_CHECK_LIBRARY([LIBCURL],[curl/curl.h],[curl])],
+            [AC_DEFINE([HAVE_LIBCURL],[0],[Have the LIBCURL library])
+            AM_CONDITIONAL([HAVE_LIBCURL],false)
+            ])
 
 m4_include([m4/drizzled.m4])
 WITH_LIBDRIZZLE
@@ -85,7 +89,7 @@ PANDORA_HAVE_LIBTOKYOCABINET
 AC_FUNC_STRERROR_R
 SOCKET_SEND_FLAGS
 FCNTL_FLAGS
-AX_HAVE_LIBHIREDIS
+AX_ENABLE_LIBHIREDIS
 
 # Checks for programs.
 AC_CHECK_PROGS([VALGRIND],['valgrind'])
@@ -98,9 +102,6 @@ AX_PROG_SPHINX_BUILD
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([cxxabi.h], 
-                 AC_DEFINE([HAVE_CXXABI_H], [1], [Have cxxabi.h]),
-                 AC_DEFINE([HAVE_CXXABI_H], [0], [Have cxxabi.h]))
 AC_CHECK_HEADERS_ONCE([arpa/inet.h])
 AC_CHECK_HEADERS_ONCE([errno.h])
 AC_CHECK_HEADERS_ONCE([execinfo.h])
@@ -133,6 +134,8 @@ AC_CHECK_HEADERS_ONCE([sys/wait.h])
 AC_CHECK_HEADERS_ONCE([syslog.h])
 AC_CHECK_HEADERS_ONCE([unistd.h])
 AC_CHECK_HEADERS_ONCE([winsock2.h])
+AC_CHECK_HEADERS_ONCE([libmemcached-1.0/types/return.h])
+
 AM_CONDITIONAL([BUILD_WIN32_WRAPPERS],[test "x$ac_cv_header_winsock2_h" = "xyes"])
 AS_IF([test "x$ac_cv_header_winsock2_h" = "xyes"],
       [AM_LDFLAGS="$AM_LDFLAGS -lws2_32"
@@ -173,8 +176,8 @@ AC_CHECK_FUNCS([memmove])
 AC_CHECK_FUNCS([memset])
 AC_CHECK_FUNCS([pipe])
 AC_CHECK_FUNCS([pipe2], 
-               AC_DEFINE([HAVE_PIPE2], [1], [Have pipe2]),
-               AC_DEFINE([HAVE_PIPE2], [0], [Have pipe2]))
+               [AC_DEFINE([HAVE_PIPE2], [1], [Have pipe2])],
+               [AC_DEFINE([HAVE_PIPE2], [0], [Have pipe2])])
 AC_CHECK_FUNCS([select])
 AC_CHECK_FUNCS([setenv])
 AC_CHECK_FUNCS([socket])
@@ -193,10 +196,7 @@ AC_CHECK_FUNCS([strstr])
 LT_LIB_M
 
 # Check for the ability to call dlopen (used in libhostile)
-AC_CHECK_LIB([dl],[dlopen],
-             [AC_SUBST([DL_LIB],[-ldl])
-             AC_DEFINE([HAVE_LIBDL],[1],[Have dlopen])
-             ])
+AX_DLOPEN
 
 # Check for -lrt
 AC_CHECK_LIB([rt],[clock_gettime],
@@ -212,9 +212,7 @@ AC_CHECK_FUNC([bind],[],[AC_CHECK_LIB([bind],[bind])])
 
 AC_DEFINE([GEARMAND_BLOBSLAP_WORKER],[1],[Have Gearman Blobslap Worker])
 
-AX_CHECK_LIBRARY([LIBEVENT],[event.h],[event],
-                 [LIBEVENT_LDFLAGS="-levent"],
-                 [AC_MSG_ERROR([Unable to find libevent])])
+AX_LIBEVENT(,[AC_MSG_ERROR([Unable to find libevent])])
 
 AX_UUID_GENERATE_TIME_SAFE
 
@@ -225,10 +223,17 @@ AM_CONDITIONAL([TARGET_HOSTILE],[test "x${TARGET_LINUX}" = "xtrue"])
 
 AX_PTHREAD(, [AC_MSG_ERROR(could not find libpthread)])
 AX_PTHREAD_TIMEDJOIN_NP
-
 AX_ENDIAN
 AX_HEX_VERSION([LIBGEARMAN],[$VERSION])
 AX_HARDEN_COMPILER_FLAGS
+
+AM_CONDITIONAL([TARGET_MINGW],[test "x${MINGW}" = "xtrue"])
+
+# backtrace(), others require shared builds
+AS_IF([test "x$enable_shared" = "xyes"],
+      [AC_DEFINE([HAVE_SHARED_ENABLED],[1],[Enable code which requires shared library support. Like backtrace().])
+      AX_CXX_GCC_ABI_DEMANGLE])
+AM_CONDITIONAL([SHARED_ENABLED],[test "x$enable_shared" = "xyes"])
 
 AC_CONFIG_FILES([Makefile
                  docs/conf.py

@@ -1,6 +1,6 @@
 Summary: Gearman Server and C Library
 Name: gearmand
-Version: 1.0.1
+Version: 1.0.2
 Release: 1
 License: BSD
 Group: System Environment/Libraries
@@ -61,6 +61,10 @@ install -m 755 %{SOURCE1} $RPM_BUILD_ROOT/etc/rc.d/init.d/gearmand
 
 %clean
 %{__rm} -rf %{buildroot}
+
+%post -p /sbin/ldconfig
+
+%postun -p /sbin/ldconfig
 
 %pre server
 if ! /usr/bin/id -g gearmand &>/dev/null; then
@@ -289,6 +293,7 @@ fi
 %{_mandir}/man3/gearman_worker_remove_options.3.gz
 %{_mandir}/man3/gearman_worker_remove_servers.3.gz
 %{_mandir}/man3/gearman_worker_set_context.3.gz
+%{_mandir}/man3/gearman_worker_set_identifier.3.gz
 %{_mandir}/man3/gearman_worker_set_log_fn.3.gz
 %{_mandir}/man3/gearman_worker_set_memory_allocators.3.gz
 %{_mandir}/man3/gearman_worker_set_namespace.3.gz
