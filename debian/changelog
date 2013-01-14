@@ -1,4 +1,11 @@
-gearmand (1.0.2-1) UNRELEASED; urgency=low
+gearmand (1.0.2-1~ssm60+1) squeeze; urgency=low
+
+  * ### Local package, not uploaded to debian archive. ###
+  * Backport to squeeze
+    - Revert "Bump debhelper compatibility level to 9 (multiarch)"
+    - Remove memcached support (version in squeeze is not recent enough)
+    - Remove build dependency on libcurl4-gnutls-dev (used only for build
+      tests)
 
   * New upstream release
   * Add persistent storage with MySQL (Closes: #694572)
@@ -6,7 +13,8 @@ gearmand (1.0.2-1) UNRELEASED; urgency=low
   * Remove GNU/Hurd patch included upstream
   * Remove typo patch included upstream
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 06 Jan 2013 22:31:22 +0100
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Mon, 14 Jan 2013 21:30:36 +0100
 
 gearmand (0.41-1) experimental; urgency=low
 
