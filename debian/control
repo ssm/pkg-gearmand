@@ -13,7 +13,6 @@ Build-Depends:
  libboost-system-dev (>= 1.39.0),
  libboost-thread-dev (>= 1.39.0),
  libcloog-ppl-dev,
- libcurl4-gnutls-dev (>= 7.21.7),
  libevent-dev,
  libltdl-dev,
  libmemcached-dev (>= 1.0),
