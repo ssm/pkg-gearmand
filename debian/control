@@ -15,13 +15,11 @@ Build-Depends:
  libcloog-ppl-dev,
  libevent-dev,
  libltdl-dev,
- libmemcached-dev (>= 1.0),
  libmysqlclient-dev (>= 5.0),
  libpq-dev,
  libsasl2-dev,
  libsqlite3-dev (>= 3.0.0),
  libtool,
- memcached,
  pandora-build,
  pkg-config (>= 0.9.0),
  procps,
@@ -83,7 +81,6 @@ Package: gearman-job-server
 Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Recommends: memcached
 Description: Job server for the Gearman distributed job queue
  Gearman is a system to farm out work to other machines, dispatching function
  calls to machines that are better suited to do work, to do work in parallel,
