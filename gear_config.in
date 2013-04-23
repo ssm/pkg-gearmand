@@ -48,6 +48,9 @@
 /* Have Gearman Blobslap Worker */
 #undef GEARMAND_BLOBSLAP_WORKER
 
+/* Define to 1 if you have the `accept4' function. */
+#undef HAVE_ACCEPT4
+
 /* Define to 1 if you have `alloca', as a function or macro. */
 #undef HAVE_ALLOCA
 
@@ -72,6 +75,9 @@
 
 /* Define to 1 if you have the `clock_gettime' function. */
 #undef HAVE_CLOCK_GETTIME
+
+/* Define to 1 if CYASSL is found */
+#undef HAVE_CYASSL
 
 /* Define to 1 if you have the declaration of `getenv', and to 0 if you don't.
    */
@@ -114,6 +120,9 @@
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
+/* Define to 1 if you have the <features.h> header file. */
+#undef HAVE_FEATURES_H
+
 /* Define to 1 if you have the <fnmatch.h> header file. */
 #undef HAVE_FNMATCH_H
 
@@ -150,7 +159,7 @@
 /* Have dlopen */
 #undef HAVE_LIBDL
 
-/* Enable libdrizzle support */
+/* Have libdrizzle */
 #undef HAVE_LIBDRIZZLE
 
 /* Define if event_init is present in event.h. */
@@ -198,6 +207,9 @@
 
 /* Define to 1 if <wchar.h> declares mbstate_t. */
 #undef HAVE_MBSTATE_T
+
+/* Define to 1 if MCHECK is found */
+#undef HAVE_MCHECK
 
 /* If Memcached binary is available */
 #undef HAVE_MEMCACHED_BINARY
@@ -250,7 +262,7 @@
 /* Define to 1 if you have the `pipe' function. */
 #undef HAVE_PIPE
 
-/* Have pipe2 */
+/* Define to 1 if you have the `pipe2' function. */
 #undef HAVE_PIPE2
 
 /* Define to 1 if you have the <poll.h> header file. */
@@ -288,6 +300,9 @@
 
 /* Define to 1 if you have the `socket' function. */
 #undef HAVE_SOCKET
+
+/* Define to 1 if you have the <spawn.h> header file. */
+#undef HAVE_SPAWN_H
 
 /* Have the SQLITE3 library */
 #undef HAVE_SQLITE3
@@ -432,8 +447,8 @@
 /* Name of the memcached binary used in make test */
 #undef MEMCACHED_BINARY
 
-/* Name of the memcached_sasl binary used in make test */
-#undef MEMCACHED_SASL_BINARY
+/* Memcached binary version */
+#undef MEMCACHED_VERSION
 
 /* Name of the mysqld binary used in make test */
 #undef MYSQLD_BINARY

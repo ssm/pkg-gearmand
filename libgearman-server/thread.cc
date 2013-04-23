@@ -127,15 +127,14 @@ bool gearman_server_thread_init(gearman_server_st *server,
   int error;
   if ((error= pthread_mutex_init(&(thread->lock), NULL)))
   {
-    errno= error;
-    gearmand_perror("pthread_mutex_init");
+    gearmand_perror(error, "pthread_mutex_init");
     return false;
   }
 
-  GEARMAN_LIST_ADD(server->thread, thread,);
+  GEARMAN_LIST__ADD(server->thread, thread);
 
   thread->gearman= &(thread->gearmand_connection_list_static);
-  gearmand_connection_list_init(thread->gearman, event_watch, NULL);
+  thread->gearman->init(event_watch, NULL);
 
   return true;
 }
@@ -153,7 +152,7 @@ void gearman_server_thread_free(gearman_server_thread_st *thread)
   {
     gearman_server_con_st *con= thread->free_con_list;
     thread->free_con_list= con->next;
-    destroy_gearman_server_con_st(con);
+    delete con;
   }
 
   while (thread->free_packet_list != NULL)
@@ -165,12 +164,12 @@ void gearman_server_thread_free(gearman_server_thread_st *thread)
 
   if (thread->gearman != NULL)
   {
-    gearman_connection_list_free(thread->gearman);
+    thread->gearman->list_free();
   }
 
   pthread_mutex_destroy(&(thread->lock));
 
-  GEARMAN_LIST_DEL(Server->thread, thread,)
+  GEARMAN_LIST__DEL(Server->thread, thread);
 }
 
 void gearman_server_thread_set_run(gearman_server_thread_st *thread,
@@ -378,40 +377,39 @@ static gearmand_error_t _thread_packet_flush(gearman_server_con_st *con)
 
 static gearmand_error_t _proc_thread_start(gearman_server_st *server)
 {
-  if ((errno= pthread_mutex_init(&(server->proc_lock), NULL)))
+  int error;
+  if ((error= pthread_mutex_init(&(server->proc_lock), NULL)))
   {
-    gearmand_perror("pthread_mutex_init");
-    return GEARMAN_ERRNO;
+    return gearmand_perror(error, "pthread_mutex_init");
   }
 
-  if ((errno= pthread_cond_init(&(server->proc_cond), NULL)))
+  if ((error= pthread_cond_init(&(server->proc_cond), NULL)))
   {
-    gearmand_perror("pthread_cond_init");
-    return GEARMAN_ERRNO;
+    return gearmand_perror(error, "pthread_cond_init");
   }
 
   pthread_attr_t attr;
-  if ((errno= pthread_attr_init(&attr)))
+  if ((error= pthread_attr_init(&attr)))
   {
-    gearmand_perror("pthread_attr_init");
-    return GEARMAN_ERRNO;
+    return gearmand_perror(error, "pthread_attr_init");
   }
 
-  if ((errno= pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM)))
+  if ((error= pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM)))
   {
-    gearmand_perror("pthread_attr_setscope");
     (void) pthread_attr_destroy(&attr);
-    return GEARMAN_ERRNO;
+    return gearmand_perror(error, "pthread_attr_setscope");
   }
 
-  if ((errno= pthread_create(&(server->proc_id), &attr, _proc, server)))
+  if ((error= pthread_create(&(server->proc_id), &attr, _proc, server)))
   {
-    gearmand_perror("pthread_create");
     (void) pthread_attr_destroy(&attr);
-    return GEARMAN_ERRNO;
+    return gearmand_perror(error, "pthread_create");
   }
 
-  (void) pthread_attr_destroy(&attr);
+  if ((error= pthread_attr_destroy(&attr)))
+  {
+    gearmand_perror(error, "pthread_create");
+  }
 
   server->flags.threaded= true;
 
@@ -428,12 +426,37 @@ static void _proc_thread_kill(gearman_server_st *server)
   server->proc_shutdown= true;
 
   /* Signal proc thread to shutdown. */
-  (void) pthread_mutex_lock(&(server->proc_lock));
-  (void) pthread_cond_signal(&(server->proc_cond));
-  (void) pthread_mutex_unlock(&(server->proc_lock));
+  int error;
+  if ((error= pthread_mutex_lock(&(server->proc_lock))) == 0)
+  {
+    if ((error= pthread_cond_signal(&(server->proc_cond))))
+    {
+      gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_cond_signal");
+    }
+
+    if ((error= pthread_mutex_unlock(&(server->proc_lock))))
+    {
+      gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
+    }
+  }
+  else
+  {
+    gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_lock");
+  }
 
   /* Wait for the proc thread to exit and then cleanup. */
-  (void) pthread_join(server->proc_id, NULL);
-  (void) pthread_cond_destroy(&(server->proc_cond));
-  (void) pthread_mutex_destroy(&(server->proc_lock));
+  if ((error= pthread_join(server->proc_id, NULL)))
+  {
+    gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_join");
+  }
+
+  if ((error= pthread_cond_destroy(&(server->proc_cond))))
+  {
+    gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_cond_destroy");
+  }
+
+  if ((error= pthread_mutex_destroy(&(server->proc_lock))))
+  {
+    gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_destroy");
+  }
 }

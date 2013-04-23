@@ -44,7 +44,6 @@ struct queue_st {
   gearman_queue_done_fn *_done_fn;
   gearman_queue_replay_fn *_replay_fn;
 
-#ifdef __cplusplus
   queue_st() :
     _context(NULL),
     _add_fn(NULL),
@@ -53,7 +52,6 @@ struct queue_st {
     _replay_fn(NULL)
   {
   }
-#endif
 };
 
 enum queue_version_t {
@@ -62,22 +60,16 @@ enum queue_version_t {
   QUEUE_VERSION_CLASS
 };
 
-#ifdef __cplusplus
 namespace gearmand { namespace queue { class Context; } }
-#endif
 
 struct Queue_st {
   struct queue_st* functions;
-#ifdef __cplusplus
   gearmand::queue::Context* object;
-#else
-  void *_object;
-#endif
 };
 
 struct gearman_server_st
 {
-  struct {
+  struct Flags {
     /*
       Sets the round-robin mode on the server object. RR will distribute work
       fairly among every function assigned to a worker, instead of draining
@@ -86,14 +78,14 @@ struct gearman_server_st
     bool round_robin;
     bool threaded;
   } flags;
-  struct {
+  struct State {
     bool queue_startup;
   } state;
   bool shutdown;
   bool shutdown_graceful;
   bool proc_wakeup;
   bool proc_shutdown;
-  uint8_t job_retries; // Set maximum job retry count.
+  uint32_t job_retries; // Set maximum job retry count.
   uint8_t worker_wakeup; // Set maximum number of workers to wake up per job.
   uint32_t job_handle_count;
   uint32_t thread_count;
@@ -105,7 +97,7 @@ struct gearman_server_st
   uint32_t free_client_count;
   uint32_t free_worker_count;
   gearman_server_thread_st *thread_list;
-  gearman_server_function_st *function_list;
+  gearman_server_function_st **function_hash;
   gearman_server_packet_st *free_packet_list;
   gearman_server_job_st *free_job_list;
   gearman_server_client_st *free_client_list;
@@ -116,6 +108,15 @@ struct gearman_server_st
   pthread_cond_t proc_cond;
   pthread_t proc_id;
   char job_handle_prefix[GEARMAND_JOB_HANDLE_SIZE];
-  gearman_server_job_st *job_hash[GEARMAND_JOB_HASH_SIZE];
-  gearman_server_job_st *unique_hash[GEARMAND_JOB_HASH_SIZE];
+  uint32_t hashtable_buckets;
+  gearman_server_job_st **job_hash;
+  gearman_server_job_st **unique_hash;
+
+  gearman_server_st()
+  {
+  }
+
+  ~gearman_server_st()
+  {
+  }
 };

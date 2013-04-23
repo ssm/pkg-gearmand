@@ -69,7 +69,7 @@
 # include <arpa/inet.h>
 #endif
 
-#if defined(WIN32) || defined(__MINGW32__)
+#if defined(WIN32)
 # include "win32/wrappers.h"
 # define get_socket_errno() WSAGetLastError()
 #else
@@ -97,3 +97,25 @@
 #include <libtest/dns.hpp>
 #include <libtest/formatter.hpp>
 
+struct FreeFromVector
+{
+  template <class T>
+    void operator() ( T* ptr) const
+    {
+      if (ptr)
+      {
+        free(ptr);
+        ptr= NULL;
+      }
+    }
+};
+
+struct DeleteFromVector
+{
+  template <class T>
+    void operator() ( T* ptr) const
+    {
+      delete ptr;
+      ptr= NULL;
+    }
+};

@@ -1,9 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  All rights reserved.
+ *  Data Differential's libhostle
+ *
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -35,34 +34,25 @@
  *
  */
 
-#pragma once
-
-#ifdef __cplusplus
-extern "C" {
+#ifdef HOSTILE
+# include <libhostile/hostile.h>
 #endif
 
-GEARMAN_INTERNAL_API
-void gearmand_thread_list_free(gearmand_thread_st *thread);
+#include <libtest/lite.h>
 
-GEARMAN_INTERNAL_API
-void gearmand_thread_list_add(gearmand_thread_st *thread);
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>          /* See NOTES */
 
-GEARMAN_INTERNAL_API
-  void gearmand_server_list_free(gearman_server_st *server,
-                                 gearman_server_function_st *function);
+int main(void)
+{
+#if ! defined(__DARWIN_C_ANSI)
+  ASSERT_TRUE(accept(-1, NULL, NULL) == -1);
+  ASSERT_TRUE(errno == EBADF);
+#endif
 
-GEARMAN_INTERNAL_API
-  void gearmand_server_list_add(gearman_server_st *server,
-                                gearman_server_function_st *function);
-
-GEARMAN_INTERNAL_API
-  void gearmand_server_free_job_list_free(gearman_server_st *server,
-                                          gearman_server_job_st *server_job);
-
-GEARMAN_INTERNAL_API
-  void gearmand_server_job_list_add(gearman_server_st *server,
-                                    gearman_server_job_st *server_job);
-
-#ifdef __cplusplus
+  return EXIT_SUCCESS;
 }
-#endif

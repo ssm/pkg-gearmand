@@ -39,15 +39,20 @@
 #include <spawn.h>
 
 // http://www.gnu.org/software/automake/manual/automake.html#Using-the-TAP-test-protocol
-#define EXIT_SKIP 77
-#define EXIT_FATAL 77
+#ifndef EXIT_SKIP
+# define EXIT_SKIP 77
+#endif
+
+#ifndef EXIT_FATAL
+# define EXIT_FATAL 99
+#endif
 
 #ifndef EX_NOEXEC
-#  define EX_NOEXEC 126
+# define EX_NOEXEC 126
 #endif
 
 #ifndef EX_NOTFOUND
-#  define EX_NOTFOUND 127
+# define EX_NOTFOUND 127
 #endif
 
 namespace libtest {
@@ -145,6 +150,11 @@ public:
     return _stdout_buffer.size();
   }
 
+  const char* stdout_c_str() const
+  {
+    return &_stdout_buffer[0];
+  }
+
   libtest::vchar_t stderr_result() const
   {
     return _stderr_buffer;
@@ -162,7 +172,7 @@ public:
 
   std::string print();
 
-  void use_valgrind(bool arg= true)
+  void use_valgrind(bool arg)
   {
     _use_valgrind= arg;
   }
@@ -172,12 +182,12 @@ public:
   bool slurp();
   void murder();
 
-  void use_gdb(bool arg= true)
+  void use_gdb(bool arg)
   {
     _use_gdb= arg;
   }
 
-  void use_ptrcheck(bool arg= true)
+  void use_ptrcheck(bool arg)
   {
     _use_ptrcheck= arg;
   }
@@ -202,6 +212,7 @@ public:
 private:
   void create_argv(const char *args[]);
   void delete_argv();
+  void add_to_build_argv(const char*);
 
 private:
   const bool _use_libtool;

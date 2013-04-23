@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
     {
       { "version", no_argument, NULL, OPT_LIBYATL_VERSION },
       { "quiet", no_argument, NULL, OPT_LIBYATL_QUIET },
-      { "repeat", no_argument, NULL, OPT_LIBYATL_REPEAT },
+      { "repeat", required_argument, NULL, OPT_LIBYATL_REPEAT },
       { "collection", required_argument, NULL, OPT_LIBYATL_MATCH_COLLECTION },
       { "wildcard", required_argument, NULL, OPT_LIBYATL_MATCH_WILDCARD },
       { "massive", no_argument, NULL, OPT_LIBYATL_MASSIVE },
@@ -158,7 +158,13 @@ int main(int argc, char *argv[])
         break;
 
       case OPT_LIBYATL_REPEAT:
+        errno= 0;
         opt_repeat= strtoul(optarg, (char **) NULL, 10);
+        if (errno != 0)
+        {
+          Error << "unknown value passed to --repeat: `" << optarg << "`";
+          exit(EXIT_FAILURE);
+        }
         break;
 
       case OPT_LIBYATL_MATCH_COLLECTION:
@@ -186,9 +192,16 @@ int main(int argc, char *argv[])
 
   srandom((unsigned int)time(NULL));
 
-  if (bool(getenv("YATL_REPEAT")) and (strtoul(getenv("YATL_REPEAT"), (char **) NULL, 10) > 1))
+  errno= 0;
+  if (bool(getenv("YATL_REPEAT")))
   {
+    errno= 0;
     opt_repeat= strtoul(getenv("YATL_REPEAT"), (char **) NULL, 10);
+    if (errno != 0)
+    {
+      Error << "ENV YATL_REPEAT passed an invalid value: `" << getenv("YATL_REPEAT") << "`";
+      exit(EXIT_FAILURE);
+    }
   }
 
   if ((bool(getenv("YATL_QUIET")) and (strcmp(getenv("YATL_QUIET"), "0") == 0)) or opt_quiet)
@@ -284,6 +297,7 @@ int main(int argc, char *argv[])
       std::auto_ptr<libtest::Framework> frame(new libtest::Framework(signal, binary_name, collection_to_run, wildcard));
 
       // Run create(), bail on error.
+      try
       {
         switch (frame->create())
         {
@@ -294,9 +308,13 @@ int main(int argc, char *argv[])
           return EXIT_SKIP;
 
         case TEST_FAILURE:
-          std::cerr << "frame->create()" << std::endl;
+          std::cerr << "Could not call frame->create()" << std::endl;
           return EXIT_FAILURE;
         }
+      }
+      catch (const libtest::__skipped& e)
+      {
+        return EXIT_SKIP;
       }
 
       frame->exec();
@@ -340,24 +358,33 @@ int main(int argc, char *argv[])
       Outn(); // Generate a blank to break up the messages if make check/test has been run
     } while (exit_code == EXIT_SUCCESS and --opt_repeat);
   }
-  catch (libtest::fatal& e)
+  catch (const libtest::__skipped& e)
+  {
+    return EXIT_SKIP;
+  }
+  catch (const libtest::__failure& e)
+  {
+    libtest::stream::make_cout(e.file(), e.line(), e.func()) << e.what();
+    exit_code= EXIT_FAILURE;
+  }
+  catch (const libtest::fatal& e)
   {
     std::cerr << "FATAL:" << e.what() << std::endl;
     exit_code= EXIT_FAILURE;
   }
-  catch (libtest::disconnected& e)
+  catch (const libtest::disconnected& e)
   {
     std::cerr << "Unhandled disconnection occurred:" << e.what() << std::endl;
     exit_code= EXIT_FAILURE;
   }
-  catch (std::exception& e)
+  catch (const std::exception& e)
   {
     std::cerr << "std::exception:" << e.what() << std::endl;
     exit_code= EXIT_FAILURE;
   }
-  catch (char const*)
+  catch (char const* s)
   {
-    std::cerr << "Exception:" << std::endl;
+    std::cerr << "Exception:" << s << std::endl;
     exit_code= EXIT_FAILURE;
   }
   catch (...)

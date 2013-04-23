@@ -1,6 +1,6 @@
 # vim:ft=automake
 # Gearman server and library 
-# Copyright (C) 2011 - 2012 Data Differential, http://datadifferential.com/
+# Copyright (C) 2011 - 2013 Data Differential, http://datadifferential.com/
 # Copyright (C) 2009-2010 Brian Aker, Eric Day, Monty Taylor All rights
 # Copyright (C) 2008 Brian Aker, Eric Day 
 #
@@ -11,6 +11,9 @@
 # All paths should be given relative to the root
 
 nobase_include_HEADERS+= libgearman/gearman.h
+
+noinst_HEADERS+= libgearman/client.hpp
+noinst_HEADERS+= libgearman/worker.hpp
 
 noinst_HEADERS+= libgearman/client.h
 noinst_HEADERS+= libgearman/job.h
@@ -47,10 +50,12 @@ noinst_HEADERS+= \
 		 libgearman/task.hpp \
 		 libgearman/task_attr.h \
 		 libgearman/unique.hpp \
+		 libgearman/server_options.hpp \
 		 libgearman/universal.hpp \
 		 libgearman/vector.hpp
 
 noinst_LTLIBRARIES+= libgearman/libgearmancore.la
+
 libgearman_libgearmancore_la_SOURCES= \
 				      libgearman/allocator.cc \
 				      libgearman/backtrace.cc \
@@ -62,14 +67,34 @@ libgearman_libgearmancore_la_SOURCES= \
 				      libgearman/packet.cc \
 				      libgearman/strcommand.cc \
 				      libgearman/strerror.cc \
+				      libgearman/server_options.cc \
 				      libgearman/universal.cc \
 				      libgearman/vector.cc
 
 libgearman_libgearmancore_la_CXXFLAGS= -DBUILDING_LIBGEARMAN
 libgearman_libgearmancore_la_LIBADD= @DL_LIB@
+libgearman_libgearmancore_la_LIBADD+= libhashkit/libhashkit.la
+
+noinst_LTLIBRARIES+= libgearman/libgearman-vector.la
+libgearman_libgearman_vector_la_CXXFLAGS= -DBUILDING_LIBGEARMAN
+libgearman_libgearman_vector_la_LIBADD= @DL_LIB@
+libgearman_libgearman_vector_la_SOURCES= libgearman/vector.cc
+libgearman_libgearman_vector_la_SOURCES+= libgearman/backtrace.cc
+
+noinst_LTLIBRARIES+= libgearman/libgearman-result.la
+libgearman_libgearman_result_la_CXXFLAGS= -DBUILDING_LIBGEARMAN
+libgearman_libgearman_result_la_LIBADD= @DL_LIB@
+libgearman_libgearman_result_la_SOURCES= libgearman/vector.cc
+libgearman_libgearman_result_la_SOURCES+= libgearman/result.cc
+libgearman_libgearman_result_la_SOURCES+= libgearman/backtrace.cc
+
+libgearman_libgearman_la_LIBADD=
+libgearman_libgearman_la_SOURCES=
+libgearman_libgearman_la_CXXFLAGS=
+libgearman_libgearman_la_LDFLAGS=
 
 lib_LTLIBRARIES+= libgearman/libgearman.la
-libgearman_libgearman_la_SOURCES= \
+libgearman_libgearman_la_SOURCES+= \
 				  libgearman/actions.cc \
 				  libgearman/aggregator.cc \
 				  libgearman/allocator.cc \
@@ -103,6 +128,7 @@ libgearman_libgearman_la_SOURCES= \
 				  libgearman/task.cc \
 				  libgearman/task_attr.cc \
 				  libgearman/unique.cc \
+				  libgearman/server_options.cc \
 				  libgearman/universal.cc \
 				  libgearman/vector.cc \
 				  libgearman/worker.cc
@@ -110,11 +136,10 @@ libgearman_libgearman_la_SOURCES= \
 libgearman_libgearman_la_SOURCES+= libgearman/pipe.cc
 libgearman_libgearman_la_SOURCES+= libgearman/uuid.cc
 
-libgearman_libgearman_la_CXXFLAGS= -DBUILDING_LIBGEARMAN
+libgearman_libgearman_la_CXXFLAGS+= -DBUILDING_LIBGEARMAN
 
-libgearman_libgearman_la_LDFLAGS= -version-info $(GEARMAN_LIBRARY_VERSION)
+libgearman_libgearman_la_LDFLAGS+= -version-info $(GEARMAN_LIBRARY_VERSION)
 
-libgearman_libgearman_la_LIBADD=
 libgearman_libgearman_la_LIBADD+= @LIBUUID_LIB@
 libgearman_libgearman_la_LIBADD+= @DL_LIB@
 libgearman_libgearman_la_LIBADD+= libhashkit/libhashkit.la
@@ -125,3 +150,11 @@ endif
 
 
 DISTCLEANFILES+= config/top.h
+
+# Hostile version 
+
+noinst_LTLIBRARIES+= libgearman/libgearman-hostile.la
+
+libgearman_libgearman_hostile_la_LIBADD= $(libgearman_libgearman_la_LIBADD)
+libgearman_libgearman_hostile_la_SOURCES= $(libgearman_libgearman_la_SOURCES)
+libgearman_libgearman_hostile_la_CXXFLAGS= $(libgearman_libgearman_la_CXXFLAGS)

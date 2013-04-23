@@ -1,10 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  Gearmand client and server library.
  *
- *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
- *  Copyright (C) 2008 Brian Aker, Eric Day
- *  All rights reserved.
+ *  Data Differential YATL (i.e. libtest)  library
+ *
+ *  Copyright (C) 2012-2013 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -36,44 +34,53 @@
  *
  */
 
-#include "gear_config.h"
-#include <libgearman-server/error.h>
-#include <libgearman-server/constants.h>
-#include <libgearman-server/connection_list.h>
-#include <libgearman-server/io.h>
-#include <libgearman-server/connection.h>
-#include <assert.h>
+#pragma once
 
-void gearmand_connection_list_init(gearmand_connection_list_st *universal,
-                                   gearmand_event_watch_fn *watch_fn, void *watch_context)
+namespace libtest {
+
+class __test_result : public std::exception
 {
-  assert(universal);
+public:
+  __test_result(const char *file, int line, const char *func);
 
-  universal->con_count= 0;
-  universal->con_list= NULL;
-  universal->event_watch_fn= watch_fn;
-  universal->event_watch_context= watch_context;
-}
+  __test_result( const __test_result& );
 
-void gearman_connection_list_free(gearmand_connection_list_st *universal)
-{
-  while (universal->con_list)
-    gearmand_io_free(universal->con_list);
-}
+  virtual ~__test_result() throw();
 
-gearman_server_con_st *gearmand_ready(gearmand_connection_list_st *universal)
-{
-  /* We can't keep universal between calls since connections may be removed during
-    processing. If this list ever gets big, we may want something faster. */
-
-  for (gearmand_io_st *con= universal->con_list; con; con= con->next)
+  virtual const char* what() const throw()
   {
-    if (con->options.ready)
+    if (_error_message)
     {
-      con->options.ready= false;
-      return con->root;
+      return _error_message;
     }
+
+    return "";
   }
 
-  return NULL;
-}
+  int line() const
+  {
+    return _line;
+  }
+
+  const char*  file() const
+  {
+    return _file;
+  }
+
+  const char* func() const
+  {
+    return _func;
+  }
+
+protected:
+  void init(va_list);
+
+private:
+  int _line;
+  const char*  _file;
+  const char* _func;
+  char* _error_message;
+  int _error_message_size;
+};
+
+} // namespace libtest

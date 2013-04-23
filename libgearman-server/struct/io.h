@@ -37,6 +37,8 @@
 
 #pragma once
 
+#include "libgearman-server/plugins/base.h"
+
 struct gearmand_io_st
 {
   struct {
@@ -76,6 +78,8 @@ struct gearmand_io_st
   gearmand_connection_list_st *universal;
   gearmand_io_st *next;
   gearmand_io_st *prev;
+  gearmand_io_st *ready_next;
+  gearmand_io_st *ready_prev;
   gearmand_con_st *context;
   char *send_buffer_ptr;
   gearmand_packet_st *recv_packet;
@@ -86,9 +90,7 @@ struct gearmand_io_st
   char recv_buffer[GEARMAN_RECV_BUFFER_SIZE];
 };
 
-#ifdef __cplusplus
 namespace gearmand { namespace protocol {class Context; } }
-#endif
 
 /*
   Free list for these are stored in gearman_server_thread_st[], otherwise they are owned by gearmand_con_st[]
@@ -129,10 +131,33 @@ struct gearman_server_con_st
   const char *_host; // client host
   const char *_port; // client port
   char id[GEARMAN_SERVER_CON_ID_SIZE];
-#ifdef __cplusplus
   gearmand::protocol::Context* protocol;
-#else
-  void *protocol;
-#endif
   struct event *timeout_event;
+
+  gearman_server_con_st()
+  {
+  }
+
+  ~gearman_server_con_st()
+  {
+  }
+
+  void set_protocol(gearmand::protocol::Context* arg)
+  {
+    protocol= arg;
+  }
+
+  void protocol_release()
+  {
+    if (protocol)
+    {
+      protocol->notify(this);
+      if (protocol->is_owner())
+      {
+        delete protocol;
+        protocol= NULL;
+      }
+      protocol= NULL;
+    }
+  }
 };

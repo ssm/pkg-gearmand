@@ -1,9 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  All rights reserved.
+ *  Data Differential's libhostle
+ *
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -35,47 +34,32 @@
  *
  */
 
-#pragma once
+#ifdef HOSTILE
+# include <libhostile/hostile.h>
+#endif
 
-class Worker {
-public:
-  Worker()
+#include <libtest/lite.h>
+
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+int main(void)
+{
+#if ! defined(__DARWIN_C_ANSI)
+  if (valgrind_is_caller() == false)
   {
-    _worker= gearman_worker_create(NULL);
-
-    if (_worker == NULL)
-    {
-      throw "gearman_worker_create() failed";
-    }
+    ASSERT_TRUE(pipe(NULL) == -1);
+    ASSERT_TRUE(errno == EFAULT);
   }
+#endif
 
-  Worker(in_port_t arg)
-  {
-    _worker= gearman_worker_create(NULL);
+  int pipefd[2];
+  ASSERT_TRUE(pipe(pipefd) == 0);
+  ASSERT_TRUE(close(pipefd[0]) == 0);
+  ASSERT_TRUE(close(pipefd[1]) == 0);
 
-    if (_worker == NULL)
-    {
-      throw "gearman_worker_create() failed";
-    }
-    gearman_worker_add_server(_worker, "localhost", arg);
-  }
-
-  gearman_worker_st* operator&() const
-  { 
-    return _worker;
-  }
-
-  gearman_worker_st* operator->() const
-  { 
-    return _worker;
-  }
-
-  ~Worker()
-  {
-    gearman_worker_free(_worker);
-  }
-
-private:
-  gearman_worker_st *_worker;
-
-};
+  return EXIT_SUCCESS;
+}

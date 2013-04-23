@@ -68,7 +68,7 @@ void set_alarm(long tv_sec, long tv_usec)
 
     if (errno != 0)
     {
-      fatal_message("Bad value for YATL_ALARM");
+      FATAL("Bad value for YATL_ALARM");
     }
     else if (tv_sec == 0)
     {
@@ -76,7 +76,7 @@ void set_alarm(long tv_sec, long tv_usec)
     }
   }
 
-#if defined(TARGET_OS_OSX) && TARGET_OS_OSX
+#ifdef __APPLE__
   struct timeval it_value= { time_t(tv_sec), suseconds_t(tv_usec) };
 #else
   struct timeval it_value= { tv_sec, tv_usec };

@@ -46,8 +46,8 @@
 
 #include <libgearman/command.h>
 
-#include <libgearman-server/fifo.h>
 #include <cassert>
+#include <cerrno>
 #include <cstring>
 #include <memory>
 
@@ -89,7 +89,7 @@ gearman_server_packet_create(gearman_server_thread_st *thread,
     server_packet= new (std::nothrow) gearman_server_packet_st;
     if (server_packet == NULL)
     {
-      gearmand_perror("new() gearman_server_packet_st");
+      gearmand_perror(errno, "new() gearman_server_packet_st");
       return NULL;
     }
   }
@@ -153,7 +153,7 @@ gearmand_error_t gearman_server_io_packet_add(gearman_server_con_st *con,
     return GEARMAN_MEMORY_ALLOCATION_FAILURE;
   }
 
-  gearmand_packet_init(&(server_packet->packet), magic, command);
+  server_packet->packet.reset(magic, command);
 
   va_start(ap, arg);
 
@@ -188,17 +188,18 @@ gearmand_error_t gearman_server_io_packet_add(gearman_server_con_st *con,
     server_packet->packet.options.free_data= true;
   }
 
-  if (pthread_mutex_lock(&con->thread->lock) == 0)
+  int error;
+  if ((error= pthread_mutex_lock(&con->thread->lock)) == 0)
   {
-    gearmand_server_con_fifo_add(con, server_packet);
-    if (pthread_mutex_unlock(&con->thread->lock) != 0)
+    GEARMAN_FIFO__ADD(con->io_packet, server_packet);
+    if ((error= pthread_mutex_unlock(&con->thread->lock)))
     {
-      gearmand_fatal("pthread_mutex_unlock()");
+      gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
     }
   }
   else
   {
-    gearmand_fatal("pthread_mutex_lock()");
+    gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_lock");
   }
 
   gearman_server_con_io_add(con);
@@ -212,17 +213,18 @@ void gearman_server_io_packet_remove(gearman_server_con_st *con)
 
   gearmand_packet_free(&(server_packet->packet));
 
-  if (pthread_mutex_lock(&con->thread->lock) == 0)
+  int error;
+  if ((error= pthread_mutex_lock(&con->thread->lock)) == 0)
   {
-    gearmand_server_con_fifo_free(con, server_packet);
-    if (pthread_mutex_unlock(&con->thread->lock) != 0)
+    GEARMAN_FIFO__DEL(con->io_packet, server_packet);
+    if ((error= pthread_mutex_unlock(&con->thread->lock)))
     {
-      gearmand_fatal("pthread_mutex_unlock()");
+      gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
     }
   }
   else
   {
-    gearmand_fatal("pthread_mutex_lock()");
+    gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_lock");
   }
 
   gearman_server_packet_free(server_packet, con->thread, true);
@@ -231,17 +233,18 @@ void gearman_server_io_packet_remove(gearman_server_con_st *con)
 void gearman_server_proc_packet_add(gearman_server_con_st *con,
                                     gearman_server_packet_st *packet)
 {
-  if (pthread_mutex_lock(&con->thread->lock) == 0)
+  int error;
+  if ((error= pthread_mutex_lock(&con->thread->lock)) == 0)
   {
-    gearmand_server_con_fifo_proc_add(con, packet);
-    if (pthread_mutex_unlock(&con->thread->lock) != 0)
+    GEARMAN_FIFO__ADD(con->proc_packet, packet);
+    if ((error= pthread_mutex_unlock(&con->thread->lock)))
     {
-      gearmand_fatal("pthread_mutex_unlock()");
+      gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
     }
   }
   else
   {
-    gearmand_fatal("pthread_mutex_lock()");
+    gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_lock");
   }
 
   gearman_server_con_proc_add(con);
@@ -252,22 +255,21 @@ gearman_server_proc_packet_remove(gearman_server_con_st *con)
 {
   gearman_server_packet_st *server_packet= con->proc_packet_list;
 
-  if (server_packet == NULL)
+  if (server_packet)
   {
-    return NULL;
-  }
-
-  if (pthread_mutex_lock(&con->thread->lock) == 0)
-  {
-    gearmand_server_con_fifo_proc_free(con, server_packet);
-    if (pthread_mutex_unlock(&con->thread->lock) != 0)
+    int error;
+    if ((error= pthread_mutex_lock(&con->thread->lock)) == 0)
     {
-      gearmand_fatal("pthread_mutex_unlock()");
+      GEARMAN_FIFO__DEL(con->proc_packet, server_packet);
+      if ((error= pthread_mutex_unlock(&con->thread->lock)) != 0)
+      {
+        gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
+      }
     }
-  }
-  else
-  {
-    gearmand_fatal("pthread_mutex_lock()");
+    else
+    {
+      gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_lock");
+    }
   }
 
   return server_packet;
@@ -319,8 +321,7 @@ inline static gearmand_error_t packet_create_arg(gearmand_packet_st *packet,
       char *new_args= (char *)realloc(packet->args, packet->args_size + arg_size);
       if (new_args == NULL)
       {
-        gearmand_perror("realloc");
-        return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+        return gearmand_perror(errno, "realloc");
       }
       packet->args= new_args;
     }
@@ -341,7 +342,7 @@ inline static gearmand_error_t packet_create_arg(gearmand_packet_st *packet,
     offset= GEARMAN_PACKET_HEADER_SIZE;
   }
 
-  for (uint8_t x= 0; x < packet->argc; x++)
+  for (uint8_t x= 0; x < packet->argc; ++x)
   {
     packet->arg[x]= packet->args + offset;
     offset+= packet->arg_size[x];
@@ -357,21 +358,19 @@ inline static gearmand_error_t packet_create_arg(gearmand_packet_st *packet,
  */
 
 
-void gearmand_packet_init(gearmand_packet_st *packet, enum gearman_magic_t magic, gearman_command_t command)
+void gearmand_packet_st::reset(enum gearman_magic_t magic_, gearman_command_t command_)
 {
-  assert(packet);
+  options.complete= false;
+  options.free_data= false;
 
-  packet->options.complete= false;
-  packet->options.free_data= false;
+  magic= magic_;
+  command= command_;
+  argc= 0;
+  args_size= 0;
+  data_size= 0;
 
-  packet->magic= magic;
-  packet->command= command;
-  packet->argc= 0;
-  packet->args_size= 0;
-  packet->data_size= 0;
-
-  packet->args= NULL;
-  packet->data= NULL;
+  args= NULL;
+  data= NULL;
 }
 
 gearmand_error_t gearmand_packet_create(gearmand_packet_st *packet,

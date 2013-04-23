@@ -1,9 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  All rights reserved.
+ *  Data Differential's libhostle
+ *
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -36,31 +35,76 @@
  */
 
 #include "gear_config.h"
-#include "libgearman-server/common.h"
 
-#include <libgearman-server/gearmand.h>
-#include <libgearman-server/fifo.h>
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
 
-void gearmand_server_con_fifo_add(gearman_server_con_st *con,
-				  gearman_server_packet_st *server_packet)
+#include <libhostile/initialize.h>
+#include <libhostile/function.h>
+
+static int not_until= 500;
+
+static struct function_st __function;
+
+static pthread_once_t function_lookup_once = PTHREAD_ONCE_INIT;
+static void set_local(void)
 {
-  GEARMAN_FIFO_ADD(con->io_packet, server_packet,);
+  __function= set_function("connect", "HOSTILE_CONNECT");
 }
 
-void gearmand_server_con_fifo_free(gearman_server_con_st *con,
-				   gearman_server_packet_st *server_packet)
+void set_connect_close(bool arg, int frequency, int not_until_arg)
 {
-  GEARMAN_FIFO_DEL(con->io_packet, server_packet,);
+  if (arg)
+  {
+    __function.frequency= frequency;
+    not_until= not_until_arg;
+  }
+  else
+  {
+    __function.frequency= 0;
+    not_until= 0;
+  }
 }
 
-void gearmand_server_con_fifo_proc_add(gearman_server_con_st *con,
-				       gearman_server_packet_st *packet)
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
-  GEARMAN_FIFO_ADD(con->proc_packet, packet,);
-}
+  hostile_initialize();
 
-void gearmand_server_con_fifo_proc_free(gearman_server_con_st *con,
-					gearman_server_packet_st *packet)
-{
-  GEARMAN_FIFO_DEL(con->proc_packet, packet,);
+  (void) pthread_once(&function_lookup_once, set_local);
+
+  if (is_called() == false)
+  {
+    if (__function.frequency)
+    {
+      if (--not_until < 0 && rand() % __function.frequency)
+      {
+        if (rand() % 1)
+        {
+          shutdown(sockfd, SHUT_RDWR);
+          close(sockfd);
+          errno= ECONNABORTED;
+          return -1;
+        }
+        else
+        {
+          shutdown(sockfd, SHUT_RDWR);
+          close(sockfd);
+          errno= EMFILE;
+          return -1;
+        }
+      }
+    }
+  }
+
+  set_called();
+  int ret= __function.function.connect(sockfd, addr, addrlen);
+  reset_called();
+
+  return ret;
 }

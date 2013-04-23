@@ -42,6 +42,8 @@
 #include "libgearman-server/plugins/base.h"
 #include "libgearman-server/plugins/queue/sqlite/instance.hpp"
 
+#include <cerrno>
+
 namespace gearmand {
 namespace queue {
 
@@ -495,11 +497,14 @@ gearmand_error_t Instance::replay_loop(gearman_server_st *server)
 {
   gearmand_info("sqlite replay start");
 
-  gearmand_error_t gret;
+  gearmand_error_t gret= GEARMAN_UNKNOWN_STATE;
+  size_t row_count= 0;
   while (sqlite3_step(replay_sth) == SQLITE_ROW)
   {
     const char *unique, *function_name;
     size_t unique_size, function_name_size;
+
+    row_count++;
 
     if (sqlite3_column_type(replay_sth, 0) == SQLITE_TEXT)
     {
@@ -543,7 +548,7 @@ gearmand_error_t Instance::replay_loop(gearman_server_st *server)
     /* need to make a copy here ... gearman_server_job_free will free it later */
     if (data == NULL)
     {
-      return gearmand_perror("malloc");
+      return gearmand_perror(errno, "malloc");
     }
     memcpy(data, sqlite3_column_blob(replay_sth, 3), data_size);
     
@@ -586,6 +591,11 @@ gearmand_error_t Instance::replay_loop(gearman_server_st *server)
   {
     return gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, GEARMAN_QUEUE_ERROR,
                                "failed to reset REPLAY prep statement: %s", sqlite3_errmsg(_db));
+  }
+
+  if (row_count == 0)
+  {
+    return GEARMAN_SUCCESS;
   }
 
   return gret;

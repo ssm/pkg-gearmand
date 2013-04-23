@@ -1,3 +1,5 @@
+# vim:ft=automake
+#
 # Gearman server and library
 # Copyright (C) 2011-2012 DataDifferential LLC, http://datadifferential.com/
 # Copyright (C) 2008 Brian Aker, Eric Day
@@ -24,6 +26,7 @@ EXTRA_DIST=
 CLEANFILES=
 BUILT_SOURCES=
 TESTS=
+XFAIL_TESTS=
 .PHONY=
 dist_man_MANS=
 man_MANS=
@@ -53,7 +56,9 @@ include man/include.am
 
 include m4/include.am
 
+TESTS += $(bin_PROGRAMS)
 TESTS += $(check_PROGRAMS)
+XFAIL_TESTS += $(bin_PROGRAMS)
 
 EXTRA_DIST+= HACKING
 EXTRA_DIST+= scripts/README.solaris
@@ -61,12 +66,10 @@ EXTRA_DIST+= scripts/README.solaris
 test: check
 
 BUILT_SOURCES+= configmake.h
-noinst_HEADERS+= configmake.h
-configmake.h: ${top_srcdir}/Makefile.in
-	@echo "Making $@"
+CLEANFILES+= configmake.h configmake.h-t
+configmake.h: Makefile
 	@rm -f $@-t $@
 	@{ echo '/* DO NOT EDIT! GENERATED AUTOMATICALLY! */'; \
-	  echo '#define PREFIX "$(prefix)"'; \
 	  echo '#define SYSCONFDIR "$(sysconfdir)"'; \
 	  echo '#define GEARMAND_CONFIG "$(sysconfdir)/gearmand.conf"'; \
 	  echo '#define LOCALSTATEDIR "$(localstatedir)"'; \
@@ -95,6 +98,7 @@ maintainer-clean-local:
 	-rm build-aux/install-sh
 	-rm build-aux/ltmain.sh
 	-rm build-aux/missing
+	-rm build-aux/test-driver 
 	-rm gear_config.in
 	-rm config.log
 	-rm config.status
@@ -105,6 +109,7 @@ maintainer-clean-local:
 	-rm m4/ltversion.m4
 	-rm m4/lt~obsolete.m4
 	-rmdir build-aux
+	-rm -rf ${top_builddir}/html
 
 include rpm.am
 

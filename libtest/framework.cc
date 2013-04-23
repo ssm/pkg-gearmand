@@ -40,6 +40,7 @@
 #include <libtest/collection.h>
 #include <libtest/signal.h>
 
+#include <algorithm>
 #include <fnmatch.h>
 #include <iostream>
 
@@ -86,12 +87,8 @@ Framework::~Framework()
 
   delete _runner;
 
-  for (std::vector<Collection*>::iterator iter= _collection.begin();
-       iter != _collection.end();
-       ++iter)
-  {
-    delete *iter;
-  }
+  std::for_each(_collection.begin(), _collection.end(), DeleteFromVector());
+  _collection.clear();
 }
 
 bool Framework::match(const char* arg)
@@ -136,12 +133,12 @@ void Framework::exec()
         break;
       }
     }
-    catch (libtest::fatal& e)
+    catch (const libtest::fatal& e)
     {
       _failed++;
-      stream::cerr(e.file(), e.line(), e.func()) << e.mesg();
+      stream::cerr(e.file(), e.line(), e.func()) << e.what();
     }
-    catch (libtest::disconnected& e)
+    catch (const libtest::disconnected& e)
     {
       _failed++;
       Error << "Unhandled disconnection occurred:" << e.what();

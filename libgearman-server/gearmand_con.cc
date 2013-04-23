@@ -2,7 +2,8 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2008 Brian Aker, Eric Day
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -35,14 +36,99 @@
  *
  */
 
+/**
+ * @file
+ * @brief Gearmand Connection Definitions
+ */
+
 #include "gear_config.h"
-
 #include "libgearman-server/common.h"
-#include <libgearman-server/list.h>
-
+#include <libgearman-server/gearmand.h>
 #include <cstring>
-#include <memory>
+
+#include <cerrno>
 #include <cassert>
+
+/*
+ * Private declarations
+ */
+
+/**
+ * @addtogroup gearmand_con_private Private Gearmand Connection Functions
+ * @ingroup gearmand_con
+ * @{
+ */
+
+static gearmand_error_t _con_add(gearmand_thread_st *thread,
+                                 gearmand_con_st *dcon)
+{
+  gearmand_error_t ret= GEARMAN_SUCCESS;
+  dcon->server_con= gearman_server_con_add(&(thread->server_thread), dcon, &ret);
+
+  assert(dcon->server_con || ret != GEARMAN_SUCCESS);
+  assert(! dcon->server_con || ret == GEARMAN_SUCCESS);
+
+  if (dcon->server_con == NULL)
+  {
+    gearmand_sockfd_close(dcon->fd);
+
+    return ret;
+  }
+
+  if (dcon->add_fn)
+  {
+    ret= (*dcon->add_fn)(dcon->server_con);
+    if (gearmand_failed(ret))
+    {
+      gearman_server_con_free(dcon->server_con);
+
+      gearmand_sockfd_close(dcon->fd);
+
+      return ret;
+    }
+  }
+
+  GEARMAN_LIST__ADD(thread->dcon, dcon);
+
+  return GEARMAN_SUCCESS;
+}
+
+void _con_ready(int, short events, void *arg)
+{
+  gearmand_con_st *dcon= (gearmand_con_st *)(arg);
+  short revents= 0;
+
+  if (events & EV_READ)
+  {
+    revents|= POLLIN;
+  }
+  if (events & EV_WRITE)
+  {
+    revents|= POLLOUT;
+  }
+
+  gearmand_error_t ret= gearmand_io_set_revents(dcon->server_con, revents);
+  if (gearmand_failed(ret))
+  {
+    gearmand_gerror("gearmand_io_set_revents", ret);
+    gearmand_con_free(dcon);
+    return;
+  }
+
+  gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, 
+                     "%s:%s Ready     %6s %s",
+                     dcon->host, dcon->port,
+                     revents & POLLIN ? "POLLIN" : "",
+                     revents & POLLOUT ? "POLLOUT" : "");
+
+  gearmand_thread_run(dcon->thread);
+}
+
+/** @} */
+
+/*
+ * Public definitions
+ */
 
 /**
  * Generate hash key for job handles and unique IDs.
@@ -94,29 +180,27 @@ gearman_server_job_st *gearman_server_job_get_by_unique(gearman_server_st *serve
                                                         const size_t unique_length,
                                                         gearman_server_con_st *worker_con)
 {
-  (void)unique_length;
-  for (size_t x= 0; x < GEARMAND_JOB_HASH_SIZE; x++)
+  uint32_t key= _server_job_hash(unique, unique_length);
+  gearman_server_job_st *server_job;
+
+  for (server_job= server->unique_hash[key % server->hashtable_buckets];
+       server_job != NULL; server_job= server_job->unique_next)
   {
-    for (gearman_server_job_st *server_job= server->job_hash[x];
-         server_job != NULL;
-         server_job= server_job->next)
+    gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "COMPARE unique \"%s\"(%u) == \"%s\"(%u)",
+                       bool(server_job->unique[0]) ? server_job->unique :  "<null>", uint32_t(strlen(server_job->unique)),
+                       unique, uint32_t(unique_length));
+
+    if (bool(server_job->unique[0]) and
+        (strcmp(server_job->unique, unique) == 0))
     {
-      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "COMPARE unique \"%s\"(%u) == \"%s\"(%u)",
-                         bool(server_job->unique[0]) ? server_job->unique :  "<null>", uint32_t(strlen(server_job->unique)),
-                         unique, uint32_t(unique_length));
-
-      if (bool(server_job->unique[0]) and
-          (strcmp(server_job->unique, unique) == 0))
+      /* Check to make sure the worker asking for the job still owns the job. */
+      if (worker_con != NULL and
+          (server_job->worker == NULL or server_job->worker->con != worker_con))
       {
-        /* Check to make sure the worker asking for the job still owns the job. */
-        if (worker_con != NULL and
-            (server_job->worker == NULL or server_job->worker->con != worker_con))
-        {
-          return NULL;
-        }
-
-        return server_job;
+        return NULL;
       }
+
+      return server_job;
     }
   }
 
@@ -130,7 +214,7 @@ gearman_server_job_st *gearman_server_job_get(gearman_server_st *server,
 {
   uint32_t key= _server_job_hash(job_handle, job_handle_length);
 
-  for (gearman_server_job_st *server_job= server->job_hash[key % GEARMAND_JOB_HASH_SIZE];
+  for (gearman_server_job_st *server_job= server->job_hash[key % server->hashtable_buckets];
        server_job != NULL; server_job= server_job->next)
   {
     if (server_job->job_handle_key == key and
@@ -261,7 +345,7 @@ gearman_server_job_st *gearman_server_job_take(gearman_server_con_st *server_con
         server_job->function->job_count--;
 
         server_job->worker= server_worker;
-        GEARMAN_LIST_ADD(server_worker->job, server_job, worker_)
+        GEARMAN_LIST_ADD(server_worker->job, server_job, worker_);
         server_job->function->job_running++;
 
         if (server_job->ignore_job)
@@ -282,13 +366,14 @@ void *_proc(void *data)
 {
   gearman_server_st *server= (gearman_server_st *)data;
 
-  gearmand_initialize_thread_logging("[  proc ]");
+  (void)gearmand_initialize_thread_logging("[  proc ]");
 
   while (1)
   {
-    if (pthread_mutex_lock(&(server->proc_lock)) == -1)
+    int pthread_error;
+    if ((pthread_error= pthread_mutex_lock(&(server->proc_lock))))
     {
-      gearmand_fatal("pthread_mutex_lock()");
+      gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, pthread_error, "pthread_mutex_lock");
       return NULL;
     }
 
@@ -296,10 +381,9 @@ void *_proc(void *data)
     {
       if (server->proc_shutdown)
       {
-        if (pthread_mutex_unlock(&(server->proc_lock)) == -1)
+        if ((pthread_error= pthread_mutex_unlock(&(server->proc_lock))))
         {
-          gearmand_fatal("pthread_mutex_unlock()");
-          assert(!"pthread_mutex_lock");
+          gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, pthread_error, "pthread_mutex_unlock");
         }
         return NULL;
       }
@@ -307,9 +391,12 @@ void *_proc(void *data)
       (void) pthread_cond_wait(&(server->proc_cond), &(server->proc_lock));
     }
     server->proc_wakeup= false;
-    if (pthread_mutex_unlock(&(server->proc_lock)) == -1)
+
     {
-      gearmand_fatal("pthread_mutex_unlock()");
+      if ((pthread_error= pthread_mutex_unlock(&(server->proc_lock))))
+      {
+        gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, pthread_error, "pthread_mutex_unlock");
+      }
     }
 
     for (gearman_server_thread_st *thread= server->thread_list; thread != NULL; thread= thread->next)
@@ -364,7 +451,7 @@ gearman_server_job_st * gearman_server_job_create(gearman_server_st *server)
   if (server->free_job_count > 0)
   {
     server_job= server->free_job_list;
-    gearmand_server_free_job_list_free(server, server_job);
+    GEARMAN_LIST__DEL(server->free_job, server_job);
   }
   else
   {
@@ -401,4 +488,220 @@ gearman_server_job_st * gearman_server_job_create(gearman_server_st *server)
   server_job->unique_length= 0;
 
   return server_job;
+}
+
+gearmand_error_t gearmand_con_create(gearmand_st *gearmand, int fd,
+                                     const char *host, const char *port,
+                                     gearmand_connection_add_fn *add_fn)
+{
+  gearmand_con_st *dcon;
+
+  if (gearmand->free_dcon_count > 0)
+  {
+    dcon= gearmand->free_dcon_list;
+    GEARMAN_LIST__DEL(gearmand->free_dcon, dcon);
+  }
+  else
+  {
+    dcon= new (std::nothrow) gearmand_con_st;
+    if (dcon == NULL)
+    {
+      gearmand_perror(errno, "new build_gearmand_con_st");
+      gearmand_sockfd_close(fd);
+
+      return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+    }
+
+    memset(&dcon->event, 0, sizeof(struct event));
+  }
+
+  dcon->last_events= 0;
+  dcon->fd= fd;
+  dcon->next= NULL;
+  dcon->prev= NULL;
+  dcon->server_con= NULL;
+  dcon->add_fn= NULL;
+  strncpy(dcon->host, host, NI_MAXHOST);
+  dcon->host[NI_MAXHOST -1]= 0;
+  strncpy(dcon->port, port, NI_MAXSERV);
+  dcon->port[NI_MAXSERV -1]= 0;
+  dcon->add_fn= add_fn;
+
+  /* If we are not threaded, just add the connection now. */
+  if (gearmand->threads == 0)
+  {
+    dcon->thread= gearmand->thread_list;
+    return _con_add(gearmand->thread_list, dcon);
+  }
+
+  /* We do a simple round-robin connection queue algorithm here. */
+  if (gearmand->thread_add_next == NULL)
+  {
+    gearmand->thread_add_next= gearmand->thread_list;
+  }
+
+  dcon->thread= gearmand->thread_add_next;
+
+  /* We don't need to lock if the list is empty. */
+  if (dcon->thread->dcon_add_count == 0 &&
+      dcon->thread->free_dcon_count < gearmand->max_thread_free_dcon_count)
+  {
+    GEARMAN_LIST__ADD(dcon->thread->dcon_add, dcon);
+    gearmand_thread_wakeup(dcon->thread, GEARMAND_WAKEUP_CON);
+  }
+  else
+  {
+    uint32_t free_dcon_count;
+    gearmand_con_st *free_dcon_list= NULL;
+
+    int pthread_error;
+    if ((pthread_error= pthread_mutex_lock(&(dcon->thread->lock))) == 0)
+    {
+      GEARMAN_LIST__ADD(dcon->thread->dcon_add, dcon);
+
+      /* Take the free connection structures back to reuse. */
+      free_dcon_list= dcon->thread->free_dcon_list;
+      free_dcon_count= dcon->thread->free_dcon_count;
+      dcon->thread->free_dcon_list= NULL;
+      dcon->thread->free_dcon_count= 0;
+
+      if ((pthread_error= pthread_mutex_unlock(&(dcon->thread->lock))))
+      {
+        gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, pthread_error, "pthread_mutex_unlock");
+      }
+    }
+    else
+    {
+      gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, pthread_error, "pthread_mutex_lock");
+      gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN);
+    }
+
+    /* Only wakeup the thread if this is the first in the queue. We don't need
+       to lock around the count check, worst case it was already picked up and
+       we send an extra byte. */
+    if (dcon->thread->dcon_add_count == 1)
+    {
+      gearmand_thread_wakeup(dcon->thread, GEARMAND_WAKEUP_CON);
+    }
+
+    /* Put the free connection structures we grabbed on the main list. */
+    while (free_dcon_list != NULL)
+    {
+      dcon= free_dcon_list;
+      GEARMAN_LIST__DEL(free_dcon, dcon);
+      GEARMAN_LIST__ADD(gearmand->free_dcon, dcon);
+    }
+  }
+
+  gearmand->thread_add_next= gearmand->thread_add_next->next;
+
+  return GEARMAN_SUCCESS;
+}
+
+void gearmand_con_free(gearmand_con_st *dcon)
+{
+  if (event_initialized(&(dcon->event)))
+  {
+    if (event_del(&(dcon->event)) == -1)
+    {
+      gearmand_perror(errno, "event_del");
+    }
+    else
+    {
+      /* This gets around a libevent bug when both POLLIN and POLLOUT are set. */
+      event_set(&(dcon->event), dcon->fd, EV_READ, _con_ready, dcon);
+      event_base_set(dcon->thread->base, &(dcon->event));
+
+      if (event_add(&(dcon->event), NULL) == -1)
+      {
+        gearmand_perror(errno, "event_add");
+      }
+      else
+      {
+        if (event_del(&(dcon->event)) == -1)
+        {
+          gearmand_perror(errno, "event_del");
+        }
+      }
+    }
+  }
+
+  // @note server_con could be null if we failed to complete the initial
+  // connection.
+  if (dcon->server_con)
+  {
+    gearman_server_con_attempt_free(dcon->server_con);
+  }
+
+  GEARMAN_LIST__DEL(dcon->thread->dcon, dcon);
+
+  gearmand_sockfd_close(dcon->fd);
+
+  if (Gearmand()->free_dcon_count < GEARMAN_MAX_FREE_SERVER_CON)
+  {
+    if (Gearmand()->threads == 0)
+    {
+      GEARMAN_LIST__ADD(Gearmand()->free_dcon, dcon);
+    }
+    else
+    {
+      /* Lock here because the main thread may be emptying this. */
+      int error;
+      if ((error=  pthread_mutex_lock(&(dcon->thread->lock))) == 0)
+      {
+        GEARMAN_LIST__ADD(dcon->thread->free_dcon, dcon);
+        if ((error= pthread_mutex_unlock(&(dcon->thread->lock))))
+        {
+          gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
+        }
+      }
+      else
+      {
+        gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_lock");
+      }
+    }
+  }
+  else
+  {
+    delete dcon;
+  }
+}
+
+void gearmand_con_check_queue(gearmand_thread_st *thread)
+{
+  /* Dirty check is fine here, wakeup is always sent after add completes. */
+  if (thread->dcon_add_count == 0)
+  {
+    return;
+  }
+
+  /* We want to add new connections inside the lock because other threads may
+     walk the thread's dcon_list while holding the lock. */
+  while (thread->dcon_add_list != NULL)
+  {
+    int error;
+    if ((error= pthread_mutex_lock(&(thread->lock))) == 0)
+    {
+      gearmand_con_st *dcon= thread->dcon_add_list;
+      GEARMAN_LIST__DEL(thread->dcon_add, dcon);
+
+      if ((error= pthread_mutex_unlock(&(thread->lock))))
+      {
+        gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
+        gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN);
+      }
+
+      gearmand_error_t rc;
+      if ((rc= _con_add(thread, dcon)) != GEARMAN_SUCCESS)
+      {
+        gearmand_gerror("_con_add() has failed, please report any crashes that occur immediatly after this.", rc);
+        gearmand_con_free(dcon);
+      }
+    }
+    else
+    {
+      gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_lock");
+      gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN);
+    }
+  }
 }

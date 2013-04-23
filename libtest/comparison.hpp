@@ -57,9 +57,6 @@ LIBTEST_API
 bool gdb_is_caller(void);
 
 LIBTEST_API
-bool valgrind_is_caller(void);
-
-LIBTEST_API
 bool _in_valgrind(const char *file, int line, const char *func);
 
 LIBTEST_API
@@ -98,7 +95,7 @@ bool _compare_strcmp(const char *file, int line, const char *func, const T1_comp
 {
   if (__expected == NULL)
   {
-    fatal_message("Expected value was NULL, programmer error");
+    FATAL("Expected value was NULL, programmer error");
   }
 
   if (__actual == NULL)

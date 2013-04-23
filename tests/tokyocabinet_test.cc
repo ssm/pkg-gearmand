@@ -53,8 +53,10 @@ using namespace libtest;
 
 #include "tests/basic.h"
 #include "tests/context.h"
-#include "tests/client.h"
-#include "tests/worker.h"
+
+#include "libgearman/client.hpp"
+#include "libgearman/worker.hpp"
+using namespace org::gearmand;
 
 #include "tests/workers/v2/called.h"
 
@@ -71,7 +73,7 @@ static test_return_t gearmand_basic_option_test(void *)
     0 };
 
   unlink("var/tmp/gearman.tcb");
-  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  ASSERT_EQ(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
 
   return TEST_SUCCESS;
 }
@@ -88,7 +90,7 @@ static test_return_t collection_init(void *object)
   Context *test= (Context *)object;
   assert(test);
 
-  test_truth(test->initialize(2, argv));
+  test_truth(test->initialize(argv));
 
   return TEST_SUCCESS;
 }
@@ -110,20 +112,20 @@ static test_return_t lp_1054377_TEST(void *object)
   {
     in_port_t first_port= libtest::get_free_port();
 
-    test_true(server_startup(servers, "gearmand", first_port, 2, argv));
+    test_true(server_startup(servers, "gearmand", first_port, argv));
 
     {
-      Worker worker(first_port);
-      test_compare(gearman_worker_register(&worker, __func__, 0), GEARMAN_SUCCESS);
+      libgearman::Worker worker(first_port);
+      ASSERT_EQ(gearman_worker_register(&worker, __func__, 0), GEARMAN_SUCCESS);
     }
 
     {
-      Client client(first_port);
-      test_compare(gearman_client_echo(&client, test_literal_param("This is my echo test")), GEARMAN_SUCCESS);
+      libgearman::Client client(first_port);
+      ASSERT_EQ(gearman_client_echo(&client, test_literal_param("This is my echo test")), GEARMAN_SUCCESS);
       gearman_job_handle_t job_handle;
       for (int32_t x= 0; x < inserted_jobs; ++x)
       {
-        test_compare(gearman_client_do_background(&client,
+        ASSERT_EQ(gearman_client_do_background(&client,
                                                   __func__, // func
                                                   NULL, // unique
                                                   test_literal_param("foo"),
@@ -137,13 +139,13 @@ static test_return_t lp_1054377_TEST(void *object)
   {
     in_port_t first_port= libtest::get_free_port();
 
-    test_true(server_startup(servers, "gearmand", first_port, 2, argv));
+    test_true(server_startup(servers, "gearmand", first_port, argv));
 
     {
-      Worker worker(first_port);
+      libgearman::Worker worker(first_port);
       Called called;
       gearman_function_t counter_function= gearman_function_create(called_worker);
-      test_compare(gearman_worker_define_function(&worker,
+      ASSERT_EQ(gearman_worker_define_function(&worker,
                                                   test_literal_param(__func__),
                                                   counter_function,
                                                   3000, &called), GEARMAN_SUCCESS);
@@ -173,7 +175,7 @@ static test_return_t lp_1054377_TEST(void *object)
         }
       } while (ret == GEARMAN_TIMEOUT or ret == GEARMAN_SUCCESS);
 
-      test_compare(called.count(), inserted_jobs);
+      ASSERT_EQ(called.count(), inserted_jobs);
     }
   }
   unlink("var/tmp/gearman.tcb");
@@ -191,13 +193,10 @@ static test_return_t collection_cleanup(void *object)
 }
 
 
-static void *world_create(server_startup_st& servers, test_return_t& error)
+static void *world_create(server_startup_st& servers, test_return_t&)
 {
-  if (HAVE_TOKYOCABINET == 0)
-  {
-    error= TEST_SKIPPED;
-    return NULL;
-  }
+  SKIP_IF(HAVE_UUID_UUID_H != 1);
+  SKIP_IF(HAVE_TOKYOCABINET != 1);
 
   unlink("var/tmp/gearman.tcb");
   return new Context(libtest::default_port(), servers);
