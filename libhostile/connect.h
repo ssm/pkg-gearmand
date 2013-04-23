@@ -1,9 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  All rights reserved.
+ *  Data Differential's libhostle
+ *
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -35,21 +34,10 @@
  *
  */
 
-#include "gear_config.h"
-#include "libgearman-server/common.h"
+#pragma once
 
-#include <libgearman-server/gearmand.h>
-#include <libgearman-server/hash.h>
+#include <sys/types.h>          /* See NOTES */
+#include <sys/socket.h>
 
-void gearmand_hash_server_add(gearman_server_st *server,
-                              uint32_t key,
-                              gearman_server_job_st *server_job)
-{
-  GEARMAN_HASH_ADD(server->job, key, server_job,);
-}
+typedef int (connect_fn)(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
-void gearmand_hash_server_free(gearman_server_st *server,
-			       uint32_t key, gearman_server_job_st *server_job)
-{
-  GEARMAN_HASH_DEL(server->job, key, server_job,);
-}

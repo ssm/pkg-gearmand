@@ -1,9 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  All rights reserved.
+ *  Data Differential's libhostle
+ *
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -35,57 +34,39 @@
  *
  */
 
-#pragma once
+#ifdef HOSTILE
+# include <libhostile/hostile.h>
+#endif
 
-class Client {
-public:
-  Client()
+#include "gear_config.h"
+
+#include <libtest/lite.h>
+
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+int main(void)
+{
+#if defined(HAVE_PIPE2)
+  if (HAVE_PIPE2)
   {
-    _client= gearman_client_create(NULL);
-
-    if (_client == NULL)
+    if (valgrind_is_caller() == false)
     {
-      throw "gearman_client_create() failed";
+      ASSERT_TRUE(pipe2(NULL, 0) == -1);
+      ASSERT_TRUE(errno == EFAULT);
     }
+
+    int pipefd[2];
+    ASSERT_TRUE(pipe2(pipefd, 0) == 0);
+    ASSERT_TRUE(close(pipefd[0]) == 0);
+    ASSERT_TRUE(close(pipefd[1]) == 0);
+
+    return EXIT_SUCCESS;
   }
+#endif
 
-  Client(const gearman_client_st* arg)
-  {
-    _client= gearman_client_clone(NULL, arg);
-
-    if (_client == NULL)
-    {
-      throw "gearman_client_create() failed";
-    }
-  }
-
-  Client(in_port_t arg)
-  {
-    _client= gearman_client_create(NULL);
-
-    if (_client == NULL)
-    {
-      throw "gearman_client_create() failed";
-    }
-    gearman_client_add_server(_client, "localhost", arg);
-  }
-
-  gearman_client_st* operator&() const
-  { 
-    return _client;
-  }
-
-  gearman_client_st* operator->() const
-  { 
-    return _client;
-  }
-
-  ~Client()
-  {
-    gearman_client_free(_client);
-  }
-
-private:
-  gearman_client_st *_client;
-
-};
+  return EXIT_SKIP;
+}

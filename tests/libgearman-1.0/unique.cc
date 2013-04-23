@@ -47,7 +47,9 @@ using namespace libtest;
 
 #include <tests/start_worker.h>
 
-#include "tests/client.h"
+#include "libgearman/client.hpp"
+#include "libgearman/worker.hpp"
+using namespace org::gearmand;
 
 #include "tests/libgearman-1.0/client_test.h"
 #include "tests/workers/v1/unique.h"
@@ -80,7 +82,7 @@ test_return_t coalescence_TEST(void *object)
   gearman_client_st *client_one= (gearman_client_st *)object;
   test_true(client_one);
 
-  Client client_two(client_one);
+  libgearman::Client client_two(client_one);
 
   const char* unique_handle= "local_handle";
 
@@ -102,10 +104,10 @@ test_return_t coalescence_TEST(void *object)
                                                        unique_handle, // unique
                                                        NULL, 0, // workload
                                                        &ret);
-  test_compare(GEARMAN_SUCCESS, ret);
+  ASSERT_EQ(GEARMAN_SUCCESS, ret);
   test_truth(first_task);
   test_true(gearman_task_unique(first_task));
-  test_compare(strlen(unique_handle), strlen(gearman_task_unique(first_task)));
+  ASSERT_EQ(strlen(unique_handle), strlen(gearman_task_unique(first_task)));
  
   // Second task
   gearman_task_st *second_task= gearman_client_add_task(&client_two,
@@ -115,10 +117,10 @@ test_return_t coalescence_TEST(void *object)
                                                         unique_handle, // unique
                                                         NULL, 0, // workload
                                                         &ret);
-  test_compare(GEARMAN_SUCCESS, ret);
+  ASSERT_EQ(GEARMAN_SUCCESS, ret);
   test_truth(second_task);
   test_true(gearman_task_unique(second_task));
-  test_compare(strlen(unique_handle), strlen(gearman_task_unique(second_task)));
+  ASSERT_EQ(strlen(unique_handle), strlen(gearman_task_unique(second_task)));
   
   test_strcmp(gearman_task_unique(first_task), gearman_task_unique(second_task));
 
@@ -134,10 +136,10 @@ test_return_t coalescence_TEST(void *object)
   gearman_result_st* first_result= gearman_task_result(first_task);
   gearman_result_st* second_result= gearman_task_result(second_task);
 
-  test_compare(GEARMAN_SUCCESS, gearman_task_return(first_task));
-  test_compare(GEARMAN_SUCCESS, gearman_task_return(second_task));
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_task_return(first_task));
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_task_return(second_task));
 
-  test_compare(gearman_result_value(first_result), gearman_result_value(second_result));
+  ASSERT_EQ(gearman_result_value(first_result), gearman_result_value(second_result));
 
   gearman_task_free(first_task);
   gearman_task_free(second_task);
@@ -150,7 +152,7 @@ test_return_t coalescence_by_data_hash_TEST(void *object)
   gearman_client_st *client_one= (gearman_client_st *)object;
   test_true(client_one);
 
-  Client client_two(client_one);
+  libgearman::Client client_two(client_one);
 
   const char* unique_handle= "#";
 
@@ -172,10 +174,10 @@ test_return_t coalescence_by_data_hash_TEST(void *object)
                                                        unique_handle, // unique
                                                        test_literal_param(__func__), // workload
                                                        &ret);
-  test_compare(GEARMAN_SUCCESS, ret);
+  ASSERT_EQ(GEARMAN_SUCCESS, ret);
   test_truth(first_task);
   test_true(gearman_task_unique(first_task));
-  test_compare(strlen("2285535048"), strlen(gearman_task_unique(first_task)));
+  ASSERT_EQ(strlen("2285535048"), strlen(gearman_task_unique(first_task)));
  
   // Second task
   gearman_task_st *second_task= gearman_client_add_task(&client_two,
@@ -185,10 +187,10 @@ test_return_t coalescence_by_data_hash_TEST(void *object)
                                                         unique_handle, // unique
                                                         test_literal_param(__func__), // workload
                                                         &ret);
-  test_compare(GEARMAN_SUCCESS, ret);
+  ASSERT_EQ(GEARMAN_SUCCESS, ret);
   test_truth(second_task);
   test_true(gearman_task_unique(second_task));
-  test_compare(strlen("2285535048"), strlen(gearman_task_unique(second_task)));
+  ASSERT_EQ(strlen("2285535048"), strlen(gearman_task_unique(second_task)));
   
   test_strcmp(gearman_task_unique(first_task), gearman_task_unique(second_task));
   test_strcmp("2285535048", gearman_task_unique(second_task));
@@ -205,10 +207,10 @@ test_return_t coalescence_by_data_hash_TEST(void *object)
   gearman_result_st* first_result= gearman_task_result(first_task);
   gearman_result_st* second_result= gearman_task_result(second_task);
 
-  test_compare(GEARMAN_SUCCESS, gearman_task_return(first_task));
-  test_compare(GEARMAN_SUCCESS, gearman_task_return(second_task));
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_task_return(first_task));
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_task_return(second_task));
 
-  test_compare(gearman_result_value(first_result), gearman_result_value(second_result));
+  ASSERT_EQ(gearman_result_value(first_result), gearman_result_value(second_result));
 
   gearman_task_free(first_task);
   gearman_task_free(second_task);
@@ -221,7 +223,7 @@ test_return_t coalescence_by_data_TEST(void *object)
   gearman_client_st *client_one= (gearman_client_st *)object;
   test_true(client_one);
 
-  Client client_two(client_one);
+  libgearman::Client client_two(client_one);
 
   const char* unique_handle= "-";
 
@@ -243,10 +245,10 @@ test_return_t coalescence_by_data_TEST(void *object)
                                                        unique_handle, // unique
                                                        NULL, 0, // workload
                                                        &ret);
-  test_compare(GEARMAN_SUCCESS, ret);
+  ASSERT_EQ(GEARMAN_SUCCESS, ret);
   test_truth(first_task);
   test_true(gearman_task_unique(first_task));
-  test_compare(strlen(unique_handle), strlen(gearman_task_unique(first_task)));
+  ASSERT_EQ(strlen(unique_handle), strlen(gearman_task_unique(first_task)));
  
   // Second task
   gearman_task_st *second_task= gearman_client_add_task(&client_two,
@@ -256,10 +258,10 @@ test_return_t coalescence_by_data_TEST(void *object)
                                                         unique_handle, // unique
                                                         NULL, 0, // workload
                                                         &ret);
-  test_compare(GEARMAN_SUCCESS, ret);
+  ASSERT_EQ(GEARMAN_SUCCESS, ret);
   test_truth(second_task);
   test_true(gearman_task_unique(second_task));
-  test_compare(strlen(unique_handle), strlen(gearman_task_unique(second_task)));
+  ASSERT_EQ(strlen(unique_handle), strlen(gearman_task_unique(second_task)));
   
   test_strcmp(gearman_task_unique(first_task), gearman_task_unique(second_task));
 
@@ -275,10 +277,10 @@ test_return_t coalescence_by_data_TEST(void *object)
   gearman_result_st* first_result= gearman_task_result(first_task);
   gearman_result_st* second_result= gearman_task_result(second_task);
 
-  test_compare(GEARMAN_SUCCESS, gearman_task_return(first_task));
-  test_compare(GEARMAN_SUCCESS, gearman_task_return(second_task));
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_task_return(first_task));
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_task_return(second_task));
 
-  test_compare(gearman_result_value(first_result), gearman_result_value(second_result));
+  ASSERT_EQ(gearman_result_value(first_result), gearman_result_value(second_result));
 
   gearman_task_free(first_task);
   gearman_task_free(second_task);
@@ -291,7 +293,7 @@ test_return_t coalescence_by_data_FAIL_TEST(void *object)
   gearman_client_st *client_one= (gearman_client_st *)object;
   test_true(client_one);
 
-  Client client_two(client_one);
+  libgearman::Client client_two(client_one);
 
   const char* unique_handle= "-";
 
@@ -313,10 +315,10 @@ test_return_t coalescence_by_data_FAIL_TEST(void *object)
                                                        unique_handle, // unique
                                                        NULL, 0, // workload
                                                        &ret);
-  test_compare(GEARMAN_SUCCESS, ret);
+  ASSERT_EQ(GEARMAN_SUCCESS, ret);
   test_truth(first_task);
   test_true(gearman_task_unique(first_task));
-  test_compare(strlen(unique_handle), strlen(gearman_task_unique(first_task)));
+  ASSERT_EQ(strlen(unique_handle), strlen(gearman_task_unique(first_task)));
  
   // Second task
   gearman_task_st *second_task= gearman_client_add_task(&client_two,
@@ -326,10 +328,10 @@ test_return_t coalescence_by_data_FAIL_TEST(void *object)
                                                         unique_handle, // unique
                                                         test_literal_param("mine"), // workload
                                                         &ret);
-  test_compare(GEARMAN_SUCCESS, ret);
+  ASSERT_EQ(GEARMAN_SUCCESS, ret);
   test_truth(second_task);
   test_true(gearman_task_unique(second_task));
-  test_compare(strlen(unique_handle), strlen(gearman_task_unique(second_task)));
+  ASSERT_EQ(strlen(unique_handle), strlen(gearman_task_unique(second_task)));
   
   test_strcmp(gearman_task_unique(first_task), gearman_task_unique(second_task));
 
@@ -345,10 +347,10 @@ test_return_t coalescence_by_data_FAIL_TEST(void *object)
   gearman_result_st* first_result= gearman_task_result(first_task);
   gearman_result_st* second_result= gearman_task_result(second_task);
 
-  test_compare(GEARMAN_SUCCESS, gearman_task_return(first_task));
-  test_compare(GEARMAN_SUCCESS, gearman_task_return(second_task));
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_task_return(first_task));
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_task_return(second_task));
 
-  test_compare(gearman_result_value(first_result), gearman_result_value(second_result));
+  ASSERT_EQ(gearman_result_value(first_result), gearman_result_value(second_result));
 
   gearman_task_free(first_task);
   gearman_task_free(second_task);
@@ -372,8 +374,8 @@ test_return_t unique_compare_test(void *object)
                                       &job_length, // result size
                                       &rc);
 
-  test_compare(rc, GEARMAN_SUCCESS);
-  test_compare(gearman_size(unique), job_length);
+  ASSERT_EQ(rc, GEARMAN_SUCCESS);
+  ASSERT_EQ(gearman_size(unique), job_length);
   test_memcmp(gearman_c_str(unique), job_result, job_length);
 
   free(job_result);
@@ -385,11 +387,11 @@ test_return_t gearman_client_unique_status_TEST(void *object)
 {
   gearman_client_st *original_client= (gearman_client_st *)object;
 
-  Client status_client(original_client);
+  libgearman::Client status_client(original_client);
 
-  Client client_one(original_client);
-  Client client_two(original_client);
-  Client client_three(original_client);
+  libgearman::Client client_one(original_client);
+  libgearman::Client client_two(original_client);
+  libgearman::Client client_three(original_client);
 
   const char* unique_handle= "local_handle4";
 
@@ -423,12 +425,12 @@ test_return_t gearman_client_unique_status_TEST(void *object)
   test_true(third_task);
 
   {
-    test_compare(gearman_client_run_tasks(&client_one), GEARMAN_SUCCESS);
-    test_compare(gearman_client_run_tasks(&client_two), GEARMAN_SUCCESS);
-    test_compare(gearman_client_run_tasks(&client_three), GEARMAN_SUCCESS);
+    ASSERT_EQ(gearman_client_run_tasks(&client_one), GEARMAN_SUCCESS);
+    ASSERT_EQ(gearman_client_run_tasks(&client_two), GEARMAN_SUCCESS);
+    ASSERT_EQ(gearman_client_run_tasks(&client_three), GEARMAN_SUCCESS);
   }
 
-  test_compare(gearman_client_job_status(&status_client,
+  ASSERT_EQ(gearman_client_job_status(&status_client,
                                          gearman_task_job_handle(third_task), // job handle
                                          NULL, // is_known
                                          NULL, // is_running
@@ -437,18 +439,18 @@ test_return_t gearman_client_unique_status_TEST(void *object)
                                          ), GEARMAN_JOB_EXISTS);
 
   {
-    Client unique_client(original_client);
+    libgearman::Client unique_client(original_client);
     gearman_status_t status= gearman_client_unique_status(&unique_client,
                                                           unique_handle, strlen(unique_handle));
-    test_compare(GEARMAN_SUCCESS, gearman_status_return(status));
+    ASSERT_EQ(GEARMAN_SUCCESS, gearman_status_return(status));
   }
 
   {
     gearman_status_t status= gearman_client_unique_status(&client_one,
                                                           unique_handle, strlen(unique_handle));
-    test_compare(GEARMAN_SUCCESS, gearman_status_return(status));
-    test_compare(true, gearman_status_is_known(status));
-    test_compare(false, gearman_status_is_running(status));
+    ASSERT_EQ(GEARMAN_SUCCESS, gearman_status_return(status));
+    ASSERT_EQ(true, gearman_status_is_known(status));
+    ASSERT_EQ(false, gearman_status_is_running(status));
     test_zero(gearman_status_numerator(status));
     test_zero(gearman_status_denominator(status));
   }
@@ -459,9 +461,9 @@ test_return_t gearman_client_unique_status_TEST(void *object)
                                                            func, NULL, gearman_worker_options_t()));
 
   {
-    test_compare(gearman_client_run_tasks(&client_one), GEARMAN_SUCCESS);
-    test_compare(gearman_client_run_tasks(&client_two), GEARMAN_SUCCESS);
-    test_compare(gearman_client_run_tasks(&client_three), GEARMAN_SUCCESS);
+    ASSERT_EQ(gearman_client_run_tasks(&client_one), GEARMAN_SUCCESS);
+    ASSERT_EQ(gearman_client_run_tasks(&client_two), GEARMAN_SUCCESS);
+    ASSERT_EQ(gearman_client_run_tasks(&client_three), GEARMAN_SUCCESS);
   }
 
   gearman_task_free(first_task);
@@ -475,7 +477,7 @@ test_return_t gearman_client_unique_status_NOT_FOUND_TEST(void *object)
 {
   gearman_client_st *original_client= (gearman_client_st *)object;
 
-  Client status_client(original_client);
+  libgearman::Client status_client(original_client);
   const char* unique_handle= YATL_UNIQUE;
 
   gearman_function_t func= gearman_function_create_v2(echo_or_react_worker_v2);
@@ -487,9 +489,9 @@ test_return_t gearman_client_unique_status_NOT_FOUND_TEST(void *object)
   {
     gearman_status_t status= gearman_client_unique_status(&status_client,
                                                           unique_handle, strlen(unique_handle));
-    test_compare(GEARMAN_SUCCESS, gearman_status_return(status));
-    test_compare(false, gearman_status_is_known(status));
-    test_compare(false, gearman_status_is_running(status));
+    ASSERT_EQ(GEARMAN_SUCCESS, gearman_status_return(status));
+    ASSERT_EQ(false, gearman_status_is_known(status));
+    ASSERT_EQ(false, gearman_status_is_running(status));
     test_zero(gearman_status_numerator(status));
     test_zero(gearman_status_denominator(status));
   }

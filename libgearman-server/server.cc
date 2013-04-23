@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  Copyright (C) 2008 Brian Aker, Eric Day
  *  All rights reserved.
  *
@@ -521,7 +521,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       long timeout= strtol((char *)packet->arg[1], &endptr, 10);
       if (timeout == LONG_MIN or timeout == LONG_MAX)
       {
-        return gearmand_log_perror(GEARMAN_DEFAULT_LOG_PARAM, "GEARMAN_COMMAND_CAN_DO_TIMEOUT:strtol");
+        return gearmand_log_perror(GEARMAN_DEFAULT_LOG_PARAM, errno, "GEARMAN_COMMAND_CAN_DO_TIMEOUT:strtol");
       }
 
       gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Registering function: %.*s with timeout %dl",
@@ -932,6 +932,7 @@ gearmand_error_t gearman_server_queue_replay(gearman_server_st& server)
   server.state.queue_startup= true;
 
   gearmand_error_t ret= gearman_queue_replay(server);
+  assert(ret != GEARMAN_UNKNOWN_STATE);
 
   server.state.queue_startup= false;
 
@@ -960,14 +961,14 @@ gearmand_error_t Context::replay_add(gearman_server_st *server,
                                      int64_t when)
 {
   assert(server->state.queue_startup == true);
-  gearmand_error_t ret= GEARMAN_SUCCESS;
+  gearmand_error_t ret= GEARMAN_UNKNOWN_STATE;
 
   (void)gearman_server_job_add(server,
                                function_name, function_name_size,
                                unique, unique_size,
                                data, data_size, priority, NULL, &ret, when);
 
-  if (ret != GEARMAN_SUCCESS)
+  if (gearmand_failed(ret))
   {
     gearmand_gerror("gearman_server_job_add", ret);
   }
@@ -1014,7 +1015,7 @@ _server_queue_work_data(gearman_server_job_st *server_job,
     uint8_t *data;
     if (packet->data_size > 0)
     {
-      if (packet->options.free_data &&
+      if (packet->options.free_data and
           server_client->job_next == NULL)
       {
         data= (uint8_t *)(packet->data);
@@ -1025,8 +1026,7 @@ _server_queue_work_data(gearman_server_job_st *server_job,
         data= (uint8_t *)malloc(packet->data_size);
         if (data == NULL)
         {
-          gearmand_perror("malloc");
-          return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+          return gearmand_perror(errno, "malloc");
         }
 
         memcpy(data, packet->data, packet->data_size);

@@ -1,10 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  Gearmand client and server library.
  *
- *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
- *  Copyright (C) 2008 Brian Aker, Eric Day
- *  All rights reserved.
+ *  Data Differential YATL (i.e. libtest)  library
+ *
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -36,30 +34,25 @@
  *
  */
 
-#pragma once 
+#pragma once
 
-struct gearmand_io_st;
+namespace libtest {
 
-#include <libgearman-server/struct/connection_list.h>
+class fatal : public __test_result
+{
+public:
+  fatal(const char *file, int line, const char *func, ...);
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+  fatal(const fatal&);
 
-typedef struct gearmand_connection_list_st gearmand_connection_list_st;
+  // The following are just for unittesting the exception class
+  static bool is_disabled() throw();
+  static void disable() throw();
+  static void enable() throw();
+  static uint32_t disabled_counter() throw();
+  static void increment_disabled_counter() throw();
 
-GEARMAN_INTERNAL_API
-void gearmand_connection_list_init(gearmand_connection_list_st *source, gearmand_event_watch_fn *watch_fn, void *watch_context);
+private:
+};
 
-GEARMAN_INTERNAL_API
-void gearman_connection_list_free(gearmand_connection_list_st *gearman);
-
-/*
-  Get next connection that is ready for I/O.
-*/
-GEARMAN_INTERNAL_API
-gearman_server_con_st *gearmand_ready(gearmand_connection_list_st *gearman);
-
-#ifdef __cplusplus
-}
-#endif
+} // namespace libtest

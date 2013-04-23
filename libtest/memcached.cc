@@ -188,13 +188,13 @@ public:
     return true;
   }
 
-  bool build(size_t argc, const char *argv[]);
+  bool build();
 };
 
 
 #include <sstream>
 
-bool Memcached::build(size_t argc, const char *argv[])
+bool Memcached::build()
 {
   if (getuid() == 0 or geteuid() == 0)
   {
@@ -202,7 +202,8 @@ bool Memcached::build(size_t argc, const char *argv[])
   }
 
   add_option("-l", "localhost");
-#ifndef TARGET_OS_OSX
+#ifdef __APPLE__
+#else
   add_option("-m", "128");
   add_option("-M");
 #endif
@@ -212,33 +213,27 @@ bool Memcached::build(size_t argc, const char *argv[])
     add_option(sasl());
   }
 
-  for (size_t x= 0 ; x < argc ; x++)
-  {
-    add_option(argv[x]);
-  }
-
   return true;
 }
 
 libtest::Server *build_memcached(const std::string& hostname, const in_port_t try_port)
 {
-  return new Memcached(hostname, try_port, false);
+  if (HAVE_MEMCACHED_BINARY)
+  {
+    return new Memcached(hostname, try_port, false);
+  }
+
+  return NULL;
 }
 
 libtest::Server *build_memcached_socket(const std::string& socket_file, const in_port_t try_port)
 {
-  return new Memcached(socket_file, try_port, true);
-}
-
-libtest::Server *build_memcached_sasl(const std::string& hostname, const in_port_t try_port, const std::string& username, const std::string &password)
-{
-  if (username.empty())
+  if (HAVE_MEMCACHED_BINARY)
   {
-    return new Memcached(hostname, try_port, false,  "memcached", "memcached");
+    return new Memcached(socket_file, try_port, true);
   }
 
-  return new Memcached(hostname, try_port, false,  username, password);
+  return NULL;
 }
 
 } // namespace libtest
-

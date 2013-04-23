@@ -20,8 +20,10 @@ using namespace libtest;
 
 #include <libgearman/gearman.h>
 
-#include "tests/client.h"
-#include "tests/worker.h"
+#include "libgearman/client.hpp"
+#include "libgearman/worker.hpp"
+using namespace org::gearmand;
+
 #include "tests/start_worker.h"
 
 struct Context
@@ -91,7 +93,7 @@ static test_return_t queue_add(void *object)
   Context *context= (Context *)object;
   test_truth(context);
 
-  Client client(context->port());
+  libgearman::Client client(context->port());
   char job_handle[GEARMAN_JOB_HANDLE_SIZE];
 
   uint8_t *value= (uint8_t *)malloc(1);
@@ -105,7 +107,7 @@ static test_return_t queue_add(void *object)
   /* queue2 = 0,2,4,6,8 */
   for (uint32_t x= 0; x < 10; x++)
   {
-    test_compare(GEARMAN_SUCCESS,
+    ASSERT_EQ(GEARMAN_SUCCESS,
                  gearman_client_do_background(&client, (x % 2) ? "queue1" : "queue2", NULL,
                                               value, value_length,
                                               job_handle));
@@ -124,7 +126,7 @@ static test_return_t queue_worker(void *object)
   Context *context= (Context *)object;
   test_truth(context);
 
-  Worker worker(context->port());
+  libgearman::Worker worker(context->port());
 
   char buffer[11];
   memset(buffer, 0, sizeof(buffer));
@@ -133,19 +135,19 @@ static test_return_t queue_worker(void *object)
 
   gearman_function_t append_function_FN= gearman_function_create(append_function_WORKER);
 
-  test_compare(GEARMAN_SUCCESS, gearman_worker_define_function(&worker,
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_worker_define_function(&worker,
                                                                test_literal_param("queue1"),
                                                                append_function_FN,
                                                                0, buffer));
 
-  test_compare(GEARMAN_SUCCESS, gearman_worker_define_function(&worker,
+  ASSERT_EQ(GEARMAN_SUCCESS, gearman_worker_define_function(&worker,
                                                                test_literal_param("queue2"),
                                                                append_function_FN,
                                                                0, buffer));
 
   for (uint32_t x= 0; x < 10; x++)
   {
-    test_compare(GEARMAN_SUCCESS, gearman_worker_work(&worker));
+    ASSERT_EQ(GEARMAN_SUCCESS, gearman_worker_work(&worker));
   }
 
   // expect buffer to be reassembled in a predictable round robin order
@@ -236,7 +238,7 @@ static test_return_t _job_retry_TEST(Context *context, Limit& limit)
                                                            &limit,
                                                            gearman_worker_options_t(),
                                                            0)); // timeout
-  Client client(context->port());
+  libgearman::Client client(context->port());
 
   gearman_return_t rc;
   test_null(gearman_client_do(&client,
@@ -245,8 +247,8 @@ static test_return_t _job_retry_TEST(Context *context, Limit& limit)
                               NULL, 0, // workload
                               NULL, // result size
                               &rc));
-  test_compare(uint32_t(limit.expected()), uint32_t(limit.count()));
-  test_compare(limit.response(), rc);
+  ASSERT_EQ(uint32_t(limit.expected()), uint32_t(limit.count()));
+  ASSERT_EQ(limit.response(), rc);
 
   return TEST_SUCCESS;
 }
@@ -272,7 +274,7 @@ static test_return_t job_retry_limit_GEARMAN_SUCCESS_TEST(void *object)
   for (uint32_t x= 1; x < context->retries(); x++)
   {
     Limit limit(uint32_t(x -1), true);
-    test_compare(TEST_SUCCESS, _job_retry_TEST(context, limit));
+    ASSERT_EQ(TEST_SUCCESS, _job_retry_TEST(context, limit));
   }
 
   return TEST_SUCCESS;
@@ -291,8 +293,8 @@ static test_return_t round_robin_SETUP(void *object)
 {
   Context *context= (Context *)object;
 
-  const char *argv[]= { "--round-robin", 0};
-  if (server_startup(context->servers, "gearmand", context->port(), 1, argv))
+  const char *argv[]= { "--round-robin", 0 };
+  if (server_startup(context->servers, "gearmand", context->port(), argv))
   {
     return TEST_SUCCESS;
   }
@@ -305,7 +307,7 @@ static test_return_t _job_retries_SETUP(Context *context)
   char buffer[1024];
   snprintf(buffer, sizeof(buffer), "--job-retries=%u", uint32_t(context->retries()));
   const char *argv[]= { buffer, 0};
-  if (server_startup(context->servers, "gearmand", context->port(), 1, argv))
+  if (server_startup(context->servers, "gearmand", context->port(), argv))
   {
     return TEST_SUCCESS;
   }

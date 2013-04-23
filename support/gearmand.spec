@@ -1,6 +1,6 @@
 Summary: Gearman Server and C Library
 Name: gearmand
-Version: 1.0.2
+Version: 1.0.5
 Release: 1
 License: BSD
 Group: System Environment/Libraries
@@ -100,7 +100,7 @@ fi
 %{_bindir}/gearman
 %{_libdir}/libgearman.la
 %{_libdir}/libgearman.so.7
-%{_libdir}/libgearman.so.7.0.0
+%{_libdir}/libgearman.so.7.0.1
 %{_mandir}/man1/gearadmin.1.gz
 %{_mandir}/man1/gearman.1.gz
 

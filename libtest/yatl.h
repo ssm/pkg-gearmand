@@ -1,9 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  All rights reserved.
+ *  Data Differential YATL (i.e. libtest)  library
+ *
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -37,29 +36,8 @@
 
 #pragma once
 
-class Client
-{
-public:
-  Client() :
-    _client()
-  {
-    if (gearman_client_create(&_client) == NULL)
-    {
-      std::cerr << "Failed memory allocation while initializing client." << std::endl;
-      abort();
-    }
-  }
+#ifndef YATL_FULL
+# define YATL_FULL 1
+#endif
 
-  ~Client()
-  {
-    gearman_client_free(&_client);
-  }
-
-  gearman_client_st &client()
-  {
-    return _client;
-  }
-
-private:
-  gearman_client_st _client;
-};
+#include <libtest/test.hpp>

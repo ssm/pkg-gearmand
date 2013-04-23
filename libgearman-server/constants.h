@@ -69,7 +69,7 @@
 #define GEARMAN_DEFAULT_SOCKET_SEND_SIZE 32768
 #define GEARMAN_DEFAULT_SOCKET_TIMEOUT 10
 #define GEARMAND_JOB_HANDLE_SIZE 64
-#define GEARMAND_JOB_HASH_SIZE 383
+#define GEARMAND_DEFAULT_HASH_SIZE 991
 #define GEARMAN_MAX_COMMAND_ARGS 8
 #define GEARMAN_MAX_FREE_SERVER_CLIENT 1000
 #define GEARMAN_MAX_FREE_SERVER_CON 1000
@@ -83,6 +83,7 @@
 #define GEARMAN_SEND_BUFFER_SIZE 8192
 #define GEARMAN_SERVER_CON_ID_SIZE 128
 #define GEARMAN_TEXT_RESPONSE_SIZE 8192
+#define GEARMAN_MAGIC_MEMORY (void*)(0x000001)
 
 /** @} */
 
@@ -90,7 +91,6 @@
 
 typedef enum
 {
-  GEARMAND_CON_READY,
   GEARMAND_CON_PACKET_IN_USE,
   GEARMAND_CON_EXTERNAL_FD,
   GEARMAND_CON_CLOSE_AFTER_FLUSH,
@@ -104,22 +104,6 @@ struct gearman_server_thread_st;
 struct gearman_server_st;
 struct gearman_server_con_st;
 struct gearmand_io_st;
-
-#else /* Types. */
-
-typedef struct gearman_server_client_st gearman_server_client_st;
-typedef struct gearman_server_con_st gearman_server_con_st;
-typedef struct gearman_server_function_st gearman_server_function_st;
-typedef struct gearman_server_job_st gearman_server_job_st;
-typedef struct gearman_server_packet_st gearman_server_packet_st;
-typedef struct gearman_server_st gearman_server_st;
-typedef struct gearman_server_thread_st gearman_server_thread_st;
-typedef struct gearman_server_worker_st gearman_server_worker_st;
-typedef struct gearmand_con_st gearmand_con_st;
-typedef struct gearmand_io_st gearmand_io_st;
-typedef struct gearmand_port_st gearmand_port_st;
-typedef struct gearmand_st gearmand_st;
-typedef struct gearmand_thread_st gearmand_thread_st;
 
 #endif
 
@@ -163,8 +147,6 @@ typedef void (gearman_log_server_fn)(const char *line, gearmand_verbose_t verbos
 
 typedef gearmand_error_t (gearmand_event_watch_fn)(gearmand_io_st *con,
                                                    short events, void *context);
-
-typedef struct gearmand_packet_st gearmand_packet_st;
 
 typedef void (gearmand_connection_protocol_context_free_fn)(gearman_server_con_st *con,
                                                             void *context);

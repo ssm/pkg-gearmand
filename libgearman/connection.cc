@@ -139,9 +139,6 @@ gearman_connection_st::gearman_connection_st(gearman_universal_st &universal_arg
   send_buffer_ptr(NULL),
   _recv_packet(NULL)
 {
-  options.ready= false;
-  options.packet_in_use= false;
-
   if (options_args)
   {
     while (*options_args != GEARMAN_CON_MAX)
@@ -264,10 +261,25 @@ void gearman_connection_st::set_host(const char *host_arg, const in_port_t port_
 {
   reset_addrinfo();
 
-  strncpy(host, host_arg == NULL ? GEARMAN_DEFAULT_TCP_HOST : host_arg, GEARMAN_NI_MAXHOST);
+  if (host_arg == NULL)
+  {
+    strncpy(host, GEARMAN_DEFAULT_TCP_HOST, GEARMAN_NI_MAXHOST);
+  }
+  else
+  {
+    strncpy(host, host_arg, GEARMAN_NI_MAXHOST);
+  }
+
   host[GEARMAN_NI_MAXHOST - 1]= 0;
 
-  port= in_port_t(port_arg == 0 ? GEARMAN_DEFAULT_TCP_PORT : port_arg);
+  if (port_arg == 0)
+  {
+    port= GEARMAN_DEFAULT_TCP_PORT;
+  }
+  else
+  {
+    port= port_arg;
+  }
 }
 
 /*
@@ -305,6 +317,16 @@ void gearman_connection_st::close_socket()
 
   recv_buffer_ptr= recv_buffer;
   recv_buffer_size= 0;
+
+  options.server_options_sent= false;
+
+  // created_id_next is incremented for every outbound packet (except status).
+  // created_id is incremented for every response packet received, and also when
+  // no packets are received due to an error. There are lots of such error paths
+  // and it seems simpler to just reset these both to zero when a connection is
+  // 'closed'.
+  created_id= 0;
+  created_id_next= 0;
 }
 
 void gearman_connection_st::free_recv_packet()
@@ -327,7 +349,83 @@ void gearman_connection_st::reset_addrinfo()
   addrinfo_next= NULL;
 }
 
+
+/*
+ * The send_packet() method does not only send the passed-in packet_arg. If there are any server options
+ * established, and they haven't yet been sent over, then these options are sent over first.
+ * Only if that succeeds is the packet_arg sent.
+ * The reason for this is server options are only set once by the client/worker. In the older code, this
+ * resulted in them being sent over exactly once. If the connection was dropped and rebuilt, then the options
+ * were not sent over again, rendering them moot. This way, we're guaranteed that the options are always sent
+ * at least once to a connected server.
+ */
 gearman_return_t gearman_connection_st::send_packet(const gearman_packet_st& packet_arg, const bool flush_buffer)
+{
+  if (options.server_options_sent == false)
+  {
+    for (gearman_server_options_st* head= universal.server_options_list;
+         head;
+         head= head->next)
+    {
+      gearman_packet_st message;
+      const void *args[]= { head->_option };
+      size_t args_size[]= { head->_option_length };
+      gearman_return_t ret= gearman_packet_create_args(universal, message, GEARMAN_MAGIC_REQUEST,
+                                                       GEARMAN_COMMAND_OPTION_REQ, args, args_size, 1);
+
+      if (gearman_failed(ret))
+      {
+        gearman_packet_free(&message);
+        gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "gearman_packet_create_args()");
+        return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+      }
+
+      PUSH_BLOCKING(universal);
+      OptionCheck check(universal);
+      ret= _send_packet(message, true);
+      if (gearman_failed(ret))
+      {
+        gearman_packet_free(&message);
+        gearman_error(universal, ret, "Failed to send server-options packet");
+        return ret;
+      }
+
+      options.packet_in_use= true;
+      gearman_packet_st *packet_ptr= receiving(_packet, ret, true);
+      if (packet_ptr == NULL)
+      {
+        gearman_packet_free(&message);
+        options.packet_in_use= false;
+        gearman_error(universal, ret, "Failed in receiving()");
+        return ret;
+      }
+
+      if (gearman_failed(ret) ||
+          gearman_failed(ret= check.success(this)))
+      {
+        gearman_packet_free(&message);
+        free_private_packet();
+        reset_recv_packet();
+        gearman_error(universal, ret, "receiving()");
+        return ret;
+      }
+
+      free_private_packet();
+      reset_recv_packet();
+      gearman_packet_free(&message);
+    }
+
+    options.server_options_sent= true;
+  }
+
+  return _send_packet(packet_arg, flush_buffer);
+}
+
+/*
+ * This is the real implementation that actually sends a packet. Read the comments for send_packet() for why
+ * that is. Note that this is a private method. External callers should only call send_packet().
+ */
+gearman_return_t gearman_connection_st::_send_packet(const gearman_packet_st& packet_arg, const bool flush_buffer)
 {
   switch (send_state)
   {
@@ -497,6 +595,7 @@ gearman_return_t gearman_connection_st::lookup()
   ai.ai_socktype= SOCK_STREAM;
   ai.ai_protocol= IPPROTO_TCP;
 
+  assert_msg(_addrinfo == NULL, "Programmer error, reset_addrinfo() is either broke, or was not called.");
   int ret;
   if ((ret= getaddrinfo(host, port_str, &ai, &(_addrinfo))))
   {
@@ -1069,10 +1168,11 @@ gearman_return_t gearman_connection_st::set_socket_options()
     }
   }
 
-#if defined(__MACH__) && defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(SO_NOSIGPIPE)
+  if (SO_NOSIGPIPE)
   {
     int ret= 1;
-    setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, static_cast<void *>(&ret), sizeof(int));
+    ret= setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, static_cast<void *>(&ret), sizeof(int));
 
     // This is not considered a fatal error 
     if (ret == -1)

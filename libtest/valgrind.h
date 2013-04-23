@@ -1,9 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  All rights reserved.
+ *  Data Differential YATL (i.e. libtest)  library
+ *
+ *  Copyright (C) 2012-2013 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -35,42 +34,22 @@
  *
  */
 
-#include "gear_config.h"
-#include "libgearman-server/common.h"
+#pragma once
 
-#include <libgearman-server/gearmand.h>
-#include <libgearman-server/list.h>
-
-void gearmand_thread_list_free(gearmand_thread_st *thread)
+static inline bool valgrind_is_caller(void)
 {
-  GEARMAN_LIST_DEL(Gearmand()->thread, thread,);
-}
+  if (getenv("TESTS_ENVIRONMENT")  && strstr(getenv("TESTS_ENVIRONMENT"), "valgrind"))
+  {
+    if (strstr(getenv("TESTS_ENVIRONMENT"), "--tool") == NULL)
+    {
+      return true;
+    }
 
-void gearmand_thread_list_add(gearmand_thread_st *thread)
-{
-  GEARMAN_LIST_ADD(Gearmand()->thread, thread,)
-}
+    if (strstr(getenv("TESTS_ENVIRONMENT"), "--tool=memcheck"))
+    {
+      return true;
+    }
+  }
 
-void gearmand_server_list_free(gearman_server_st *server,
-                               gearman_server_function_st *function)
-{
-  GEARMAN_LIST_DEL(server->function, function,);
-}
-
-void gearmand_server_list_add(gearman_server_st *server,
-                              gearman_server_function_st *function)
-{
-  GEARMAN_LIST_ADD(server->function, function,);
-}
-
-void gearmand_server_free_job_list_free(gearman_server_st *server,
-                                        gearman_server_job_st *server_job)
-{
-  GEARMAN_LIST_DEL(server->free_job, server_job,);
-}
-
-void gearmand_server_job_list_add(gearman_server_st *server,
-                                  gearman_server_job_st *server_job)
-{
-  GEARMAN_LIST_ADD(server->free_job, server_job,);
+  return false;
 }

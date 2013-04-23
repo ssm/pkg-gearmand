@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -35,36 +35,57 @@
  *
  */
 
-#include "gear_config.h"
-#include "libgearman-server/common.h"
-#include <libgearman-server/plugins/base.h>
+/*
+  @note This header is internal, and should not be used by external programs.
+*/
 
-gearman_server_con_st* build_gearman_server_con_st(void)
-{
-  return new (std::nothrow) gearman_server_con_st;
-}
+#pragma once
 
-void destroy_gearman_server_con_st(gearman_server_con_st* arg)
-{
-  delete arg;
-}
+#include <stdexcept>
 
-void gearmand_connection_set_protocol(gearman_server_con_st *connection,
-                                      gearmand::protocol::Context* arg)
-{
-  connection->protocol= arg;
-}
+namespace org { namespace gearmand { namespace libgearman {
 
-void gearman_server_con_protocol_release(gearman_server_con_st *con)
-{
-  if (con->protocol)
+class Worker {
+public:
+  Worker()
   {
-    con->protocol->notify(con);
-    if (con->protocol->is_owner())
+    _worker= gearman_worker_create(NULL);
+
+    if (_worker == NULL)
     {
-      delete con->protocol;
-      con->protocol= NULL;
+      throw std::runtime_error("gearman_worker_create() failed");
     }
-    con->protocol= NULL;
   }
-}
+
+  Worker(in_port_t arg)
+  {
+    _worker= gearman_worker_create(NULL);
+
+    if (_worker == NULL)
+    {
+      throw std::runtime_error("gearman_worker_create() failed");
+    }
+    gearman_worker_add_server(_worker, "localhost", arg);
+  }
+
+  gearman_worker_st* operator&() const
+  { 
+    return _worker;
+  }
+
+  gearman_worker_st* operator->() const
+  { 
+    return _worker;
+  }
+
+  ~Worker()
+  {
+    gearman_worker_free(_worker);
+  }
+
+private:
+  gearman_worker_st *_worker;
+
+};
+
+} /* namespace libgearman */ } /* namespace gearmand */ } /* namespace org */ 

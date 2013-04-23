@@ -58,7 +58,6 @@
 
 #include <libgearman-server/constants.h>
 #include <libgearman-server/wakeup.h>
-#include <libgearman-server/connection_list.h>
 #include <libgearman-server/byteorder.h>
 #include <libgearman-server/log.h>
 #include <libgearman-server/packet.h>
@@ -106,11 +105,13 @@ GEARMAN_API
 gearmand_st *gearmand_create(const char *host,
                              uint32_t threads,
                              int backlog,
-                             uint8_t job_retries,
+                             const uint32_t job_retries,
+                             const char *job_handle_prefix,
                              uint8_t worker_wakeup,
                              gearmand_log_fn *function, void *log_context, const gearmand_verbose_t verbose,
                              bool round_robin,
-                             bool exceptions_);
+                             bool exceptions_,
+                             uint32_t hashtable_buckets);
 
 /**
  * Free resources used by a server instace.
@@ -146,6 +147,8 @@ gearmand_error_t gearmand_port_add(gearmand_st *gearmand,
  */
 GEARMAN_API
 gearmand_error_t gearmand_run(gearmand_st *gearmand);
+
+bool gearmand_exceptions(gearmand_st *gearmand);
 
 /**
  * Interrupt a running gearmand server from another thread. You should only

@@ -59,7 +59,8 @@
 using namespace libtest;
 using namespace datadifferential;
 
-#include <tests/worker.h>
+#include "libgearman/worker.hpp"
+using namespace org::gearmand;
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -142,7 +143,7 @@ static void thread_runner(context_st* con)
     return;
   }
 
-  Worker worker(context->port);
+  libgearman::Worker worker(context->port);
   if (&worker == NULL)
   {
     Error << "Failed to create Worker";
@@ -346,7 +347,7 @@ worker_handles_st::~worker_handles_st()
 // Warning, this will not clean up memory
 void worker_handles_st::kill_all()
 {
-  assert(libtest::valgrind_is_caller() == false);
+  assert(valgrind_is_caller() == false);
   _workers.clear();
 }
 

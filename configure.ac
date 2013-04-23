@@ -1,13 +1,14 @@
 # Gearman server and library
-# Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+# Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
 # Copyright (C) 2008 Brian Aker, Eric Day, Monty Taylor
 # All rights reserved.
 #
 # Use and distribution licensed under the BSD license.  See
 # the COPYING file in this directory for full text.
 
+AC_REVISION([m4_esyscmd_s([bzr revno])])
 AC_PREREQ([2.63])
-AC_INIT([gearmand],[1.0.2],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+AC_INIT([gearmand],[1.0.5],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -21,7 +22,7 @@ AC_CONFIG_HEADERS([gear_config.h:gear_config.in])dnl Keep filename to 8.3 for MS
 AC_SUBST([AUTOHEADER_FILE],[gear_config.h])
 AC_CONFIG_SRCDIR([libgearman/gearman.cc])
 
-GEARMAN_LIBRARY_VERSION=7:0:0
+GEARMAN_LIBRARY_VERSION=7:1:0
 #                       | | |
 #                +------+ | +---+
 #                |        |     |
@@ -56,10 +57,6 @@ CONFIG_EXTRA
 
 m4_include([libtest/yatl.m4])
 
-AX_ENABLE_LIBMEMCACHED
-m4_include([m4/memcached_sasl.m4])
-AM_CONDITIONAL([BUILDING_LIBMEMCACHED],false)
-
 AM_CONDITIONAL([BUILDING_GEARMAN],true)
 AM_CONDITIONAL([HAVE_LIBGEARMAN],true)
 AC_SUBST([_WITH_LIBGEARMAN_SUPPORT],["_WITH_LIBGEARMAN_SUPPORT 0"])
@@ -67,11 +64,14 @@ AC_DEFINE([GEARMAND_BINARY],["./gearmand/gearmand"],[Name of the gearmand binary
 AC_DEFINE([HAVE_LIBGEARMAN],[1], [libgearman support])
 AC_DEFINE([HAVE_GEARMAND_BINARY],[1],[gearmand binary was found])
 
-AX_LIB_CURL([7.21.7],
-            [AX_CHECK_LIBRARY([LIBCURL],[curl/curl.h],[curl])],
-            [AC_DEFINE([HAVE_LIBCURL],[0],[Have the LIBCURL library])
-            AM_CONDITIONAL([HAVE_LIBCURL],false)
-            ])
+AC_DEFUN([CHECK_CURL],
+         [AX_LIB_CURL([7.21.7],
+                      [AX_CHECK_LIBRARY([LIBCURL],[curl/curl.h],[curl])],
+                      [AC_DEFINE([HAVE_LIBCURL],[0],[Have the LIBCURL library])
+                      ])
+         ])
+CHECK_CURL
+AM_CONDITIONAL([HAVE_LIBCURL],[test "x${ax_cv_have_LIBCURL}" = "xyes"])
 
 m4_include([m4/drizzled.m4])
 WITH_LIBDRIZZLE
@@ -98,6 +98,7 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AX_PROG_SPHINX_BUILD
+AX_PROG_MEMCACHED
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -106,6 +107,7 @@ AC_CHECK_HEADERS_ONCE([arpa/inet.h])
 AC_CHECK_HEADERS_ONCE([errno.h])
 AC_CHECK_HEADERS_ONCE([execinfo.h])
 AC_CHECK_HEADERS_ONCE([fcntl.h])
+AC_CHECK_HEADERS_ONCE([features.h])
 AC_CHECK_HEADERS_ONCE([fnmatch.h])
 AC_CHECK_HEADERS_ONCE([getopt.h])
 AC_CHECK_HEADERS_ONCE([inttypes.h])
@@ -117,6 +119,7 @@ AC_CHECK_HEADERS_ONCE([netinet/tcp.h])
 AC_CHECK_HEADERS_ONCE([poll.h])
 AC_CHECK_HEADERS_ONCE([pwd.h])
 AC_CHECK_HEADERS_ONCE([signal.h])
+AC_CHECK_HEADERS_ONCE([spawn.h])
 AC_CHECK_HEADERS_ONCE([stdarg.h])
 AC_CHECK_HEADERS_ONCE([stddef.h])
 AC_CHECK_HEADERS_ONCE([stdint.h])
@@ -169,15 +172,14 @@ AC_FUNC_MEMCMP
 AC_FUNC_STRERROR_R
 AC_FUNC_VPRINTF
 AC_REPLACE_FNMATCH
+AC_CHECK_FUNCS([accept4])
 AC_CHECK_FUNCS([dup2])
 AC_CHECK_FUNCS([gettimeofday])
 AC_CHECK_FUNCS([memchr])
 AC_CHECK_FUNCS([memmove])
 AC_CHECK_FUNCS([memset])
 AC_CHECK_FUNCS([pipe])
-AC_CHECK_FUNCS([pipe2], 
-               [AC_DEFINE([HAVE_PIPE2], [1], [Have pipe2])],
-               [AC_DEFINE([HAVE_PIPE2], [0], [Have pipe2])])
+AC_CHECK_FUNCS([pipe2])
 AC_CHECK_FUNCS([select])
 AC_CHECK_FUNCS([setenv])
 AC_CHECK_FUNCS([socket])
@@ -192,8 +194,9 @@ AC_CHECK_FUNCS([atexit])
 AC_CHECK_FUNCS([clock_gettime])
 AC_CHECK_FUNCS([getcwd])
 AC_CHECK_FUNCS([strstr])
+AC_CHECK_FUNC([setsockopt],[],[AC_CHECK_LIB([socket],[setsockopt])])
+AC_CHECK_FUNC([bind],[],[AC_CHECK_LIB([bind],[bind])])
 
-LT_LIB_M
 
 # Check for the ability to call dlopen (used in libhostile)
 AX_DLOPEN
@@ -207,8 +210,9 @@ AC_CHECK_LIB([rt],[clock_gettime],
 # Check for -lm
 LT_LIB_M
 
-AC_CHECK_FUNC([setsockopt],[],[AC_CHECK_LIB([socket],[setsockopt])])
-AC_CHECK_FUNC([bind],[],[AC_CHECK_LIB([bind],[bind])])
+# Check for CyaSSL
+AX_CHECK_LIBRARY([CYASSL],[cyassl/ssl.h],[cyassl])
+AX_ENABLE_LIBMEMCACHED
 
 AC_DEFINE([GEARMAND_BLOBSLAP_WORKER],[1],[Have Gearman Blobslap Worker])
 
@@ -218,7 +222,8 @@ AX_UUID_GENERATE_TIME_SAFE
 
 AX_AM_JOBSERVER([yes])
 
-AS_IF([test "x${TARGET_LINUX}" = "xtrue"], [AC_DEFINE([BUILD_LIBHOSTILE],[1],[Build libhostile])], [AC_DEFINE([BUILD_LIBHOSTILE],[0],[Build libhostile])])
+AS_IF([test "x${TARGET_LINUX}" = "xtrue"],
+      [AC_DEFINE([BUILD_LIBHOSTILE],[1],[Build libhostile])],[AC_DEFINE([BUILD_LIBHOSTILE],[0],[Build libhostile])])
 AM_CONDITIONAL([TARGET_HOSTILE],[test "x${TARGET_LINUX}" = "xtrue"])
 
 AX_PTHREAD(, [AC_MSG_ERROR(could not find libpthread)])
@@ -258,7 +263,8 @@ echo "   * C Flags:                   $CFLAGS"
 echo "   * C++ Compiler:              $CXX_VERSION"
 echo "   * C++ Flags:                 $CXXFLAGS"
 echo "   * CPP Flags:                 $CPPFLAGS"
-echo "   * LIB Flags:                 $LIB"
+echo "   * LIBS:                      $LIBS"
+echo "   * LDFLAGS Flags:             $LDFLAGS"
 echo "   * Assertions enabled:        $ax_enable_assert"
 echo "   * Debug enabled:             $ax_enable_debug"
 echo "   * Warnings as failure:       $ac_cv_warnings_as_errors"
@@ -279,7 +285,7 @@ case "$host_os" in
     echo "*"
     echo "*  NOTE: You are on FreeBSD. BSD 'make' will not work."
     echo "*"
-    echo "*   use 'gmake' To build libmemcached"
+    echo "*   use 'gmake' To build gearmand"
     echo "*"
     echo "*****"
   ;;

@@ -39,10 +39,6 @@
 
 #include <libtest/gearmand.h>
 
-#include "util/instance.hpp"
-#include "util/operation.hpp"
-
-using namespace datadifferential;
 using namespace libtest;
 
 #include <cassert>
@@ -127,7 +123,7 @@ public:
     return true;
   }
 
-  bool build(size_t argc, const char *argv[]);
+  bool build();
 };
 
 Gearmand::Gearmand(const std::string& host_arg, in_port_t port_arg, bool libtool_, const char* binary_arg) :
@@ -136,7 +132,7 @@ Gearmand::Gearmand(const std::string& host_arg, in_port_t port_arg, bool libtool
   set_pid_file();
 }
 
-bool Gearmand::build(size_t argc, const char *argv[])
+bool Gearmand::build()
 {
   if (getuid() == 0 or geteuid() == 0)
   {
@@ -144,11 +140,6 @@ bool Gearmand::build(size_t argc, const char *argv[])
   }
 
   add_option("--listen=localhost");
-
-  for (size_t x= 0 ; x < argc ; x++)
-  {
-    add_option(argv[x]);
-  }
 
   return true;
 }
@@ -159,8 +150,13 @@ libtest::Server *build_gearmand(const char *hostname, in_port_t try_port, const 
 {
   if (binary == NULL)
   {
-#if defined(GEARMAND_BINARY)
-    binary= GEARMAND_BINARY;
+#if defined(HAVE_GEARMAND_BINARY)
+# if defined(GEARMAND_BINARY)
+    if (HAVE_GEARMAND_BINARY)
+    {
+      binary= GEARMAND_BINARY;
+    }
+# endif
 #endif
   }
 

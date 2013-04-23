@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  Copyright (C) 2008 Brian Aker, Eric Day
  *  All rights reserved.
  *
@@ -37,7 +37,7 @@
  */
 
 #include "gear_config.h"
-#include <configmake.h>
+#include "configmake.h"
 
 #include <cerrno>
 #include <cstdio>
@@ -94,7 +94,7 @@ static bool _set_fdlimit(rlim_t fds);
 static bool _switch_user(const char *user);
 
 extern "C" {
-static bool _set_signals(void);
+static bool _set_signals(bool core_dump= false);
 }
 
 static void _log(const char *line, gearmand_verbose_t verbose, void *context);
@@ -114,6 +114,7 @@ int main(int argc, char *argv[])
   std::string pid_file;
   std::string protocol;
   std::string queue_type;
+  std::string job_handle_prefix;
   std::string verbose_string= "ERROR";
   std::string config_file;
 
@@ -123,6 +124,8 @@ int main(int argc, char *argv[])
   bool opt_daemon;
   bool opt_check_args;
   bool opt_syslog;
+  bool opt_coredump;
+  uint32_t hashtable_buckets;
 
   boost::program_options::options_description general("General options");
 
@@ -143,6 +146,12 @@ int main(int argc, char *argv[])
 
   ("job-retries,j", boost::program_options::value(&job_retries)->default_value(0),
    "Number of attempts to run the job before the job server removes it. This is helpful to ensure a bad job does not crash all available workers. Default is no limit.")
+
+  ("job-handle-prefix", boost::program_options::value(&job_handle_prefix),
+   "Prefix used to generate a job handle string. If not provided, the default \"H:<host_name>\" is used.")
+
+  ("hashtable-buckets", boost::program_options::value(&hashtable_buckets)->default_value(GEARMAND_DEFAULT_HASH_SIZE),
+   "Number of buckets in the internal job hash tables. The default of 991 works well for about three million jobs in queue. If the number of jobs in the queue at any time will exceed three million, use proportionally larger values (991 * # of jobs / 3M). For example, to accomodate 2^32 jobs, use 1733003. This will consume ~26MB of extra memory. Gearmand cannot support more than 2^32 jobs in queue at this time.")
 
   ("log-file,l", boost::program_options::value(&log_file)->default_value(LOCALSTATEDIR"/log/gearmand.log"),
    "Log file to write errors and information to. If the log-file parameter is specified as 'stderr', then output will go to stderr. If 'none', then no logfile will be generated.")
@@ -167,6 +176,9 @@ int main(int argc, char *argv[])
 
   ("syslog", boost::program_options::bool_switch(&opt_syslog)->default_value(false),
    "Use syslog.")
+
+  ("coredump", boost::program_options::bool_switch(&opt_coredump)->default_value(false),
+   "Whether to create a core dump for uncaught signals.")
 
   ("threads,t", boost::program_options::value(&threads)->default_value(4),
    "Number of I/O threads to use. Default=4.")
@@ -279,6 +291,12 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
+  if (hashtable_buckets <= 0)
+  {
+    error::message("hashtable-buckets has to be greater than 0");
+    return EXIT_FAILURE;
+  }
+
   if (opt_check_args)
   {
     return EXIT_SUCCESS;
@@ -296,7 +314,7 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
   }
 
-  if (fds > 0 && _set_fdlimit(fds))
+  if (fds > 0 and _set_fdlimit(fds))
   {
     return EXIT_FAILURE;
   }
@@ -311,7 +329,7 @@ int main(int argc, char *argv[])
     util::daemonize(false, true);
   }
 
-  if (_set_signals())
+  if (_set_signals(opt_coredump))
   {
     return EXIT_FAILURE;
   }
@@ -334,9 +352,11 @@ int main(int argc, char *argv[])
   gearmand_st *_gearmand= gearmand_create(host.empty() ? NULL : host.c_str(),
                                           threads, backlog,
                                           static_cast<uint8_t>(job_retries),
+                                          job_handle_prefix.empty() ? NULL : job_handle_prefix.c_str(),
                                           static_cast<uint8_t>(worker_wakeup),
                                           _log, &log_info, verbose,
-                                          opt_round_robin, opt_exceptions);
+                                          opt_round_robin, opt_exceptions,
+                                          hashtable_buckets);
   if (_gearmand == NULL)
   {
     error::message("Could not create gearmand library instance.");
@@ -453,9 +473,9 @@ static bool _switch_user(const char *user)
   return false;
 }
 
-extern "C" void _shutdown_handler(int signal_arg)
+extern "C" void _shutdown_handler(int signal_, siginfo_t*, void*)
 {
-  if (signal_arg == SIGUSR1)
+  if (signal_== SIGUSR1)
   {
     gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN_GRACEFUL);
   }
@@ -465,7 +485,7 @@ extern "C" void _shutdown_handler(int signal_arg)
   }
 }
 
-extern "C" void _reset_log_handler(int) // signal_arg
+extern "C" void _reset_log_handler(int, siginfo_t*, void*) // signal_arg
 {
   gearmand_log_info_st *log_info= static_cast<gearmand_log_info_st *>(Gearmand()->log_context);
   
@@ -475,20 +495,21 @@ extern "C" void _reset_log_handler(int) // signal_arg
 }
 
 static bool segfaulted= false;
-extern "C" void _crash_handler(int signal_)
+extern "C" void _crash_handler(int signal_, siginfo_t*, void*)
 {
   if (segfaulted)
   {
-    error::message("Fatal crash while backtracing", strsignal(signal_));
+    error::message("\nFatal crash while backtrace from signal:", strsignal(signal_));
     _exit(EXIT_FAILURE); /* Quit without running destructors */
   }
 
   segfaulted= true;
   custom_backtrace();
+  _exit(EXIT_FAILURE); /* Quit without running destructors */
 }
 
 extern "C" {
-static bool _set_signals(void)
+static bool _set_signals(bool core_dump)
 {
   struct sigaction sa;
 
@@ -502,7 +523,8 @@ static bool _set_signals(void)
     return true;
   }
 
-  sa.sa_handler= _shutdown_handler;
+  sa.sa_sigaction= _shutdown_handler;
+  sa.sa_flags= SA_SIGINFO;
   if (sigaction(SIGTERM, &sa, 0) == -1)
   {
     error::perror("Could not set SIGTERM handler.");
@@ -521,7 +543,7 @@ static bool _set_signals(void)
     return true;
   }
 
-  sa.sa_handler= _reset_log_handler;
+  sa.sa_sigaction= _reset_log_handler;
   if (sigaction(SIGHUP, &sa, 0) == -1)
   {
     error::perror("Could not set SIGHUP handler.");
@@ -530,9 +552,9 @@ static bool _set_signals(void)
 
   bool in_gdb_libtest= bool(getenv("LIBTEST_IN_GDB"));
 
-  if (in_gdb_libtest == false)
+  if ((in_gdb_libtest == false) and (core_dump == false))
   {
-    sa.sa_handler= _crash_handler;
+    sa.sa_sigaction= _crash_handler;
     if (sigaction(SIGSEGV, &sa, NULL) == -1)
     {
       error::perror("Could not set SIGSEGV handler.");
@@ -554,13 +576,13 @@ static bool _set_signals(void)
 #endif
     if (sigaction(SIGILL, &sa, NULL) == -1)
     {
-      error::perror("Could not set SIGBUS handler.");
+      error::perror("Could not set SIGILL handler.");
       return true;
     }
 
     if (sigaction(SIGFPE, &sa, NULL) == -1)
     {
-      error::perror("Could not set SIGBUS handler.");
+      error::perror("Could not set SIGFPE handler.");
       return true;
     }
   }

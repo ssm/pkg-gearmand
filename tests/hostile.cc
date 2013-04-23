@@ -42,13 +42,14 @@
 
 using namespace libtest;
 
-#include <libgearman/gearman.h>
+#include <libgearman-1.0/gearman.h>
 
 #include <libhostile/hostile.h>
 
-#include "tests/client.h"
-#include <tests/start_worker.h>
-#include "tests/burnin.h"
+#include "libgearman/client.hpp"
+using namespace org::gearmand;
+
+#include "tests/start_worker.h"
 
 #include "tests/workers/v2/echo_or_react.h"
 
@@ -61,10 +62,14 @@ using namespace libtest;
 
 #define WORKER_FUNCTION_NAME "foo"
 
+#ifndef SERVER_TARGET
+#  define SERVER_TARGET "hostile-gearmand"
+#endif
+
 static bool has_hostile()
 {
-#if defined(HAVE_LIBHOSTILE) && HAVE_LIBHOSTILE
-  if (1)
+#if defined(HAVE_LIBHOSTILE)
+  if (HAVE_LIBHOSTILE)
   {
     return true;
   }
@@ -74,12 +79,11 @@ static bool has_hostile()
 }
 
 static in_port_t hostile_server= 0;
-static in_port_t stress_server= 0;
-static in_port_t& current_server_= stress_server;
+static in_port_t& current_server_= hostile_server;
 
 static void reset_server()
 {
-  current_server_= stress_server;
+  current_server_= hostile_server;
 }
 
 static in_port_t current_server()
@@ -115,7 +119,7 @@ extern "C" {
     fatal_assert(success);
     fatal_assert(success->count == 0);
 
-    Client client(current_server());
+    libgearman::Client client(current_server());
     {
       gearman_client_set_timeout(&client, 400);
       for (size_t x= 0; x < 100; x++)
@@ -148,32 +152,38 @@ extern "C" {
   }
 }
 
-static bool fill_timespec(struct timespec& ts)
-{
-#if defined(HAVE_LIBRT) && HAVE_LIBRT
-  if (HAVE_LIBRT) // This won't be called on OSX, etc,...
-  {
-    if (clock_gettime(CLOCK_REALTIME, &ts) == -1) 
-    {
-      Error << "clock_gettime(CLOCK_REALTIME) " << strerror(errno);
-      return false;
-    }
-  }
-#else
-  {
-    struct timeval tv;
-    if (gettimeofday(&tv, NULL) == -1) 
-    {
-      Error << "gettimeofday() " << strerror(errno);
-      return false;
-    }
+namespace {
 
-    TIMEVAL_TO_TIMESPEC(&tv, &ts);
+#if defined(HAVE_PTHREAD_TIMEDJOIN_NP) && HAVE_PTHREAD_TIMEDJOIN_NP
+  bool fill_timespec(struct timespec& ts)
+  {
+#if defined(HAVE_LIBRT) && HAVE_LIBRT
+    if (HAVE_LIBRT) // This won't be called on OSX, etc,...
+    {
+      if (clock_gettime(CLOCK_REALTIME, &ts) == -1) 
+      {
+        Error << "clock_gettime(CLOCK_REALTIME) " << strerror(errno);
+        return false;
+      }
+    }
+#else
+    {
+      struct timeval tv;
+      if (gettimeofday(&tv, NULL) == -1) 
+      {
+        Error << "gettimeofday() " << strerror(errno);
+        return false;
+      }
+
+      TIMEVAL_TO_TIMESPEC(&tv, &ts);
+    }
+#endif
+
+    return true;
   }
 #endif
 
-  return true;
-}
+} // namespace
 
 static bool join_thread(pthread_t& thread_arg)
 {
@@ -296,6 +306,12 @@ static test_return_t worker_ramp_10K_TEST(void *)
   return worker_ramp_exec(1024*10);
 }
 
+static test_return_t skip_SETUP(void*)
+{
+  SKIP_IF(true);
+  return TEST_SUCCESS;
+}
+
 static test_return_t worker_ramp_SETUP(void *object)
 {
   test_skip_valgrind();
@@ -352,6 +368,17 @@ static test_return_t recv_SETUP(void* object)
   return TEST_SUCCESS;
 }
 
+static test_return_t getaddrinfo_SETUP(void* object)
+{
+  test_skip_valgrind();
+  test_skip(true, libtest::is_massive());
+
+  worker_ramp_SETUP(object);
+  set_getaddrinfo_error(true, 20, 20);
+
+  return TEST_SUCCESS;
+}
+
 static test_return_t recv_corrupt_SETUP(void* object)
 {
   test_skip_valgrind();
@@ -363,7 +390,19 @@ static test_return_t recv_corrupt_SETUP(void* object)
   return TEST_SUCCESS;
 }
 
-static test_return_t resv_TEARDOWN(void* object)
+static test_return_t getaddrinfo_TEARDOWN(void* object)
+{
+  set_getaddrinfo_error(true, 0, 0);
+
+  worker_handles_st *handles= (worker_handles_st*)object;
+  handles->kill_all();
+
+  reset_server();
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t recv_TEARDOWN(void* object)
 {
   set_recv_close(true, 0, 0);
 
@@ -393,6 +432,17 @@ static test_return_t accept_SETUP(void* object)
 
   worker_ramp_SETUP(object);
   set_accept_close(true, 20, 20);
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t connect_SETUP(void* object)
+{
+  test_skip_valgrind();
+  test_skip(true, libtest::is_massive());
+
+  worker_ramp_SETUP(object);
+  set_connect_close(true, 20, 20);
 
   return TEST_SUCCESS;
 }
@@ -466,26 +516,27 @@ static test_return_t accept_TEARDOWN(void* object)
   return TEST_SUCCESS;
 }
 
+static test_return_t connect_TEARDOWN(void* object)
+{
+  set_connect_close(true, 0, 0);
+
+  worker_handles_st *handles= (worker_handles_st*)object;
+  handles->kill_all();
+
+  reset_server();
+
+  return TEST_SUCCESS;
+}
+
 
 /*********************** World functions **************************************/
 
-static void *world_create(server_startup_st& servers, test_return_t& error)
+static void *world_create(server_startup_st& servers, test_return_t&)
 {
-  stress_server= libtest::default_port();
-  if (server_startup(servers, "gearmand", stress_server, 0, NULL) == false)
-  {
-    error= TEST_SKIPPED;
-    return NULL;
-  }
+  SKIP_IF(has_hostile() == false);
 
-  if (has_hostile())
-  {
-    hostile_server= libtest::get_free_port();
-    if (server_startup(servers, "gearmand", hostile_server, 0, NULL) == false)
-    {
-      hostile_server= 0;
-    }
-  }
+  hostile_server= libtest::get_free_port();
+  ASSERT_TRUE(server_startup(servers, SERVER_TARGET, hostile_server, NULL));
 
   return new worker_handles_st;
 }
@@ -497,11 +548,6 @@ static bool world_destroy(void *object)
 
   return TEST_SUCCESS;
 }
-
-test_st burnin_TESTS[] ={
-  {"burnin", 0, burnin_TEST },
-  {0, 0, 0}
-};
 
 test_st dos_TESTS[] ={
   {"send random port data", 0, send_random_port_data_TEST },
@@ -517,17 +563,18 @@ test_st worker_TESTS[] ={
 };
 
 collection_st collection[] ={
-  {"burnin", burnin_setup, burnin_cleanup, burnin_TESTS },
-  {"dos", 0, 0, dos_TESTS },
+  {"dos", skip_SETUP, 0, dos_TESTS },
   {"plain", worker_ramp_SETUP, worker_ramp_TEARDOWN, worker_TESTS },
   {"plain against hostile server", hostile_gearmand_SETUP, worker_ramp_TEARDOWN, worker_TESTS },
-  {"hostile recv()", recv_SETUP, resv_TEARDOWN, worker_TESTS },
-  {"hostile recv() corrupt", recv_corrupt_SETUP, resv_TEARDOWN, worker_TESTS },
+  {"hostile recv()", recv_SETUP, recv_TEARDOWN, worker_TESTS },
+  {"hostile recv() corrupt", recv_corrupt_SETUP, recv_TEARDOWN, worker_TESTS },
   {"hostile send()", send_SETUP, send_TEARDOWN, worker_TESTS },
   {"hostile accept()", accept_SETUP, accept_TEARDOWN, worker_TESTS },
+  {"hostile connect()", connect_SETUP, connect_TEARDOWN, worker_TESTS },
   {"hostile poll(CLOSED)", poll_HOSTILE_POLL_CLOSED_SETUP, poll_TEARDOWN, worker_TESTS },
   {"hostile poll(SHUT_RD)", poll_HOSTILE_POLL_SHUT_RD_SETUP, poll_TEARDOWN, worker_TESTS },
   {"hostile poll(SHUT_WR)", poll_HOSTILE_POLL_SHUT_WR_SETUP, poll_TEARDOWN, worker_TESTS },
+  {"hostile getaddrinfo()", getaddrinfo_SETUP, getaddrinfo_TEARDOWN, worker_TESTS },
   {0, 0, 0, 0}
 };
 

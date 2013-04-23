@@ -138,7 +138,7 @@ Application::Application(const std::string& arg, const bool _use_libtool_arg) :
     {
       if (libtool() == NULL)
       {
-        fatal_message("libtool requested, but know libtool was found");
+        FATAL("libtool requested, but know libtool was found");
       }
     }
 
@@ -366,15 +366,15 @@ bool Application::slurp()
 
     case EFAULT:
     case ENOMEM:
-      fatal_message(strerror(error));
+      FATAL(strerror(error));
       break;
 
     case EINVAL:
-      fatal_message("RLIMIT_NOFILE exceeded, or if OSX the timeout value was invalid");
+      FATAL("RLIMIT_NOFILE exceeded, or if OSX the timeout value was invalid");
       break;
 
     default:
-      fatal_message(strerror(error));
+      FATAL(strerror(error));
       break;
     }
 
@@ -409,7 +409,7 @@ bool Application::slurp()
 Application::error_t Application::join()
 {
   pid_t waited_pid= waitpid(_pid, &_status, 0);
-
+  slurp();
   if (waited_pid == _pid and WIFEXITED(_status) == false)
   {
     /*
@@ -424,17 +424,36 @@ Application::error_t Application::join()
       std::string error_string("posix_spawn() failed pid:");
       error_string+= _pid;
       error_string+= " name:";
-      error_string+= built_argv[0];
+      error_string+= print_argv(built_argv);
+      if (stderr_result_length())
+      {
+        error_string+= " stderr: ";
+        error_string+= stderr_c_str();
+      }
       throw std::logic_error(error_string);
     }
     else if (WIFSIGNALED(_status))
     {
       if (WTERMSIG(_status) != SIGTERM and WTERMSIG(_status) != SIGHUP)
       {
+        slurp();
         _app_exit_state= Application::INVALID_POSIX_SPAWN;
-        std::string error_string(built_argv[0]);
+        std::string error_string(print_argv(built_argv));
         error_string+= " was killed by signal ";
         error_string+= strsignal(WTERMSIG(_status));
+
+        if (stdout_result_length())
+        {
+          error_string+= " stdout: ";
+          error_string+= stdout_c_str();
+        }
+
+        if (stderr_result_length())
+        {
+          error_string+= " stderr: ";
+          error_string+= stderr_c_str();
+        }
+
         throw std::runtime_error(error_string);
       }
 
@@ -556,6 +575,7 @@ bool Application::Pipe::read(libtest::vchar_t& arg)
 void Application::Pipe::nonblock()
 {
   int flags;
+  do 
   {
     flags= fcntl(_pipe_fd[READ], F_GETFL, 0);
   } while (flags == -1 and (errno == EINTR or errno == EAGAIN));
@@ -590,7 +610,7 @@ void Application::Pipe::reset()
   if (pipe(_pipe_fd) == -1)
 #endif
   {
-    fatal_message(strerror(errno));
+    FATAL(strerror(errno));
   }
   _open[0]= true;
   _open[1]= true;
@@ -656,14 +676,12 @@ void Application::Pipe::dup_for_spawn(posix_spawn_file_actions_t& file_actions)
   int ret;
   if ((ret= posix_spawn_file_actions_adddup2(&file_actions, _pipe_fd[type], _std_fd )) < 0)
   {
-    Error << "posix_spawn_file_actions_adddup2(" << strerror(ret) << ")";
-    fatal_message(strerror(ret));
+    FATAL("posix_spawn_file_actions_adddup2(%s)", strerror(ret));
   }
 
   if ((ret= posix_spawn_file_actions_addclose(&file_actions, _pipe_fd[type])) < 0)
   {
-    Error << "posix_spawn_file_actions_adddup2(" << strerror(ret) << ")";
-    fatal_message(strerror(ret));
+    FATAL("posix_spawn_file_actions_addclose(%s)", strerror(ret));
   }
 }
 
@@ -688,8 +706,8 @@ void Application::create_argv(const char *args[])
   if (_use_libtool)
   {
     assert(libtool());
-    built_argv.push_back(strdup(libtool()));
-    built_argv.push_back(strdup("--mode=execute"));
+    vchar::append(built_argv, libtool());
+    vchar::append(built_argv, "--mode=execute");
   }
 
   if (_use_valgrind)
@@ -697,54 +715,54 @@ void Application::create_argv(const char *args[])
     /*
       valgrind --error-exitcode=1 --leak-check=yes --track-fds=yes --malloc-fill=A5 --free-fill=DE
     */
-    built_argv.push_back(strdup("valgrind"));
-    built_argv.push_back(strdup("--error-exitcode=1"));
-    built_argv.push_back(strdup("--leak-check=yes"));
+    vchar::append(built_argv, "valgrind");
+    vchar::append(built_argv, "--error-exitcode=1");
+    vchar::append(built_argv, "--leak-check=yes");
 #if 0
-    built_argv.push_back(strdup("--show-reachable=yes"));
+    vchar::append(built_argv, "--show-reachable=yes"));
 #endif
-    built_argv.push_back(strdup("--track-fds=yes"));
+    vchar::append(built_argv, "--track-fds=yes");
 #if 0
     built_argv[x++]= strdup("--track-origin=yes");
 #endif
-    built_argv.push_back(strdup("--malloc-fill=A5"));
-    built_argv.push_back(strdup("--free-fill=DE"));
+    vchar::append(built_argv, "--malloc-fill=A5");
+    vchar::append(built_argv, "--free-fill=DE");
 
     std::string log_file= create_tmpfile("valgrind");
     libtest::vchar_t buffer;
     buffer.resize(1024);
     int length= snprintf(&buffer[0], buffer.size(), "--log-file=%s", log_file.c_str());
     fatal_assert(length > 0 and size_t(length) < buffer.size());
-    built_argv.push_back(strdup(&buffer[0]));
+    vchar::append(built_argv, &buffer[0]);
   }
   else if (_use_ptrcheck)
   {
     /*
       valgrind --error-exitcode=1 --tool=exp-ptrcheck --log-file= 
     */
-    built_argv.push_back(strdup("valgrind"));
-    built_argv.push_back(strdup("--error-exitcode=1"));
-    built_argv.push_back(strdup("--tool=exp-ptrcheck"));
+    vchar::append(built_argv, "valgrind");
+    vchar::append(built_argv, "--error-exitcode=1");
+    vchar::append(built_argv, "--tool=exp-ptrcheck");
     std::string log_file= create_tmpfile("ptrcheck");
     libtest::vchar_t buffer;
     buffer.resize(1024);
     int length= snprintf(&buffer[0], buffer.size(), "--log-file=%s", log_file.c_str());
     fatal_assert(length > 0 and size_t(length) < buffer.size());
-    built_argv.push_back(&buffer[0]);
+    vchar::append(built_argv, &buffer[0]);
   }
   else if (_use_gdb)
   {
-    built_argv.push_back(strdup("gdb"));
+    vchar::append(built_argv, "gdb");
   }
 
-  built_argv.push_back(strdup(_exectuble_with_path.c_str()));
+  vchar::append(built_argv, _exectuble_with_path.c_str());
 
   for (Options::const_iterator iter= _options.begin(); iter != _options.end(); ++iter)
   {
-    built_argv.push_back(strdup((*iter).first.c_str()));
+    vchar::append(built_argv, (*iter).first.c_str());
     if ((*iter).second.empty() == false)
     {
-      built_argv.push_back(strdup((*iter).second.c_str()));
+      vchar::append(built_argv, (*iter).second.c_str());
     }
   }
 
@@ -752,7 +770,7 @@ void Application::create_argv(const char *args[])
   {
     for (const char **ptr= args; *ptr; ++ptr)
     {
-      built_argv.push_back(strdup(*ptr));
+      vchar::append(built_argv, *ptr);
     }
   }
   built_argv.push_back(NULL);
@@ -767,28 +785,21 @@ std::string Application::arguments()
 {
   std::stringstream arg_buffer;
 
-  for (size_t x= (1 +_use_libtool) ? 2 : 0;
-       x < _argc and built_argv[x];
-       ++x)
+  // Skip printing out the libtool reference
+  for (size_t x= _use_libtool ? 2 : 0; x < _argc; ++x)
   {
-    arg_buffer << built_argv[x] << " ";
+    if (built_argv[x])
+    {
+      arg_buffer << built_argv[x] << " ";
+    }
   }
 
   return arg_buffer.str();
 }
 
-struct DeleteFromVector
-{
-  template <class T>
-    void operator() ( T* ptr) const
-    {
-      free(ptr);
-    }
-};
-
 void Application::delete_argv()
 {
-  std::for_each(built_argv.begin(), built_argv.end(), DeleteFromVector());
+  std::for_each(built_argv.begin(), built_argv.end(), FreeFromVector());
 
   built_argv.clear();
   _argc= 0;

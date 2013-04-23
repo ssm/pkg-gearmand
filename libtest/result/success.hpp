@@ -1,9 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  All rights reserved.
+ *  Data Differential YATL (i.e. libtest)  library
+ *
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -37,19 +36,19 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace libtest {
 
-GEARMAN_INTERNAL_API
-  void gearmand_hash_server_add(gearman_server_st *server,
-                                uint32_t key,
-                                gearman_server_job_st *server_job);
+class __success : public __test_result
+{
+public:
+  __success(const char *file, int line, const char *func);
 
-GEARMAN_INTERNAL_API
-  void gearmand_hash_server_free(gearman_server_st *server,
-				 uint32_t key, gearman_server_job_st *server_job);
+  const char* what() const throw()
+  {
+    return "SUCCESS";
+  }
 
-#ifdef __cplusplus
-}
-#endif
+private:
+};
+
+} // namespace libtest

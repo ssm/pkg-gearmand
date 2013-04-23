@@ -36,7 +36,9 @@
 
 #pragma once
 
-#include <stdbool.h>
+#ifndef __cplusplus
+# include <stdbool.h>
+#endif
 
 #include "libhostile/visibility.h"
 
@@ -66,6 +68,9 @@ LIBHOSTILE_API
   void set_accept_close(bool arg, int frequency, int not_until_arg);
 
 LIBHOSTILE_API
+  void set_connect_close(bool arg, int frequency, int not_until_arg);
+
+LIBHOSTILE_API
   void set_recv_corrupt(bool arg, int frequency, int not_until_arg);
 
 LIBHOSTILE_API
@@ -76,6 +81,9 @@ LIBHOSTILE_API
 
 LIBHOSTILE_API
   void hostile_dump(void);
+
+LIBHOSTILE_API
+  void set_getaddrinfo_error(bool arg, int frequency, int not_until_arg);
 
 #ifdef __cplusplus
 }

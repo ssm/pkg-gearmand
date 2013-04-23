@@ -93,24 +93,39 @@ static test_return_t kill_test(void *)
 
 static test_return_t __server_startup_TEST(cycle_context_st* context, const int count)
 {
-  for (int x= 0; x < count; x++)
+  for (int x= 0; x < count; ++x)
   {
-    test_skip(true, server_startup(context->servers, "gearmand", libtest::get_free_port(), 0, NULL, false));
+    test_skip(true, server_startup(context->servers, "gearmand", libtest::get_free_port(), NULL));
   }
-  test_compare(true, context->servers.shutdown());
+  ASSERT_EQ(true, context->servers.shutdown());
 
   return TEST_SUCCESS;
 }
 
 static test_return_t server_startup_single_TEST(void *obj)
 {
-  test_compare(__server_startup_TEST((cycle_context_st*)obj, 1), TEST_SUCCESS);
+  ASSERT_EQ(__server_startup_TEST((cycle_context_st*)obj, 1), TEST_SUCCESS);
   return TEST_SUCCESS;
 }
 
 static test_return_t server_startup_multiple_TEST(void *obj)
 {
-  test_compare(__server_startup_TEST((cycle_context_st*)obj, 20), TEST_SUCCESS);
+  ASSERT_EQ(__server_startup_TEST((cycle_context_st*)obj, 20), TEST_SUCCESS);
+  return TEST_SUCCESS;
+}
+
+// We can't really test for this just yet, because we don't know if the server
+// we attach to is really the one we expect to attach too.
+static test_return_t server_startup_conflict_TEST(void*)
+{
+#if 0
+  cycle_context_st *context= (cycle_context_st*)object;
+
+  in_port_t bind_port= libtest::get_free_port();
+  ASSERT_EQ(true, server_startup(context->servers, "gearmand", bind_port, NULL, false));
+  ASSERT_EQ(false, server_startup(context->servers, "gearmand", bind_port, NULL, false));
+#endif
+
   return TEST_SUCCESS;
 }
 
@@ -127,6 +142,7 @@ test_st server_startup_TESTS[] ={
   {"server_startup(many)", false, (test_callback_fn*)server_startup_multiple_TEST },
   {"shutdown_and_remove()", false, (test_callback_fn*)shutdown_and_remove_TEST },
   {"server_startup(many)", false, (test_callback_fn*)server_startup_multiple_TEST },
+  {"server_startup() with bind() conflict", false, (test_callback_fn*)server_startup_conflict_TEST },
   {0, 0, 0}
 };
 
@@ -146,7 +162,7 @@ static test_return_t collection_INIT(void *object)
   test_zero(context->servers.count());
   context->reset();
 
-  test_skip(true, server_startup(context->servers, "gearmand", context->port, 0, NULL, false));
+  test_skip(true, server_startup(context->servers, "gearmand", context->port, NULL));
 
   return TEST_SUCCESS;
 }
@@ -201,4 +217,3 @@ void get_world(libtest::Framework *world)
   world->create(world_create);
   world->destroy(world_destroy);
 }
-

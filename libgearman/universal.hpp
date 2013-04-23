@@ -49,8 +49,6 @@ void gearman_universal_free(gearman_universal_st &gearman);
 
 void gearman_free_all_packets(gearman_universal_st &gearman);
 
-bool gearman_request_option(gearman_universal_st &universal, gearman_string_t &option);
-
 gearman_return_t gearman_universal_set_option(gearman_universal_st &self, gearman_universal_options_t option, bool value);
 
 void gearman_set_log_fn(gearman_universal_st &self, gearman_log_fn *function, void *context, gearman_verbose_t verbose);
@@ -64,7 +62,7 @@ void gearman_universal_set_namespace(gearman_universal_st &self, const char *nam
 void gearman_reset(gearman_universal_st& universal);
 
 // Flush the send buffer for all connections.
-gearman_return_t gearman_flush_all(gearman_universal_st&);
+void gearman_flush_all(gearman_universal_st&);
 
 /**
  * Set custom memory allocation function for workloads. Normally gearman uses
@@ -143,61 +141,61 @@ gearman_return_t gearman_set_identifier(gearman_universal_st& universal,
 
 const char *gearman_univeral_namespace(gearman_universal_st& universal);
 
+#define PUSH(__original, __temp_value) Push _push((__original),(__temp_value));
+
+class Push {
+public:
+  Push(bool& original_, const bool temp_value) :
+    _saved(original_),
+    _origin(original_)
+  {
+    _origin= temp_value;
+  }
+
+  ~Push()
+  {
+    _origin= _saved;
+  }
+
+private:
+  bool _saved;
+  bool& _origin;
+};
+
 /**
   Push the state of IO
 */
-class PushBlocking {
+
+#define PUSH_BLOCKING(__univeral) Push push_blocking_((__univeral).options.non_blocking, false);
+
+#define PUSH_NON_BLOCKING(__univeral) Push push_non_blocking_((__univeral).options.non_blocking, true);
+
+class Check {
 public:
-  PushBlocking(gearman_universal_st& arg) :
-    _original(arg.options.non_blocking),
-    _universal(arg)
-  {
-    _universal.options.non_blocking= false;
-  }
+  virtual gearman_return_t success(gearman_connection_st*)= 0;
 
-  PushBlocking(gearman_client_st* arg) :
-    _original(arg->universal.options.non_blocking),
-    _universal(arg->universal)
-  {
-    _universal.options.non_blocking= false;
-  }
-
-  ~PushBlocking()
-  {
-    _universal.options.non_blocking= _original;
-  }
-
-private:
-  bool _original;
-  gearman_universal_st& _universal;
+  virtual ~Check() {};
 };
 
-#define PUSH_BLOCKING(__univeral) PushBlocking _push_block((__univeral));
-
-class PushNonBlocking {
+class EchoCheck : public Check {
 public:
-  PushNonBlocking(gearman_universal_st& arg) :
-    _original(arg.options.non_blocking),
-    _universal(arg)
-  {
-    _universal.options.non_blocking= true;
-  }
+  EchoCheck(gearman_universal_st& universal_,
+            const void *workload_, const size_t workload_size_);
 
-  PushNonBlocking(gearman_client_st* arg) :
-    _original(arg->universal.options.non_blocking),
-    _universal(arg->universal)
-  {
-    _universal.options.non_blocking= true;
-  }
-
-  ~PushNonBlocking()
-  {
-    _universal.options.non_blocking= _original;
-  }
+  gearman_return_t success(gearman_connection_st* con);
 
 private:
-  bool _original;
   gearman_universal_st& _universal;
+  const void *_workload;
+  const size_t _workload_size;
 };
 
-#define PUSH_NON_BLOCKING(__univeral) PushNonBlocking _push_block((__univeral));
+class OptionCheck : public Check {
+public:
+  OptionCheck(gearman_universal_st& universal_);
+
+  gearman_return_t success(gearman_connection_st* con);
+
+private:
+  gearman_universal_st& _universal;
+};
