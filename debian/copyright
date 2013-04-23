@@ -4,8 +4,10 @@ Upstream-Contact: Brian Aker <brian@tangent.org>, https://launchpad.net/~gearman
 Source: https://launchpad.net/gearmand
 
 Files: *
-Copyright: 2011-2012 Data Differential, http://datadifferential.com/
-           2008 Brian Aker, Eric Day
+Copyright: 2011-2013 Data Differential, http://datadifferential.com/
+           2008 Eric Day
+           2008-2013 Brian Aker
+           2013 Keyur Govande
 License: BSD-3-clause
  Gearman server and library
  Copyright (C) 2011 Data Differential, http://datadifferential.com/
