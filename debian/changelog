@@ -1,8 +1,11 @@
-gearmand (1.0.5-1) UNRELEASED; urgency=low
+gearmand (1.0.5-1) experimental; urgency=low
 
   * New upstream version
+  * Update debian/copyright
+  * Add upstart configuration for gearman-job-server
+  * Systemd will now restart gearman-job-server
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Tue, 23 Apr 2013 12:14:51 +0200
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Wed, 24 Apr 2013 14:49:40 +0200
 
 gearmand (1.0.2-1) experimental; urgency=low
 
