@@ -1,3 +1,9 @@
+gearmand (1.0.5-2) unstable; urgency=low
+
+  * Upload to unstable after freeze
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 05 May 2013 11:58:42 +0200
+
 gearmand (1.0.5-1) experimental; urgency=low
 
   * New upstream version
