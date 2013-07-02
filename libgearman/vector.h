@@ -1,9 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
  * 
- *  Gearmand client and server library.
+ *  Libgearman library
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  All rights reserved.
+ *  Copyright (C) 2013 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -35,8 +34,50 @@
  *
  */
 
-
 #pragma once
 
-#define LIBGEARMAN_VERSION_STRING "1.0.6"
-#define LIBGEARMAN_VERSION_HEX 0x01000006
+#include <cstddef>
+#include <cstdlib>
+#include <cstdarg>
+
+#include "libgearman-1.0/string.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct gearman_vector_st *gearman_string_clone(const struct gearman_vector_st*);
+
+bool gearman_string_reserve(struct gearman_vector_st *string, size_t need);
+
+char *gearman_string_c_copy(struct gearman_vector_st *string);
+
+bool gearman_string_append_character(struct gearman_vector_st *string,
+                                     const char character);
+
+bool gearman_string_append(struct gearman_vector_st *string,
+                           const char *value, size_t length);
+
+void gearman_string_clear(struct gearman_vector_st *string);
+
+
+void gearman_string_free(struct gearman_vector_st*& string);
+
+size_t gearman_string_length(const struct gearman_vector_st *self);
+
+
+const char *gearman_string_value(const struct gearman_vector_st *self);
+
+
+char *gearman_string_value_mutable(const struct gearman_vector_st *self);
+
+
+gearman_string_t gearman_string(const struct gearman_vector_st *self);
+
+
+gearman_string_t gearman_string_take_string(struct gearman_vector_st *self);
+
+#ifdef __cplusplus
+}
+#endif
+

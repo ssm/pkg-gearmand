@@ -72,6 +72,14 @@ struct gearman_vector_st {
   {
   }
 
+  gearman_vector_st(const gearman_vector_st& copy) :
+    end(NULL),
+    string(NULL),
+    current_size(0)
+  {
+    store(copy);
+  }
+
   gearman_vector_st(const size_t reserve);
 
   ~gearman_vector_st();
@@ -108,7 +116,7 @@ struct gearman_vector_st {
     return current_size;
   }
 
-  bool store(gearman_vector_st&);
+  bool store(const gearman_vector_st&);
   bool store(const char*, const size_t);
   bool append(const char* arg_, const size_t arg_length_);
   bool append_character(const char character);
@@ -129,43 +137,3 @@ gearman_vector_st *gearman_string_create(gearman_vector_st *string,
 
 gearman_vector_st *gearman_string_create(gearman_vector_st *self, 
                                          const char *str, size_t initial_size);
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-gearman_vector_st *gearman_string_clone(const gearman_vector_st*);
-
-bool gearman_string_reserve(gearman_vector_st *string, size_t need);
-
-char *gearman_string_c_copy(gearman_vector_st *string);
-
-bool gearman_string_append_character(gearman_vector_st *string,
-                                     const char character);
-
-bool gearman_string_append(gearman_vector_st *string,
-                           const char *value, size_t length);
-
-void gearman_string_clear(gearman_vector_st *string);
-
-
-void gearman_string_free(gearman_vector_st *string);
-
-
-size_t gearman_string_length(const gearman_vector_st *self);
-
-
-const char *gearman_string_value(const gearman_vector_st *self);
-
-
-char *gearman_string_value_mutable(const gearman_vector_st *self);
-
-
-gearman_string_t gearman_string(const gearman_vector_st *self);
-
-
-gearman_string_t gearman_string_take_string(gearman_vector_st *self);
-
-#ifdef __cplusplus
-}
-#endif
