@@ -1,9 +1,8 @@
 /*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
- * 
- *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  All rights reserved.
+ *  Data Differential YATL (i.e. libtest)  library
+ *
+ *  Copyright (C) 2012-2013 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -35,8 +34,29 @@
  *
  */
 
-
 #pragma once
 
-#define LIBGEARMAN_VERSION_STRING "1.0.6"
-#define LIBGEARMAN_VERSION_HEX 0x01000006
+#include "libtest/exception.hpp"
+
+namespace libtest {
+
+class disconnected : public libtest::exception
+{
+public:
+  disconnected(const char *file, int line, const char *func, const std::string&, const in_port_t port, ...);
+
+  disconnected(const disconnected&);
+
+  // The following are just for unittesting the exception class
+  static bool is_disabled();
+  static void disable();
+  static void enable();
+  static uint32_t disabled_counter();
+  static void increment_disabled_counter();
+
+private:
+  in_port_t _port;
+  char _instance[BUFSIZ];
+};
+
+} // namespace libtest

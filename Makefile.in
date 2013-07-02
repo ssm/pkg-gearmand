@@ -682,161 +682,6 @@ DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 @HAVE_LIBMEMCACHED_TRUE@am__append_30 = $(LIBMEMCACHED_UTIL_LIB)
 @HAVE_LIBSQLITE3_TRUE@am__append_31 = tests/sqlite_test
 @HAVE_LIBSQLITE3_TRUE@am__append_32 = tests/sqlite_test
-@HAVE_RECENT_SPHINX_TRUE@@IS_VCS_CHECKOUT_TRUE@am__append_33 = $(dist_man_MANS)
-@HAVE_RECENT_SPHINX_TRUE@am__append_34 = man/gearadmin.1 man/gearman.1 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearmand.8 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_allocator_t.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_memory_allocators.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_set_memory_allocators.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_actions_t.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_argument_make.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_argument_t.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_bugreport.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_add_options.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_add_server.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_add_servers.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_add_task.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_add_task_background.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_add_task_high.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_add_task_high_background.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_add_task_low.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_add_task_low_background.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_add_task_status.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_clear_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_clone.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_context.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_create.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_do.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_do_background.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_do_high.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_do_high_background.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_do_job_handle.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_do_low.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_do_low_background.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_do_status.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_echo.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_errno.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_error.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_free.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_job_status.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_options.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_remove_options.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_remove_servers.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_run_tasks.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_complete_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_context.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_created_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_data_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_exception_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_fail_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_log_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_namespace.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_options.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_status_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_task_context_free_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_timeout.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_warning_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_workload_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_workload_free_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_set_workload_malloc_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_st.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_task_free_all.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_timeout.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_wait.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_continue.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_execute.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_failed.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_free.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_free_all.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_function_name.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_handle.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_handle_t.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_send_complete.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_send_data.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_send_exception.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_send_fail.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_send_status.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_send_warning.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_st.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_take_workload.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_unique.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_workload.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_job_workload_size.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_log_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_parse_servers.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_result_boolean.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_result_integer.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_result_is_null.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_result_size.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_result_store_integer.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_result_store_string.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_result_store_value.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_result_string.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_return_t.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_strerror.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_string_t.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_success.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_context.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_data.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_data_size.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_denominator.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_error.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_free.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_function_name.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_give_workload.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_is_known.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_is_running.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_job_handle.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_numerator.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_recv_data.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_return.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_send_workload.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_set_context.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_st.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_take_data.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_unique.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_verbose_name.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_verbose_t.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_version.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_add_function.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_add_options.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_add_server.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_add_servers.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_clone.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_context.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_create.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_define_function.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_echo.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_errno.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_error.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_free.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_function_exist.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_grab_job.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_options.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_register.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_remove_options.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_remove_servers.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_set_context.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_set_log_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_set_namespace.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_set_options.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_set_timeout.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_has_option.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_client_options_t.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_attr_init.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_attr_init_background.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_attr_init_epoch.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_task_attr_t.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_set_identifier.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_set_workload_free_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_set_workload_malloc_fn.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_st.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_timeout.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_unregister.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_unregister_all.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_wait.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/gearman_worker_work.3 \
-@HAVE_RECENT_SPHINX_TRUE@	man/libgearman.3
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_add_am_macro.m4 \
@@ -893,7 +738,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_add_am_macro.m4 \
 	$(top_srcdir)/libtest/m4/mysql.m4 \
 	$(top_srcdir)/libtest/m4/ax_lib_mysql.m4 \
 	$(top_srcdir)/libtest/m4/ax_prog_mysqld.m4 \
-	$(top_srcdir)/libtest/m4/memcached.m4 \
 	$(top_srcdir)/m4/drizzled.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -1300,15 +1144,16 @@ am__libtest_libtest_la_SOURCES_DIST = libtest/alarm.cc \
 	libtest/binaries.cc libtest/cmdline.cc libtest/collection.cc \
 	libtest/comparison.cc libtest/core.cc libtest/cpu.cc \
 	libtest/dns.cc libtest/dream.cc libtest/drizzled.cc \
-	libtest/fatal.cc libtest/formatter.cc libtest/client.cc \
-	libtest/framework.cc libtest/has.cc libtest/http.cc \
-	libtest/is_local.cc libtest/killpid.cc libtest/libtool.cc \
-	libtest/main.cc libtest/port.cc libtest/result.cc \
-	libtest/runner.cc libtest/server.cc \
-	libtest/server_container.cc libtest/signal.cc \
-	libtest/socket.cc libtest/strerror.cc libtest/timer.cc \
-	libtest/tmpfile.cc libtest/vchar.cc libtest/memcached.cc \
-	libtest/gearmand.cc libtest/blobslap_worker.cc
+	libtest/exception.cc libtest/exception/fatal.cc \
+	libtest/formatter.cc libtest/client.cc libtest/framework.cc \
+	libtest/has.cc libtest/http.cc libtest/is_local.cc \
+	libtest/killpid.cc libtest/libtool.cc libtest/main.cc \
+	libtest/port.cc libtest/result.cc libtest/runner.cc \
+	libtest/server.cc libtest/server_container.cc \
+	libtest/signal.cc libtest/socket.cc libtest/strerror.cc \
+	libtest/timer.cc libtest/tmpfile.cc libtest/vchar.cc \
+	libtest/memcached.cc libtest/gearmand.cc \
+	libtest/blobslap_worker.cc
 @BUILDING_GEARMAN_TRUE@am__objects_14 = libtest/libtest_libtest_la-blobslap_worker.lo
 am_libtest_libtest_la_OBJECTS = libtest/libtest_libtest_la-alarm.lo \
 	libtest/libtest_libtest_la-binaries.lo \
@@ -1320,7 +1165,8 @@ am_libtest_libtest_la_OBJECTS = libtest/libtest_libtest_la-alarm.lo \
 	libtest/libtest_libtest_la-dns.lo \
 	libtest/libtest_libtest_la-dream.lo \
 	libtest/libtest_libtest_la-drizzled.lo \
-	libtest/libtest_libtest_la-fatal.lo \
+	libtest/libtest_libtest_la-exception.lo \
+	libtest/exception/libtest_libtest_la-fatal.lo \
 	libtest/libtest_libtest_la-formatter.lo \
 	libtest/libtest_libtest_la-client.lo \
 	libtest/libtest_libtest_la-framework.lo \
@@ -2149,6 +1995,7 @@ TOKYOCABINET_LDFLAGS = @TOKYOCABINET_LDFLAGS@
 TOKYOCABINET_LIB = @TOKYOCABINET_LIB@
 VALGRIND = @VALGRIND@
 VERSION = @VERSION@
+WINE = @WINE@
 _WITH_LIBGEARMAN_SUPPORT = @_WITH_LIBGEARMAN_SUPPORT@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -2211,18 +2058,19 @@ top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
 lib_LTLIBRARIES = libgearman/libgearman.la
 
-# Unit tests
-
 # library used for testing
 
 # Hostile version 
-noinst_LTLIBRARIES = libtest/libtest.la libhostile/libhostile.la \
-	libhashkit/libhashkit.la libhashkit/libhashkitinc.la \
-	benchmark/libbenchmark.la \
+noinst_LTLIBRARIES = libhashkit/libhashkit.la \
+	libhashkit/libhashkitinc.la benchmark/libbenchmark.la \
 	libgearman-server/libgearman-server.la \
 	libgearman/libgearmancore.la libgearman/libgearman-vector.la \
 	libgearman/libgearman-result.la \
-	libgearman/libgearman-hostile.la tests/libstartworker.la
+	libgearman/libgearman-hostile.la
+
+# Unit tests
+check_LTLIBRARIES = libtest/libtest.la libhostile/libhostile.la \
+	tests/libstartworker.la
 nobase_include_HEADERS = libgearman/gearman.h \
 	libgearman-1.0/interface/status.h \
 	libgearman-1.0/interface/task.h libgearman-1.0/status.h \
@@ -2248,14 +2096,14 @@ noinst_HEADERS = libtest/client.hpp libtest/formatter.hpp \
 	libtest/cpu.hpp libtest/blobslap_worker.h libtest/callbacks.h \
 	libtest/dns.hpp libtest/cmdline.h libtest/collection.h \
 	libtest/common.h libtest/comparison.hpp libtest/core.h \
-	libtest/dream.h libtest/error.h libtest/failed.h \
-	libtest/fatal.hpp libtest/framework.h libtest/gearmand.h \
-	libtest/drizzled.h libtest/get.h libtest/has.hpp \
-	libtest/http.hpp libtest/is_pid.hpp libtest/is_local.hpp \
-	libtest/killpid.h libtest/libtool.hpp libtest/memcached.h \
-	libtest/memcached.hpp libtest/poll_error.hpp libtest/port.h \
-	libtest/result.hpp libtest/result/base.hpp \
-	libtest/result/fail.hpp libtest/result/fatal.hpp \
+	libtest/dream.h libtest/error.h libtest/exception.hpp \
+	libtest/exception/disconnected.hpp libtest/exception/fatal.hpp \
+	libtest/framework.h libtest/gearmand.h libtest/drizzled.h \
+	libtest/get.h libtest/has.hpp libtest/http.hpp \
+	libtest/is_pid.hpp libtest/is_local.hpp libtest/killpid.h \
+	libtest/libtool.hpp libtest/memcached.h libtest/memcached.hpp \
+	libtest/poll_error.hpp libtest/port.h libtest/result.hpp \
+	libtest/result/base.hpp libtest/result/fail.hpp \
 	libtest/result/skip.hpp libtest/result/success.hpp \
 	libtest/runner.h libtest/server.h libtest/server_container.h \
 	libtest/signal.h libtest/socket.hpp libtest/stream.h \
@@ -2327,13 +2175,14 @@ noinst_HEADERS = libtest/client.hpp libtest/formatter.hpp \
 	libgearman-server/verbose.h libgearman-server/wakeup.h \
 	libgearman-server/worker.h libgearman/client.hpp \
 	libgearman/worker.hpp libgearman/client.h libgearman/job.h \
-	libgearman/pipe.h libgearman/uuid.hpp libgearman/actions.hpp \
-	libgearman/add.hpp libgearman/aggregator.hpp \
-	libgearman/allocator.hpp libgearman/assert.hpp \
-	libgearman/backtrace.hpp libgearman/byteorder.h \
-	libgearman/command.h libgearman/common.h \
-	libgearman/connection.hpp libgearman/do.hpp \
-	libgearman/error.hpp libgearman/function/base.hpp \
+	libgearman/pipe.h libgearman/uuid.hpp libgearman/vector.h \
+	libgearman/actions.hpp libgearman/add.hpp \
+	libgearman/aggregator.hpp libgearman/allocator.hpp \
+	libgearman/assert.hpp libgearman/backtrace.hpp \
+	libgearman/byteorder.h libgearman/command.h \
+	libgearman/common.h libgearman/connection.hpp \
+	libgearman/do.hpp libgearman/error.hpp \
+	libgearman/function/base.hpp \
 	libgearman/function/function_v1.hpp \
 	libgearman/function/function_v2.hpp \
 	libgearman/function/make.hpp libgearman/function/null.hpp \
@@ -2378,20 +2227,122 @@ EXTRA_DIST = libtest/run.gdb libtest/version.h \
 CLEANFILES = tests/gearman.sql tests/gearman.sql-journal \
 	tests/gearmand.log* configmake.h configmake.h-t
 BUILT_SOURCES = libtest/version.h libhashkit-1.0/configure.h \
-	configmake.h $(am__append_33) configmake.h
+	configmake.h configmake.h
 
 # Should always be first
 TESTS = $(bin_PROGRAMS) $(check_PROGRAMS)
 XFAIL_TESTS = $(bin_PROGRAMS)
 .PHONY = 
-dist_man_MANS = $(am__append_34)
+dist_man_MANS = man/gearadmin.1 man/gearman.1 man/gearmand.8 \
+	man/gearman_allocator_t.3 \
+	man/gearman_client_set_memory_allocators.3 \
+	man/gearman_worker_set_memory_allocators.3 \
+	man/gearman_actions_t.3 man/gearman_argument_make.3 \
+	man/gearman_argument_t.3 man/gearman_bugreport.3 \
+	man/gearman_client_add_options.3 \
+	man/gearman_client_add_server.3 \
+	man/gearman_client_add_servers.3 man/gearman_client_add_task.3 \
+	man/gearman_client_add_task_background.3 \
+	man/gearman_client_add_task_high.3 \
+	man/gearman_client_add_task_high_background.3 \
+	man/gearman_client_add_task_low.3 \
+	man/gearman_client_add_task_low_background.3 \
+	man/gearman_client_add_task_status.3 \
+	man/gearman_client_clear_fn.3 man/gearman_client_clone.3 \
+	man/gearman_client_context.3 man/gearman_client_create.3 \
+	man/gearman_client_do.3 man/gearman_client_do_background.3 \
+	man/gearman_client_do_high.3 \
+	man/gearman_client_do_high_background.3 \
+	man/gearman_client_do_job_handle.3 man/gearman_client_do_low.3 \
+	man/gearman_client_do_low_background.3 \
+	man/gearman_client_do_status.3 man/gearman_client_echo.3 \
+	man/gearman_client_errno.3 man/gearman_client_error.3 \
+	man/gearman_client_free.3 man/gearman_client_job_status.3 \
+	man/gearman_client_options.3 \
+	man/gearman_client_remove_options.3 \
+	man/gearman_client_remove_servers.3 \
+	man/gearman_client_run_tasks.3 \
+	man/gearman_client_set_complete_fn.3 \
+	man/gearman_client_set_context.3 \
+	man/gearman_client_set_created_fn.3 \
+	man/gearman_client_set_data_fn.3 \
+	man/gearman_client_set_exception_fn.3 \
+	man/gearman_client_set_fail_fn.3 \
+	man/gearman_client_set_log_fn.3 \
+	man/gearman_client_set_namespace.3 \
+	man/gearman_client_set_options.3 \
+	man/gearman_client_set_status_fn.3 \
+	man/gearman_client_set_task_context_free_fn.3 \
+	man/gearman_client_set_timeout.3 \
+	man/gearman_client_set_warning_fn.3 \
+	man/gearman_client_set_workload_fn.3 \
+	man/gearman_client_set_workload_free_fn.3 \
+	man/gearman_client_set_workload_malloc_fn.3 \
+	man/gearman_client_st.3 man/gearman_client_task_free_all.3 \
+	man/gearman_client_timeout.3 man/gearman_client_wait.3 \
+	man/gearman_continue.3 man/gearman_execute.3 \
+	man/gearman_failed.3 man/gearman_job_free.3 \
+	man/gearman_job_free_all.3 man/gearman_job_function_name.3 \
+	man/gearman_job_handle.3 man/gearman_job_handle_t.3 \
+	man/gearman_job_send_complete.3 man/gearman_job_send_data.3 \
+	man/gearman_job_send_exception.3 man/gearman_job_send_fail.3 \
+	man/gearman_job_send_status.3 man/gearman_job_send_warning.3 \
+	man/gearman_job_st.3 man/gearman_job_take_workload.3 \
+	man/gearman_job_unique.3 man/gearman_job_workload.3 \
+	man/gearman_job_workload_size.3 man/gearman_log_fn.3 \
+	man/gearman_parse_servers.3 man/gearman_result_boolean.3 \
+	man/gearman_result_integer.3 man/gearman_result_is_null.3 \
+	man/gearman_result_size.3 man/gearman_result_store_integer.3 \
+	man/gearman_result_store_string.3 \
+	man/gearman_result_store_value.3 man/gearman_result_string.3 \
+	man/gearman_return_t.3 man/gearman_strerror.3 \
+	man/gearman_string_t.3 man/gearman_success.3 \
+	man/gearman_task_context.3 man/gearman_task_data.3 \
+	man/gearman_task_data_size.3 man/gearman_task_denominator.3 \
+	man/gearman_task_error.3 man/gearman_task_free.3 \
+	man/gearman_task_function_name.3 \
+	man/gearman_task_give_workload.3 man/gearman_task_is_known.3 \
+	man/gearman_task_is_running.3 man/gearman_task_job_handle.3 \
+	man/gearman_task_numerator.3 man/gearman_task_recv_data.3 \
+	man/gearman_task_return.3 man/gearman_task_send_workload.3 \
+	man/gearman_task_set_context.3 man/gearman_task_st.3 \
+	man/gearman_task_take_data.3 man/gearman_task_unique.3 \
+	man/gearman_verbose_name.3 man/gearman_verbose_t.3 \
+	man/gearman_version.3 man/gearman_worker_add_function.3 \
+	man/gearman_worker_add_options.3 \
+	man/gearman_worker_add_server.3 \
+	man/gearman_worker_add_servers.3 man/gearman_worker_clone.3 \
+	man/gearman_worker_context.3 man/gearman_worker_create.3 \
+	man/gearman_worker_define_function.3 man/gearman_worker_echo.3 \
+	man/gearman_worker_errno.3 man/gearman_worker_error.3 \
+	man/gearman_worker_free.3 man/gearman_worker_function_exist.3 \
+	man/gearman_worker_grab_job.3 man/gearman_worker_options.3 \
+	man/gearman_worker_register.3 \
+	man/gearman_worker_remove_options.3 \
+	man/gearman_worker_remove_servers.3 \
+	man/gearman_worker_set_context.3 \
+	man/gearman_worker_set_log_fn.3 \
+	man/gearman_worker_set_namespace.3 \
+	man/gearman_worker_set_options.3 \
+	man/gearman_worker_set_timeout.3 \
+	man/gearman_client_has_option.3 man/gearman_client_options_t.3 \
+	man/gearman_task_attr_init.3 \
+	man/gearman_task_attr_init_background.3 \
+	man/gearman_task_attr_init_epoch.3 man/gearman_task_attr_t.3 \
+	man/gearman_worker_set_identifier.3 \
+	man/gearman_worker_set_workload_free_fn.3 \
+	man/gearman_worker_set_workload_malloc_fn.3 \
+	man/gearman_worker_st.3 man/gearman_worker_timeout.3 \
+	man/gearman_worker_unregister.3 \
+	man/gearman_worker_unregister_all.3 man/gearman_worker_wait.3 \
+	man/gearman_worker_work.3 man/libgearman.3
 man_MANS = 
 LIBTOOL_COMMAND = ${abs_top_builddir}/libtool --mode=execute
 VALGRIND_EXEC_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=memcheck --error-exitcode=1 --leak-check=yes --track-fds=yes --malloc-fill=A5 --free-fill=DE
 SGCHECK_EXEC_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=exp-sgcheck --error-exitcode=1
 VALGRIND_COMMAND = TESTS_ENVIRONMENT="valgrind" $(VALGRIND_EXEC_COMMAND)
 HELGRIND_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=helgrind --read-var-info=yes --error-exitcode=1 --read-var-info=yes
-DRD_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=drd --error-exitcode=1
+DRD_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=drd --free-is-write=yes --error-exitcode=1
 SGCHECK_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=exp-sgcheck --error-exitcode=1
 MASSIF_COMMAND = $(LIBTOOL_COMMAND) valgrind --tool=massif
 GDB_COMMAND = $(LIBTOOL_COMMAND) gdb -f -x libtest/run.gdb
@@ -2410,7 +2361,8 @@ libtest_libtest_la_LIBADD = @LIBMEMCACHED_LIB@ @PTHREAD_LIBS@ \
 libtest_libtest_la_SOURCES = libtest/alarm.cc libtest/binaries.cc \
 	libtest/cmdline.cc libtest/collection.cc libtest/comparison.cc \
 	libtest/core.cc libtest/cpu.cc libtest/dns.cc libtest/dream.cc \
-	libtest/drizzled.cc libtest/fatal.cc libtest/formatter.cc \
+	libtest/drizzled.cc libtest/exception.cc \
+	libtest/exception/fatal.cc libtest/formatter.cc \
 	libtest/client.cc libtest/framework.cc libtest/has.cc \
 	libtest/http.cc libtest/is_local.cc libtest/killpid.cc \
 	libtest/libtool.cc libtest/main.cc libtest/port.cc \
@@ -2835,12 +2787,12 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = support/gearmand.pc
 SPHINXOPTS = ${SPHINX_WARNINGS} -q
 PAPER = 
-SPHINX_BUILDDIR = ${abs_top_builddir}/docs
+SPHINX_BUILDDIR = ${abs_srcdir}/docs
 
 # Internal variables.
 PAPEROPT_a4 = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
-ALLSPHINXOPTS = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SPHINX_BUILDDIR)
+ALLSPHINXOPTS = -c $(top_builddir)/docs $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SPHINX_BUILDDIR)
 docs_libgearman_examples_gearman_execute_example_SOURCES = docs/libgearman/examples/gearman_execute_example.c
 docs_libgearman_examples_gearman_execute_example_LDADD = libgearman/libgearman.la
 docs_libgearman_examples_gearman_execute_partition_SOURCES = docs/libgearman/examples/gearman_execute_partition.c
@@ -2928,6 +2880,17 @@ support/gearmand.pc: $(top_builddir)/config.status $(top_srcdir)/support/gearman
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 support/gearmand.spec: $(top_builddir)/config.status $(top_srcdir)/support/gearmand.spec.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
+
+clean-checkLTLIBRARIES:
+	-test -z "$(check_LTLIBRARIES)" || rm -f $(check_LTLIBRARIES)
+	@list='$(check_LTLIBRARIES)'; \
+	locs=`for p in $$list; do echo $$p; done | \
+	      sed 's|^[^/]*$$|.|; s|/[^/]*$$||; s|$$|/so_locations|' | \
+	      sort -u`; \
+	test -z "$$locs" || { \
+	  echo rm -f $${locs}; \
+	  rm -f $${locs}; \
+	}
 install-libLTLIBRARIES: $(lib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
 	@list='$(lib_LTLIBRARIES)'; test -n "$(libdir)" || list=; \
@@ -3740,8 +3703,17 @@ libtest/libtest_libtest_la-dream.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-drizzled.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
-libtest/libtest_libtest_la-fatal.lo: libtest/$(am__dirstamp) \
+libtest/libtest_libtest_la-exception.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
+libtest/exception/$(am__dirstamp):
+	@$(MKDIR_P) libtest/exception
+	@: > libtest/exception/$(am__dirstamp)
+libtest/exception/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) libtest/exception/$(DEPDIR)
+	@: > libtest/exception/$(DEPDIR)/$(am__dirstamp)
+libtest/exception/libtest_libtest_la-fatal.lo:  \
+	libtest/exception/$(am__dirstamp) \
+	libtest/exception/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-formatter.lo: libtest/$(am__dirstamp) \
 	libtest/$(DEPDIR)/$(am__dirstamp)
 libtest/libtest_libtest_la-client.lo: libtest/$(am__dirstamp) \
@@ -4499,6 +4471,8 @@ mostlyclean-compile:
 	-rm -f libhostile/t/*.$(OBJEXT)
 	-rm -f libtest/*.$(OBJEXT)
 	-rm -f libtest/*.lo
+	-rm -f libtest/exception/*.$(OBJEXT)
+	-rm -f libtest/exception/*.lo
 	-rm -f tests/*.$(OBJEXT)
 	-rm -f tests/*.lo
 	-rm -f tests/libgearman-1.0/*.$(OBJEXT)
@@ -4762,7 +4736,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-dns.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-dream.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-drizzled.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-fatal.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-exception.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-formatter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-framework.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_libtest_la-gearmand.Plo@am__quote@
@@ -4787,6 +4761,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/libtest_unittest-unittest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/skiptest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libtest/$(DEPDIR)/wait.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libtest/exception/$(DEPDIR)/libtest_libtest_la-fatal.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/basic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/blobslap_client.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/c_test.Po@am__quote@
@@ -6435,12 +6410,19 @@ libtest/libtest_libtest_la-drizzled.lo: libtest/drizzled.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-drizzled.lo `test -f 'libtest/drizzled.cc' || echo '$(srcdir)/'`libtest/drizzled.cc
 
-libtest/libtest_libtest_la-fatal.lo: libtest/fatal.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-fatal.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-fatal.Tpo -c -o libtest/libtest_libtest_la-fatal.lo `test -f 'libtest/fatal.cc' || echo '$(srcdir)/'`libtest/fatal.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-fatal.Tpo libtest/$(DEPDIR)/libtest_libtest_la-fatal.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='libtest/fatal.cc' object='libtest/libtest_libtest_la-fatal.lo' libtool=yes @AMDEPBACKSLASH@
+libtest/libtest_libtest_la-exception.lo: libtest/exception.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-exception.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-exception.Tpo -c -o libtest/libtest_libtest_la-exception.lo `test -f 'libtest/exception.cc' || echo '$(srcdir)/'`libtest/exception.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/$(DEPDIR)/libtest_libtest_la-exception.Tpo libtest/$(DEPDIR)/libtest_libtest_la-exception.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='libtest/exception.cc' object='libtest/libtest_libtest_la-exception.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-fatal.lo `test -f 'libtest/fatal.cc' || echo '$(srcdir)/'`libtest/fatal.cc
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/libtest_libtest_la-exception.lo `test -f 'libtest/exception.cc' || echo '$(srcdir)/'`libtest/exception.cc
+
+libtest/exception/libtest_libtest_la-fatal.lo: libtest/exception/fatal.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/exception/libtest_libtest_la-fatal.lo -MD -MP -MF libtest/exception/$(DEPDIR)/libtest_libtest_la-fatal.Tpo -c -o libtest/exception/libtest_libtest_la-fatal.lo `test -f 'libtest/exception/fatal.cc' || echo '$(srcdir)/'`libtest/exception/fatal.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) libtest/exception/$(DEPDIR)/libtest_libtest_la-fatal.Tpo libtest/exception/$(DEPDIR)/libtest_libtest_la-fatal.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='libtest/exception/fatal.cc' object='libtest/exception/libtest_libtest_la-fatal.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -c -o libtest/exception/libtest_libtest_la-fatal.lo `test -f 'libtest/exception/fatal.cc' || echo '$(srcdir)/'`libtest/exception/fatal.cc
 
 libtest/libtest_libtest_la-formatter.lo: libtest/formatter.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_libtest_la_CXXFLAGS) $(CXXFLAGS) -MT libtest/libtest_libtest_la-formatter.lo -MD -MP -MF libtest/$(DEPDIR)/libtest_libtest_la-formatter.Tpo -c -o libtest/libtest_libtest_la-formatter.lo `test -f 'libtest/formatter.cc' || echo '$(srcdir)/'`libtest/formatter.cc
@@ -7643,6 +7625,7 @@ clean-libtool:
 	-rm -rf libhostile/.libs libhostile/_libs
 	-rm -rf libhostile/t/.libs libhostile/t/_libs
 	-rm -rf libtest/.libs libtest/_libs
+	-rm -rf libtest/exception/.libs libtest/exception/_libs
 	-rm -rf tests/.libs tests/_libs
 	-rm -rf tests/libgearman-1.0/.libs tests/libgearman-1.0/_libs
 	-rm -rf tests/workers/aggregator/.libs tests/workers/aggregator/_libs
@@ -8166,7 +8149,7 @@ distcleancheck: distclean
 	       $(distcleancheck_listfiles) ; \
 	       exit 1; } >&2
 check-am: all-am
-	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
+	$(MAKE) $(AM_MAKEFLAGS) $(check_LTLIBRARIES) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS check-local
 check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
@@ -8260,6 +8243,8 @@ distclean-generic:
 	-rm -f libhostile/t/$(am__dirstamp)
 	-rm -f libtest/$(DEPDIR)/$(am__dirstamp)
 	-rm -f libtest/$(am__dirstamp)
+	-rm -f libtest/exception/$(DEPDIR)/$(am__dirstamp)
+	-rm -f libtest/exception/$(am__dirstamp)
 	-rm -f tests/$(DEPDIR)/$(am__dirstamp)
 	-rm -f tests/$(am__dirstamp)
 	-rm -f tests/libgearman-1.0/$(DEPDIR)/$(am__dirstamp)
@@ -8278,18 +8263,16 @@ maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
-@HAVE_SPHINX_FALSE@html-local:
-@HAVE_SPHINX_FALSE@install-html-local:
 clean: clean-am
 
-clean-am: clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
-	clean-libLTLIBRARIES clean-libtool clean-local \
+clean-am: clean-binPROGRAMS clean-checkLTLIBRARIES clean-checkPROGRAMS \
+	clean-generic clean-libLTLIBRARIES clean-libtool clean-local \
 	clean-noinstLTLIBRARIES clean-noinstPROGRAMS \
 	clean-sbinPROGRAMS mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf benchmark/$(DEPDIR) bin/$(DEPDIR) docs/libgearman/examples/$(DEPDIR) examples/$(DEPDIR) gearmand/$(DEPDIR) libgearman-1.0/t/$(DEPDIR) libgearman-server/$(DEPDIR) libgearman-server/error/$(DEPDIR) libgearman-server/plugins/$(DEPDIR) libgearman-server/plugins/protocol/gear/$(DEPDIR) libgearman-server/plugins/protocol/http/$(DEPDIR) libgearman-server/plugins/queue/$(DEPDIR) libgearman-server/plugins/queue/default/$(DEPDIR) libgearman-server/plugins/queue/drizzle/$(DEPDIR) libgearman-server/plugins/queue/libmemcached/$(DEPDIR) libgearman-server/plugins/queue/mysql/$(DEPDIR) libgearman-server/plugins/queue/postgres/$(DEPDIR) libgearman-server/plugins/queue/redis/$(DEPDIR) libgearman-server/plugins/queue/sqlite/$(DEPDIR) libgearman-server/plugins/queue/tokyocabinet/$(DEPDIR) libgearman/$(DEPDIR) libgearman/function/$(DEPDIR) libgearman/protocol/$(DEPDIR) libhashkit/$(DEPDIR) libhostile/$(DEPDIR) libhostile/t/$(DEPDIR) libtest/$(DEPDIR) tests/$(DEPDIR) tests/libgearman-1.0/$(DEPDIR) tests/workers/aggregator/$(DEPDIR) tests/workers/v1/$(DEPDIR) tests/workers/v2/$(DEPDIR) util/$(DEPDIR)
+	-rm -rf benchmark/$(DEPDIR) bin/$(DEPDIR) docs/libgearman/examples/$(DEPDIR) examples/$(DEPDIR) gearmand/$(DEPDIR) libgearman-1.0/t/$(DEPDIR) libgearman-server/$(DEPDIR) libgearman-server/error/$(DEPDIR) libgearman-server/plugins/$(DEPDIR) libgearman-server/plugins/protocol/gear/$(DEPDIR) libgearman-server/plugins/protocol/http/$(DEPDIR) libgearman-server/plugins/queue/$(DEPDIR) libgearman-server/plugins/queue/default/$(DEPDIR) libgearman-server/plugins/queue/drizzle/$(DEPDIR) libgearman-server/plugins/queue/libmemcached/$(DEPDIR) libgearman-server/plugins/queue/mysql/$(DEPDIR) libgearman-server/plugins/queue/postgres/$(DEPDIR) libgearman-server/plugins/queue/redis/$(DEPDIR) libgearman-server/plugins/queue/sqlite/$(DEPDIR) libgearman-server/plugins/queue/tokyocabinet/$(DEPDIR) libgearman/$(DEPDIR) libgearman/function/$(DEPDIR) libgearman/protocol/$(DEPDIR) libhashkit/$(DEPDIR) libhostile/$(DEPDIR) libhostile/t/$(DEPDIR) libtest/$(DEPDIR) libtest/exception/$(DEPDIR) tests/$(DEPDIR) tests/libgearman-1.0/$(DEPDIR) tests/workers/aggregator/$(DEPDIR) tests/workers/v1/$(DEPDIR) tests/workers/v2/$(DEPDIR) util/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-libtool distclean-tags
@@ -8339,7 +8322,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf benchmark/$(DEPDIR) bin/$(DEPDIR) docs/libgearman/examples/$(DEPDIR) examples/$(DEPDIR) gearmand/$(DEPDIR) libgearman-1.0/t/$(DEPDIR) libgearman-server/$(DEPDIR) libgearman-server/error/$(DEPDIR) libgearman-server/plugins/$(DEPDIR) libgearman-server/plugins/protocol/gear/$(DEPDIR) libgearman-server/plugins/protocol/http/$(DEPDIR) libgearman-server/plugins/queue/$(DEPDIR) libgearman-server/plugins/queue/default/$(DEPDIR) libgearman-server/plugins/queue/drizzle/$(DEPDIR) libgearman-server/plugins/queue/libmemcached/$(DEPDIR) libgearman-server/plugins/queue/mysql/$(DEPDIR) libgearman-server/plugins/queue/postgres/$(DEPDIR) libgearman-server/plugins/queue/redis/$(DEPDIR) libgearman-server/plugins/queue/sqlite/$(DEPDIR) libgearman-server/plugins/queue/tokyocabinet/$(DEPDIR) libgearman/$(DEPDIR) libgearman/function/$(DEPDIR) libgearman/protocol/$(DEPDIR) libhashkit/$(DEPDIR) libhostile/$(DEPDIR) libhostile/t/$(DEPDIR) libtest/$(DEPDIR) tests/$(DEPDIR) tests/libgearman-1.0/$(DEPDIR) tests/workers/aggregator/$(DEPDIR) tests/workers/v1/$(DEPDIR) tests/workers/v2/$(DEPDIR) util/$(DEPDIR)
+	-rm -rf benchmark/$(DEPDIR) bin/$(DEPDIR) docs/libgearman/examples/$(DEPDIR) examples/$(DEPDIR) gearmand/$(DEPDIR) libgearman-1.0/t/$(DEPDIR) libgearman-server/$(DEPDIR) libgearman-server/error/$(DEPDIR) libgearman-server/plugins/$(DEPDIR) libgearman-server/plugins/protocol/gear/$(DEPDIR) libgearman-server/plugins/protocol/http/$(DEPDIR) libgearman-server/plugins/queue/$(DEPDIR) libgearman-server/plugins/queue/default/$(DEPDIR) libgearman-server/plugins/queue/drizzle/$(DEPDIR) libgearman-server/plugins/queue/libmemcached/$(DEPDIR) libgearman-server/plugins/queue/mysql/$(DEPDIR) libgearman-server/plugins/queue/postgres/$(DEPDIR) libgearman-server/plugins/queue/redis/$(DEPDIR) libgearman-server/plugins/queue/sqlite/$(DEPDIR) libgearman-server/plugins/queue/tokyocabinet/$(DEPDIR) libgearman/$(DEPDIR) libgearman/function/$(DEPDIR) libgearman/protocol/$(DEPDIR) libhashkit/$(DEPDIR) libhostile/$(DEPDIR) libhostile/t/$(DEPDIR) libtest/$(DEPDIR) libtest/exception/$(DEPDIR) tests/$(DEPDIR) tests/libgearman-1.0/$(DEPDIR) tests/workers/aggregator/$(DEPDIR) tests/workers/v1/$(DEPDIR) tests/workers/v2/$(DEPDIR) util/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic \
 	maintainer-clean-local
@@ -8366,9 +8349,10 @@ uninstall-man: uninstall-man1 uninstall-man3 uninstall-man8
 .MAKE: all check check-am install install-am install-strip
 
 .PHONY: CTAGS GTAGS all all-am am--refresh check check-TESTS check-am \
-	check-local clean clean-binPROGRAMS clean-checkPROGRAMS \
-	clean-cscope clean-generic clean-libLTLIBRARIES clean-libtool \
-	clean-local clean-noinstLTLIBRARIES clean-noinstPROGRAMS \
+	check-local clean clean-binPROGRAMS clean-checkLTLIBRARIES \
+	clean-checkPROGRAMS clean-cscope clean-generic \
+	clean-libLTLIBRARIES clean-libtool clean-local \
+	clean-noinstLTLIBRARIES clean-noinstPROGRAMS \
 	clean-sbinPROGRAMS cscope cscopelist ctags dist dist-all \
 	dist-bzip2 dist-gzip dist-lzip dist-shar dist-tarZ dist-xz \
 	dist-zip distcheck distclean distclean-compile \
@@ -8448,6 +8432,18 @@ drd-unittest: libtest/unittest
 sgcheck-unittest: libtest/unittest
 	echo $(SGCHECK_COMMAND)
 	@$(SGCHECK_COMMAND) libtest/unittest
+
+test-skiptest: libtest/skiptest
+	@libtest/skiptest
+
+valgrind-skiptest: libtest/skiptest
+	@$(VALGRIND_COMMAND) libtest/skiptest
+
+helgrind-skiptest: libtest/skiptest
+	@$(HELGRIND_COMMAND) libtest/skiptest
+
+drd-skiptest: libtest/skiptest
+	@$(DRD_COMMAND) libtest/skiptest
 test-backtrace: libtest/backtrace
 	@libtest/backtrace
 
@@ -8762,95 +8758,75 @@ bogus:
 
 .PHONY: clean-docs-check
 clean-docs-check:
-	-rm -rf docs/_build docs/doctrees man/.doctrees/
+	-rm -rf docs/_build docs/doctrees man/.doctrees
 
 .PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest
 
-@HAVE_SPHINX_TRUE@sphinx-help:
-@HAVE_SPHINX_TRUE@	@echo "Please use \`make <target>' where <target> is one of"
-@HAVE_SPHINX_TRUE@	@echo "  html       to make standalone HTML files"
-@HAVE_SPHINX_TRUE@	@echo "  singlehtml to make a single large HTML file"
-@HAVE_SPHINX_TRUE@	@echo "  pickle     to make pickle files"
-@HAVE_SPHINX_TRUE@	@echo "  json       to make JSON files"
-@HAVE_SPHINX_TRUE@	@echo "  htmlhelp   to make HTML files and a HTML help project"
-@HAVE_SPHINX_TRUE@	@echo "  qthelp     to make HTML files and a qthelp project"
-@HAVE_SPHINX_TRUE@	@echo "  devhelp    to make HTML files and a Devhelp project"
-@HAVE_SPHINX_TRUE@	@echo "  epub       to make an epub"
-@HAVE_SPHINX_TRUE@	@echo "  latex      to make LaTeX files, you can set PAPER=a4 or PAPER=letter"
-@HAVE_SPHINX_TRUE@	@echo "  latexpdf   to make LaTeX files and run them through pdflatex"
-@HAVE_SPHINX_TRUE@	@echo "  text       to make text files"
-@HAVE_SPHINX_TRUE@	@echo "  man        to make manual pages"
-@HAVE_SPHINX_TRUE@	@echo "  changes    to make an overview of all changed/added/deprecated items"
-@HAVE_SPHINX_TRUE@	@echo "  linkcheck  to check all external links for integrity"
-@HAVE_SPHINX_TRUE@	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
+man: docs/conf.py
+	@PYTHONPATH=$(SPHINX_BUILDDIR)/docs  $(SPHINXBUILD) -b man $(ALLSPHINXOPTS) ${top_builddir}/man
 
-@HAVE_SPHINX_TRUE@install-html-local: html-local
-@HAVE_SPHINX_TRUE@	@$(MKDIR_P)  $(htmldir)/html
-@HAVE_SPHINX_TRUE@	@cp -r ${top_builddir}/html $(htmldir)/
+install-html-local: html-local
+	@$(MKDIR_P)  $(htmldir)/html
+	@cp -r ${top_builddir}/html $(htmldir)/
 
-@HAVE_SPHINX_TRUE@html-local: docs/conf.py
-@HAVE_SPHINX_TRUE@	@PYTHONPATH=${top_srcdir}/docs $(SPHINXBUILD) -b html $(ALLSPHINXOPTS) ${top_builddir}/html
+html-local: docs/conf.py
+	@PYTHONPATH=${top_srcdir}/docs $(SPHINXBUILD) -b html $(ALLSPHINXOPTS) ${top_builddir}/html
 
-@HAVE_SPHINX_TRUE@singlehtml: html-local
-@HAVE_SPHINX_TRUE@	@PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b singlehtml $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/singlehtml
+singlehtml: html-local
+	@PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b singlehtml $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/singlehtml
 
-@HAVE_SPHINX_TRUE@pickle: docs/conf.py
-@HAVE_SPHINX_TRUE@	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b pickle $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/pickle
-@HAVE_SPHINX_TRUE@	@echo
-@HAVE_SPHINX_TRUE@	@echo "Build finished; now you can process the pickle files."
+pickle: docs/conf.py
+	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b pickle $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/pickle
+	@echo
+	@echo "Build finished; now you can process the pickle files."
 
-@HAVE_SPHINX_TRUE@json: docs/conf.py
-@HAVE_SPHINX_TRUE@	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b json $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/json
-@HAVE_SPHINX_TRUE@	@echo
-@HAVE_SPHINX_TRUE@	@echo "Build finished; now you can process the JSON files."
+json: docs/conf.py
+	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b json $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/json
+	@echo
+	@echo "Build finished; now you can process the JSON files."
 
-@HAVE_SPHINX_TRUE@htmlhelp: docs/conf.py
-@HAVE_SPHINX_TRUE@	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b htmlhelp $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/htmlhelp
-@HAVE_SPHINX_TRUE@	@echo
-@HAVE_SPHINX_TRUE@	@echo "Build finished; now you can run HTML Help Workshop with the" \
-@HAVE_SPHINX_TRUE@	      ".hhp project file in $(SPHINX_BUILDDIR)/htmlhelp."
+htmlhelp: docs/conf.py
+	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b htmlhelp $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/htmlhelp
+	@echo
+	@echo "Build finished; now you can run HTML Help Workshop with the" \
+	      ".hhp project file in $(SPHINX_BUILDDIR)/htmlhelp."
 
-@HAVE_SPHINX_TRUE@epub: docs/conf.py
-@HAVE_SPHINX_TRUE@	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b epub $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/epub
-@HAVE_SPHINX_TRUE@	@echo
-@HAVE_SPHINX_TRUE@	@echo "Build finished. The epub file is in $(SPHINX_BUILDDIR)/epub."
+epub: docs/conf.py
+	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b epub $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/epub
+	@echo
+	@echo "Build finished. The epub file is in $(SPHINX_BUILDDIR)/epub."
 
-@HAVE_SPHINX_TRUE@latex: docs/conf.py
-@HAVE_SPHINX_TRUE@	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/latex
-@HAVE_SPHINX_TRUE@	@echo
-@HAVE_SPHINX_TRUE@	@echo "Build finished; the LaTeX files are in $(SPHINX_BUILDDIR)/latex."
-@HAVE_SPHINX_TRUE@	@echo "Run \`make' in that directory to run these through (pdf)latex" \
-@HAVE_SPHINX_TRUE@	      "(use \`make latexpdf' here to do that automatically)."
+latex: docs/conf.py
+	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/latex
+	@echo
+	@echo "Build finished; the LaTeX files are in $(SPHINX_BUILDDIR)/latex."
+	@echo "Run \`make' in that directory to run these through (pdf)latex" \
+	      "(use \`make latexpdf' here to do that automatically)."
 
-@HAVE_SPHINX_TRUE@latexpdf: latex
-@HAVE_SPHINX_TRUE@	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/latex
-@HAVE_SPHINX_TRUE@	@echo "Running LaTeX files through pdflatex..."
-@HAVE_SPHINX_TRUE@	make -C $(SPHINX_BUILDDIR)/latex all-pdf
-@HAVE_SPHINX_TRUE@	@echo "pdflatex finished; the PDF files are in $(SPHINX_BUILDDIR)/latex."
+latexpdf: latex
+	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/latex
+	@echo "Running LaTeX files through pdflatex..."
+	make -C $(SPHINX_BUILDDIR)/latex all-pdf
+	@echo "pdflatex finished; the PDF files are in $(SPHINX_BUILDDIR)/latex."
 
-@HAVE_SPHINX_TRUE@text: docs/conf.py
-@HAVE_SPHINX_TRUE@	@PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b text $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/text
+text: docs/conf.py
+	@PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b text $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/text
 
-@HAVE_RECENT_SPHINX_TRUE@@HAVE_SPHINX_TRUE@man:
-@HAVE_RECENT_SPHINX_TRUE@@HAVE_SPHINX_TRUE@	@PYTHONPATH=$(SPHINX_BUILDDIR)/docs  $(SPHINXBUILD) -b man $(ALLSPHINXOPTS) ${top_builddir}/man
+changes: docs/conf.py
+	@PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b changes $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/changes
 
-@HAVE_RECENT_SPHINX_FALSE@@HAVE_SPHINX_TRUE@man:
+linkcheck: docs/conf.py
+	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b linkcheck $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/linkcheck
 
-@HAVE_SPHINX_TRUE@changes: docs/conf.py
-@HAVE_SPHINX_TRUE@	@PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b changes $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/changes
-
-@HAVE_SPHINX_TRUE@linkcheck: docs/conf.py
-@HAVE_SPHINX_TRUE@	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b linkcheck $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/linkcheck
-
-@HAVE_SPHINX_TRUE@doctest: docs/conf.py
-@HAVE_SPHINX_TRUE@	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/doctest
-@HAVE_SPHINX_TRUE@	@echo "Testing of doctests in the sources finished, look at the " \
-@HAVE_SPHINX_TRUE@	      "results in $(SPHINX_BUILDDIR)/doctest/output.txt."
-
-@HAVE_SPHINX_FALSE@man:
+doctest: docs/conf.py
+	PYTHONPATH=${top_srcdir}/docs  $(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(SPHINX_BUILDDIR)/doctest
+	@echo "Testing of doctests in the sources finished, look at the " \
+	      "results in $(SPHINX_BUILDDIR)/doctest/output.txt."
 
 # Build rule for documentation
-@HAVE_RECENT_SPHINX_TRUE@@IS_VCS_CHECKOUT_TRUE@$(dist_man_MANS): man
+$(dist_man_MANS): $(top_srcdir)/configure.ac
+	$(MAKE) $(AM_MAKEFLAGS) man
+.NOTPARALLEL: $(dist_man_MANS)
 
 test: check
 configmake.h: Makefile
