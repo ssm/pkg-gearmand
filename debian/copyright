@@ -74,6 +74,13 @@ Copyright: 2012 Stig Sandbeck Mathisen
 License: GPL-3
  See /usr/share/common-licenses/GPL-3
 
+Files: debian/test/sharness.sh
+Copyright: 2011-2012 Mathias Lafeldt
+           2005-2012 Git project
+           2005-2012 Junio C Hamano
+License: GPL-2 or (at your option) any later version
+ See /usr/share/common-licenses/GPL-2
+
 Files: m4/ax_compare_version.m4 m4/ax_lib_sqlite3.m4 m4/ax_lib_sqlite3.m4 m4/ax_path_generic.m4 m4/ax_with_prog.m4 m4/ax_cxx_header_stdcxx_98.m4 m4/ax_lib_postgresql.m4
 Copyright: 2008 Tim Toolan <toolan@ele.uri.edu>
            2008-2009 Francesco Salvestrini <salvestrini@users.sourceforge.net>
