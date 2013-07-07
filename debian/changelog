@@ -1,8 +1,13 @@
-gearmand (1.0.6-1) UNRELEASED; urgency=low
+gearmand (1.0.6-1) unstable; urgency=low
 
+  [ Stig Sandbeck Mathisen ]
   * New upstream release
+  * Add dep8 test for gearman-job-server
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Tue, 02 Jul 2013 20:12:01 +0200
+  [ Michael Stapelberg ]
+  * Use dh_systemd (Closes: #715253)
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 07 Jul 2013 17:06:22 +0200
 
 gearmand (1.0.5-2) unstable; urgency=low
 
