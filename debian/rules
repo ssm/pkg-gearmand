@@ -1,7 +1,10 @@
 #!/usr/bin/make -f
 
 %:
-	dh $@ --with autoreconf,systemd
+	dh $@ --parallel --with autoreconf,systemd
+
+override_dh_auto_configure:
+	dh_auto_configure -- --enable-jobserver=no
 
 override_dh_auto_test:
 
