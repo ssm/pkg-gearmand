@@ -8,6 +8,7 @@ Build-Depends:
  chrpath,
  debhelper (>= 9),
  dh-autoreconf,
+ dh-systemd (>= 1.4),
  lcov,
  libboost-program-options-dev (>= 1.39.0),
  libboost-system-dev (>= 1.39.0),
@@ -28,7 +29,6 @@ Build-Depends:
  procps,
  systemtap-sdt-dev [amd64 armel armhf i386 ia64 powerpc s390],
  uuid-dev,
- dh-systemd (>= 1.4)
 Standards-Version: 3.9.3
 Homepage: http://launchpad.net/gearmand
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/gearmand.git
