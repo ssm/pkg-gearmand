@@ -1,3 +1,11 @@
+gearmand (1.0.6-2) unstable; urgency=low
+
+  [ Pino Toscano ]
+  * Fix FTBFS on GNU/Hurd (Closes: #715322)
+  * Fix parallel building (Closes: #715323)
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Mon, 08 Jul 2013 12:48:35 +0200
+
 gearmand (1.0.6-1) unstable; urgency=low
 
   [ Stig Sandbeck Mathisen ]
