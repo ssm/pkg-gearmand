@@ -33,7 +33,7 @@ Standards-Version: 3.9.3
 Homepage: http://launchpad.net/gearmand
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/gearmand.git
 Vcs-Git: git://anonscm.debian.org/collab-maint/gearmand.git
-
+XS-Testsuite: autopkgtest
 
 Package: libgearman7
 Priority: optional
