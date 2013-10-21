@@ -1,3 +1,18 @@
+gearmand (1.1.11-0.1) unstable; urgency=low
+
+  [ Stig Sandbeck Mathisen ]
+  * Add missing XS-Testsuite header
+  * debian/watch: track current and next stable release series
+
+  [ Ondřej Surý ]
+  * New upstream version 1.1.11
+  * Non-maintainer upload
+  * Build with libtokyocabinet support
+  * Enable ssl support with openssl
+  * Use updated (launchpad.net) watch file
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 21 Oct 2013 11:50:36 +0200
+
 gearmand (1.0.6-2) unstable; urgency=low
 
   [ Pino Toscano ]
