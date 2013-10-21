@@ -23,6 +23,7 @@ Build-Depends:
  libsasl2-dev,
  libsqlite3-dev (>= 3.0.0),
  libtokyocabinet-dev,
+ libssl-dev,
  libtool,
  memcached,
  pandora-build,
