@@ -39,6 +39,8 @@
 
 #include "libgearman-server/plugins/base.h"
 
+#include "libgearman/ssl.h"
+
 struct gearmand_io_st
 {
   struct {
@@ -66,7 +68,37 @@ struct gearmand_io_st
   } recv_state;
   short events;
   short revents;
-  int fd;
+  private:
+  int _fd;
+
+  public:
+  gearmand_error_t set_fd(const int fd_)
+  {
+    options.external_fd= true;
+    _fd= fd_;
+    _state= gearmand_io_st::GEARMAND_CON_UNIVERSAL_CONNECTED;
+    return _io_setsockopt();
+  }
+
+  gearmand_error_t _io_setsockopt();
+
+  int fd() const
+  {
+    return _fd;
+  }
+
+  bool has_fd() const
+  {
+    return _fd != INVALID_SOCKET;
+  }
+
+  void clear()
+  {
+    _fd= INVALID_SOCKET;
+    events= 0;
+    revents= 0;
+  }
+
   uint32_t created_id;
   uint32_t created_id_next;
   size_t send_buffer_size;
@@ -86,8 +118,17 @@ struct gearmand_io_st
   char *recv_buffer_ptr;
   gearmand_packet_st packet;
   gearman_server_con_st *root;
-  char send_buffer[GEARMAN_SEND_BUFFER_SIZE];
-  char recv_buffer[GEARMAN_RECV_BUFFER_SIZE];
+  char send_buffer[GEARMAND_SEND_BUFFER_SIZE];
+  char recv_buffer[GEARMAND_RECV_BUFFER_SIZE];
+
+  gearmand_io_st() { }
+
+  const char* host() const;
+  const char* port() const;
+
+#if 0
+  void close_socket();
+#endif
 };
 
 namespace gearmand { namespace protocol {class Context; } }
@@ -130,9 +171,10 @@ struct gearman_server_con_st
   struct gearman_server_client_st *client_list;
   const char *_host; // client host
   const char *_port; // client port
-  char id[GEARMAN_SERVER_CON_ID_SIZE];
+  char id[GEARMAND_SERVER_CON_ID_SIZE];
   gearmand::protocol::Context* protocol;
   struct event *timeout_event;
+  SSL* _ssl;
 
   gearman_server_con_st()
   {
@@ -140,6 +182,26 @@ struct gearman_server_con_st
 
   ~gearman_server_con_st()
   {
+  }
+
+  const char* host() const
+  {
+    if (_host)
+    {
+      return _host;
+    }
+
+    return "-";
+  }
+
+  const char* port() const
+  {
+    if (_port)
+    {
+      return _port;
+    }
+
+    return "-";
   }
 
   void set_protocol(gearmand::protocol::Context* arg)

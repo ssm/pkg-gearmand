@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,7 @@
 #pragma once
 
 #include "libgearman-server/struct/server.h"
+#include "libgearman/ssl.h"
 
 #include "libgearman-server/struct/port.h"
 
@@ -46,6 +47,71 @@
 
 struct gearmand_st
 {
+  class SocketOpt {
+  public:
+    SocketOpt():
+      _keepalive(false),
+      _keepalive_idle(-1),
+      _keepalive_interval(-1),
+      _keepalive_count(-1)
+    {
+    }
+
+    bool keepalive()
+    {
+      return _keepalive;
+    }
+
+    void keepalive(int keepalive_)
+    {
+      _keepalive= true;
+      _keepalive= keepalive_;
+    }
+
+    int keepalive_idle()
+    {
+      return _keepalive_idle;
+    }
+
+    void keepalive_idle(int keepalive_idle_)
+    {
+      _keepalive= true;
+      _keepalive_idle= keepalive_idle_;
+    }
+
+    int keepalive_interval()
+    {
+      return _keepalive_interval;
+    }
+
+    void keepalive_interval(int keepalive_interval_)
+    {
+      _keepalive= true;
+      _keepalive_interval= keepalive_interval_;
+    }
+
+    int keepalive_count()
+    {
+      return _keepalive_count;
+    }
+
+    void keepalive_count(int keepalive_count_)
+    {
+      _keepalive= true;
+      _keepalive_count= keepalive_count_;
+    }
+
+  private:
+    bool _keepalive;
+    int _keepalive_idle;
+    int _keepalive_interval;
+    int _keepalive_count;
+  } _socketopt;
+
+  SocketOpt& socketopt()
+  {
+    return _socketopt;
+  }
   gearmand_verbose_t verbose;
   gearmand_error_t ret;
   int backlog; // Set socket backlog for listening connection
@@ -68,6 +134,9 @@ struct gearmand_st
   gearman_server_st server;
   struct event wakeup_event;
   std::vector<gearmand_port_st> _port_list;
+  private:
+  SSL_CTX* _ctx_ssl;
+  public:
 
   gearmand_st(const char *host_,
               uint32_t threads_,
@@ -75,7 +144,7 @@ struct gearmand_st
               const gearmand_verbose_t verbose_,
               bool exceptions_) :
     verbose(verbose_),
-    ret(GEARMAN_SUCCESS),
+    ret(GEARMAND_SUCCESS),
     backlog(backlog_),
     is_listen_event(false),
     is_wakeup_event(false),
@@ -91,7 +160,8 @@ struct gearmand_st
     base(NULL),
     thread_list(NULL),
     thread_add_next(NULL),
-    free_dcon_list(NULL)
+    free_dcon_list(NULL),
+    _ctx_ssl(NULL)
   {
     if (host_)
     {
@@ -101,14 +171,33 @@ struct gearmand_st
     wakeup_fd[1]= -1;
   }
 
+  void init_ssl()
+  {
+#if defined(HAVE_SSL) && HAVE_SSL
+    SSL_load_error_strings();
+    SSL_library_init();
+
+    _ctx_ssl= SSL_CTX_new(SSLv23_server_method());
+#endif
+  }
+
+  SSL_CTX* ctx_ssl()
+  {
+    return _ctx_ssl;
+  }
+
   ~gearmand_st()
   {
     if (host)
     {
       free(host);
     }
+
+#if defined(HAVE_SSL) && HAVE_SSL
+    SSL_CTX_free(_ctx_ssl);
+#endif
   }
-  
+
   bool exceptions() const
   {
     return _exceptions;

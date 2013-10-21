@@ -11,3 +11,4 @@ m4_include([libtest/m4/mysql.m4])
 YATL_MYSQL
 
 AC_CONFIG_FILES([libtest/yatlcon.h])
+AC_CHECK_HEADERS([valgrind/valgrind.h])

@@ -15,9 +15,23 @@ nobase_include_HEADERS+= libgearman/gearman.h
 noinst_HEADERS+= libgearman/client.hpp
 noinst_HEADERS+= libgearman/worker.hpp
 
+noinst_HEADERS+= libgearman/ssl.h
+noinst_HEADERS+= libgearman/magic.h
 noinst_HEADERS+= libgearman/client.h
-noinst_HEADERS+= libgearman/job.h
+noinst_HEADERS+= libgearman/check.h
+noinst_HEADERS+= libgearman/interface/client.hpp
+noinst_HEADERS+= libgearman/interface/error.hpp
+noinst_HEADERS+= libgearman/interface/packet.hpp
+noinst_HEADERS+= libgearman/interface/push.hpp
+noinst_HEADERS+= libgearman/interface/task.hpp
+noinst_HEADERS+= libgearman/interface/universal.hpp
+noinst_HEADERS+= libgearman/interface/worker.hpp
 noinst_HEADERS+= libgearman/pipe.h
+noinst_HEADERS+= libgearman/job.h
+noinst_HEADERS+= libgearman/job.hpp
+noinst_HEADERS+= libgearman/ostream.hpp
+noinst_HEADERS+= libgearman/error_code.h
+noinst_HEADERS+= libgearman/command.hpp
 noinst_HEADERS+= libgearman/uuid.hpp
 noinst_HEADERS+= libgearman/vector.h
 noinst_HEADERS+= \
@@ -42,7 +56,10 @@ noinst_HEADERS+= \
 		 libgearman/is.hpp \
 		 libgearman/log.hpp \
 		 libgearman/packet.hpp \
+		 libgearman/protocol/echo.h \
+		 libgearman/protocol/option.h \
 		 libgearman/protocol/submit.h \
+		 libgearman/protocol/work_exception.h \
 		 libgearman/result.hpp \
 		 libgearman/run.hpp \
 		 libgearman/status.hpp \
@@ -54,27 +71,6 @@ noinst_HEADERS+= \
 		 libgearman/server_options.hpp \
 		 libgearman/universal.hpp \
 		 libgearman/vector.hpp
-
-noinst_LTLIBRARIES+= libgearman/libgearmancore.la
-
-libgearman_libgearmancore_la_SOURCES= \
-				      libgearman/allocator.cc \
-				      libgearman/backtrace.cc \
-				      libgearman/byteorder.cc \
-				      libgearman/command.cc \
-				      libgearman/connection.cc \
-				      libgearman/error.cc \
-				      libgearman/log.cc \
-				      libgearman/packet.cc \
-				      libgearman/strcommand.cc \
-				      libgearman/strerror.cc \
-				      libgearman/server_options.cc \
-				      libgearman/universal.cc \
-				      libgearman/vector.cc
-
-libgearman_libgearmancore_la_CXXFLAGS= -DBUILDING_LIBGEARMAN
-libgearman_libgearmancore_la_LIBADD= @DL_LIB@
-libgearman_libgearmancore_la_LIBADD+= libhashkit/libhashkit.la
 
 noinst_LTLIBRARIES+= libgearman/libgearman-vector.la
 libgearman_libgearman_vector_la_CXXFLAGS= -DBUILDING_LIBGEARMAN
@@ -95,6 +91,7 @@ libgearman_libgearman_la_CXXFLAGS=
 libgearman_libgearman_la_LDFLAGS=
 
 lib_LTLIBRARIES+= libgearman/libgearman.la
+libgearman_libgearman_la_SOURCES+= libgearman/check.cc
 libgearman_libgearman_la_SOURCES+= \
 				  libgearman/actions.cc \
 				  libgearman/aggregator.cc \
@@ -108,6 +105,7 @@ libgearman_libgearman_la_SOURCES+= \
 				  libgearman/connection.cc \
 				  libgearman/do.cc \
 				  libgearman/error.cc \
+				  libgearman/error_code.cc \
 				  libgearman/execute.cc \
 				  libgearman/function.cc \
 				  libgearman/function/function_v2.cc \
@@ -119,11 +117,13 @@ libgearman_libgearman_la_SOURCES+= \
 				  libgearman/log.cc \
 				  libgearman/packet.cc \
 				  libgearman/parse.cc \
+				  libgearman/protocol/echo.cc \
+				  libgearman/protocol/option.cc \
 				  libgearman/protocol/submit.cc \
+				  libgearman/protocol/work_exception.cc \
 				  libgearman/result.cc \
 				  libgearman/run.cc \
 				  libgearman/status.cc \
-				  libgearman/strcommand.cc \
 				  libgearman/strerror.cc \
 				  libgearman/string.cc \
 				  libgearman/task.cc \
@@ -141,11 +141,22 @@ libgearman_libgearman_la_CXXFLAGS+= -DBUILDING_LIBGEARMAN
 
 libgearman_libgearman_la_LDFLAGS+= -version-info $(GEARMAN_LIBRARY_VERSION)
 
-libgearman_libgearman_la_LIBADD+= @LIBUUID_LIB@
+if ENABLE_SSL
+if ENABLE_CYASSL
+libgearman_libgearman_la_LIBADD+= @CYASSL_LIB@
+libgearman_libgearman_la_LDFLAGS+= @CYASSL_LDFLAGS@
+else
+if ENABLE_OPENSSL
+libgearman_libgearman_la_LIBADD+= @OPENSSL_LIBS@
+libgearman_libgearman_la_LDFLAGS+= @OPENSSL_LDFLAGS@
+endif
+endif
+endif
 libgearman_libgearman_la_LIBADD+= @DL_LIB@
+libgearman_libgearman_la_LIBADD+= @LIBUUID_LIB@
 libgearman_libgearman_la_LIBADD+= libhashkit/libhashkit.la
 
-if TARGET_LINUX
+if HOST_LINUX
 libgearman_libgearman_la_LIBADD+= @LIBM@
 endif
 
@@ -159,3 +170,38 @@ noinst_LTLIBRARIES+= libgearman/libgearman-hostile.la
 libgearman_libgearman_hostile_la_LIBADD= $(libgearman_libgearman_la_LIBADD)
 libgearman_libgearman_hostile_la_SOURCES= $(libgearman_libgearman_la_SOURCES)
 libgearman_libgearman_hostile_la_CXXFLAGS= $(libgearman_libgearman_la_CXXFLAGS)
+
+# Handling the Gperf code
+GPERFFLAGS= --compare-strncmp --switch=1
+
+MAINTAINERCLEANFILES+= libgearman/error_code.hpp
+
+EXTRA_DIST+= libgearman/error_code.gperf
+BUILT_SOURCES+= libgearman/error_code.hpp
+libgearman_libgearman_la_SOURCES+= libgearman/error_code.hpp
+libgearman/error_code.hpp: libgearman/error_code.gperf
+	if $(GPERF) $(GPERFFLAGS) --struct-type \
+	  libgearman/error_code.gperf >$@t; then \
+	  mv $@t $@; \
+	  elif $(GPERF) --version >/dev/null 2>&1; then \
+	  rm $@t; \
+	  exit 1; \
+	  else \
+	  rm $@t; \
+	  touch $@; \
+	  fi
+
+EXTRA_DIST+= libgearman/command.gperf
+BUILT_SOURCES+= libgearman/command.hpp
+libgearman_libgearman_la_SOURCES+= libgearman/command.hpp
+libgearman/command.hpp: libgearman/command.gperf
+	if $(GPERF) $(GPERFFLAGS) -D --struct-type \
+	  libgearman/command.gperf >$@t; then \
+	  mv $@t $@; \
+	  elif $(GPERF) --version >/dev/null 2>&1; then \
+	  rm $@t; \
+	  exit 1; \
+	  else \
+	  rm $@t; \
+	  touch $@; \
+	  fi

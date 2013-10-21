@@ -170,6 +170,8 @@ private:
   sqlite3 *_db;
 };
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunreachable-code"
 static bool test_for_HAVE_LIBSQLITE3()
 {
   if (HAVE_LIBSQLITE3)
@@ -179,13 +181,14 @@ static bool test_for_HAVE_LIBSQLITE3()
 
   return false;
 }
+#pragma GCC diagnostic pop
 
 static test_return_t gearmand_basic_option_test(void *)
 {
   const char *args[]= { "--check-args",
     "--queue-type=libsqlite3",
     "--libsqlite3-db=var/tmp/gearman.sql",
-    "--libsqlite3-table=var/tmp/table", 
+    "--libsqlite3-table=custom_table", 
     0 };
 
   ASSERT_EQ(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
@@ -205,6 +208,24 @@ static test_return_t gearmand_basic_option_without_table_test(void *)
 
   ASSERT_EQ(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
   ASSERT_EQ(-1, access(sql_file.c_str(), R_OK | W_OK ));
+
+  return TEST_SUCCESS;
+}
+
+static test_return_t gearmand_basic_option_shutdown_queue_TEST(void *)
+{
+  std::string sql_file= libtest::create_tmpfile("sqlite");
+
+  char sql_buffer[1024];
+  snprintf(sql_buffer, sizeof(sql_buffer), "--libsqlite3-db=%.*s", int(sql_file.length()), sql_file.c_str());
+  const char *args[]= { "--check-args",
+    "--queue-type=libsqlite3",
+    sql_buffer,
+    "--store-queue-on-shutdown",
+    0 };
+
+  test_compare(EXIT_SUCCESS, exec_cmdline(gearmand_binary(), args, true));
+  test_compare(-1, access(sql_file.c_str(), R_OK | W_OK ));
 
   return TEST_SUCCESS;
 }
@@ -243,11 +264,181 @@ static test_return_t collection_cleanup(void *object)
   return TEST_SUCCESS;
 }
 
+static test_return_t lp_1087654_TEST(void* object)
+{
+  Context *test= (Context *)object;
+  server_startup_st &servers= test->_servers;
 
-#ifdef __clang__
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wstack-protector"
-#endif // __clang__
+  const int32_t inserted_jobs= 8;
+
+  std::string sql_file= libtest::create_tmpfile("sqlite");
+
+  Sqlite sql_handle(sql_file);
+
+  char sql_buffer[1024];
+  snprintf(sql_buffer, sizeof(sql_buffer), "--libsqlite3-db=%.*s", int(sql_file.length()), sql_file.c_str());
+  const char *argv[]= {
+    "--queue-type=libsqlite3", 
+    sql_buffer,
+    "--store-queue-on-shutdown",
+    0 };
+
+  {
+    in_port_t first_port= libtest::get_free_port();
+
+    test_true(server_startup(servers, "gearmand", first_port, argv));
+    test_compare(0, access(sql_file.c_str(), R_OK | W_OK ));
+
+    {
+      libgearman::Worker worker(first_port);
+      test_compare(gearman_worker_register(&worker, __func__, 0), GEARMAN_SUCCESS);
+    }
+
+    {
+      libgearman::Client client(first_port);
+      gearman_job_handle_t job_handle;
+      for (int32_t x= 0; x < inserted_jobs; ++x)
+      {
+        switch (random() % 3)
+        {
+        case 0:
+          test_compare(gearman_client_do_background(&client,
+                                                    __func__, // func
+                                                    NULL, // unique
+                                                    test_literal_param("foo"),
+                                                    job_handle), GEARMAN_SUCCESS);
+          break;
+
+        case 1:
+          test_compare(gearman_client_do_low_background(&client,
+                                                        __func__, // func
+                                                        NULL, // unique
+                                                        test_literal_param("fudge"),
+                                                        job_handle), GEARMAN_SUCCESS);
+          break;
+
+        default:
+        case 2:
+          test_compare(gearman_client_do_high_background(&client,
+                                                         __func__, // func
+                                                         NULL, // unique
+                                                         test_literal_param("history"),
+                                                         job_handle), GEARMAN_SUCCESS);
+          break;
+        }
+      }
+    }
+
+    // Before we shutdown we need to see if anything is sitting in the queue
+    {
+      if (sql_handle.vcount() != 0)
+      {
+        if (sql_handle.has_error())
+        {
+          Error << sql_handle.error_string();
+        }
+        else
+        {
+          Out << "sql_handle.vprint_unique()";
+          sql_handle.vprint_unique();
+        }
+      }
+
+      test_zero(sql_handle.vcount());
+    }
+
+    servers.clear();
+  }
+
+  // After shutdown we need to see that the queue was storage
+  {
+    if (sql_handle.vcount() != inserted_jobs)
+    {
+      if (sql_handle.has_error())
+      {
+        Error << sql_handle.error_string();
+      }
+      else
+      {
+        Out << "sql_handle.vprint_unique()";
+        sql_handle.vprint_unique();
+      }
+    }
+
+    test_compare(sql_handle.vcount(), inserted_jobs);
+  }
+
+  test_compare(0, access(sql_file.c_str(), R_OK | W_OK ));
+
+  {
+    in_port_t first_port= libtest::get_free_port();
+
+    test_true(server_startup(servers, "gearmand", first_port, argv));
+
+    {
+      libgearman::Worker worker(first_port);
+      Called called;
+      gearman_function_t counter_function= gearman_function_create(called_worker);
+      test_compare(gearman_worker_define_function(&worker,
+                                                  test_literal_param(__func__),
+                                                  counter_function,
+                                                  3000, &called), GEARMAN_SUCCESS);
+
+      const int32_t max_timeout= 4;
+      int32_t max_timeout_value= max_timeout;
+      int32_t job_count= 0;
+      gearman_return_t ret;
+      do
+      {
+        ret= gearman_worker_work(&worker);
+        if (gearman_success(ret))
+        {
+          job_count++;
+          max_timeout_value= max_timeout;
+          if (job_count == inserted_jobs)
+          {
+            break;
+          }
+        }
+        else if (ret == GEARMAN_TIMEOUT)
+        {
+          Error << " hit timeout";
+          if ((--max_timeout_value) < 0)
+          {
+            break;
+          }
+        }
+      } while (ret == GEARMAN_TIMEOUT or ret == GEARMAN_SUCCESS);
+      test_compare(called.count(), inserted_jobs);
+    }
+
+    servers.clear();
+  }
+
+  {
+    if (sql_handle.vcount() != 0)
+    {
+      Error << "make";
+      if (sql_handle.has_error())
+      {
+        Error << sql_handle.error_string();
+      }
+      else
+      {
+        Out << "sql_handle.vprint_unique()";
+        sql_handle.vprint_unique();
+      }
+    }
+
+    test_zero(sql_handle.vcount());
+  }
+
+  return TEST_SUCCESS;
+}
+
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstack-protector"
 static test_return_t queue_restart_TEST(Context const* test, const int32_t inserted_jobs, uint32_t timeout)
 {
   SKIP_IF(HAVE_UUID_UUID_H != 1);
@@ -393,9 +584,7 @@ static test_return_t queue_restart_TEST(Context const* test, const int32_t inser
 
   return TEST_SUCCESS;
 }
-#ifdef __clang__
 # pragma GCC diagnostic pop
-#endif // __clang__
 
 static test_return_t lp_1054377_TEST(void* object)
 {
@@ -426,7 +615,7 @@ static void *world_create(server_startup_st& servers, test_return_t&)
   SKIP_IF(HAVE_UUID_UUID_H != 1);
   SKIP_IF(test_for_HAVE_LIBSQLITE3() == false);
 
-  return new Context(libtest::get_free_port(), servers);
+  return new Context(servers);
 }
 
 static bool world_destroy(void *object)
@@ -439,8 +628,9 @@ static bool world_destroy(void *object)
 }
 
 test_st gearmand_basic_option_tests[] ={
-  {"--libsqlite3-db=var/tmp/schema --libsqlite3-table=var/tmp/table", 0, gearmand_basic_option_test },
+  {"--libsqlite3-db=var/tmp/schema --libsqlite3-table=custom_table", 0, gearmand_basic_option_test },
   {"--libsqlite3-db=var/tmp/schema", 0, gearmand_basic_option_without_table_test },
+  {"--store-queue-on-shutdown", 0, gearmand_basic_option_shutdown_queue_TEST },
   {0, 0, 0}
 };
 
@@ -462,6 +652,7 @@ test_st regressions[] ={
 test_st queue_restart_TESTS[] ={
   {"lp:1054377", 0, lp_1054377_TEST },
   {"lp:1054377 x 200", 0, lp_1054377x200_TEST },
+  {"lp:1087654", 0, lp_1087654_TEST },
   {0, 0, 0}
 };
 

@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  Copyright (C) 2008 Brian Aker, Eric Day
  *  All rights reserved.
  *
@@ -51,6 +51,7 @@
 #include <cstring>
 #include <memory>
 
+#pragma GCC diagnostic push
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
@@ -65,7 +66,7 @@ gearman_server_packet_create(gearman_server_thread_st *thread,
 {
   gearman_server_packet_st *server_packet= NULL;
 
-  if (from_thread && Server->flags.threaded)
+  if (from_thread and Server->flags.threaded)
   {
     if (thread->free_packet_count > 0)
     {
@@ -110,7 +111,7 @@ void gearman_server_packet_free(gearman_server_packet_st *packet,
 {
   if (from_thread and Server->flags.threaded)
   {
-    if (thread->free_packet_count < GEARMAN_MAX_FREE_SERVER_PACKET)
+    if (thread->free_packet_count < GEARMAND_MAX_FREE_SERVER_PACKET)
     {
       packet->next= thread->free_packet_list;
       thread->free_packet_list= packet;
@@ -118,13 +119,12 @@ void gearman_server_packet_free(gearman_server_packet_st *packet,
     }
     else
     {
-      gearmand_debug("delete() gearman_server_packet_st");
       delete packet;
     }
   }
   else
   {
-    if (Server->free_packet_count < GEARMAN_MAX_FREE_SERVER_PACKET)
+    if (Server->free_packet_count < GEARMAND_MAX_FREE_SERVER_PACKET)
     {
       packet->next= Server->free_packet_list;
       Server->free_packet_list= packet;
@@ -132,7 +132,6 @@ void gearman_server_packet_free(gearman_server_packet_st *packet,
     }
     else
     {
-      gearmand_debug("delete() gearman_server_packet_st");
       delete packet;
     }
   }
@@ -150,7 +149,7 @@ gearmand_error_t gearman_server_io_packet_add(gearman_server_con_st *con,
   server_packet= gearman_server_packet_create(con->thread, false);
   if (server_packet == NULL)
   {
-    return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+    return GEARMAND_MEMORY_ALLOCATION_FAILURE;
   }
 
   server_packet->packet.reset(magic, command);
@@ -191,7 +190,7 @@ gearmand_error_t gearman_server_io_packet_add(gearman_server_con_st *con,
   int error;
   if ((error= pthread_mutex_lock(&con->thread->lock)) == 0)
   {
-    GEARMAN_FIFO__ADD(con->io_packet, server_packet);
+    GEARMAND_FIFO__ADD(con->io_packet, server_packet);
     if ((error= pthread_mutex_unlock(&con->thread->lock)))
     {
       gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
@@ -204,7 +203,7 @@ gearmand_error_t gearman_server_io_packet_add(gearman_server_con_st *con,
 
   gearman_server_con_io_add(con);
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 void gearman_server_io_packet_remove(gearman_server_con_st *con)
@@ -216,7 +215,7 @@ void gearman_server_io_packet_remove(gearman_server_con_st *con)
   int error;
   if ((error= pthread_mutex_lock(&con->thread->lock)) == 0)
   {
-    GEARMAN_FIFO__DEL(con->io_packet, server_packet);
+    GEARMAND_FIFO__DEL(con->io_packet, server_packet);
     if ((error= pthread_mutex_unlock(&con->thread->lock)))
     {
       gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
@@ -236,7 +235,7 @@ void gearman_server_proc_packet_add(gearman_server_con_st *con,
   int error;
   if ((error= pthread_mutex_lock(&con->thread->lock)) == 0)
   {
-    GEARMAN_FIFO__ADD(con->proc_packet, packet);
+    GEARMAND_FIFO__ADD(con->proc_packet, packet);
     if ((error= pthread_mutex_unlock(&con->thread->lock)))
     {
       gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
@@ -260,7 +259,7 @@ gearman_server_proc_packet_remove(gearman_server_con_st *con)
     int error;
     if ((error= pthread_mutex_lock(&con->thread->lock)) == 0)
     {
-      GEARMAN_FIFO__DEL(con->proc_packet, server_packet);
+      GEARMAND_FIFO__DEL(con->proc_packet, server_packet);
       if ((error= pthread_mutex_unlock(&con->thread->lock)) != 0)
       {
         gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
@@ -278,7 +277,17 @@ gearman_server_proc_packet_remove(gearman_server_con_st *con)
 const char *gearmand_strcommand(gearmand_packet_st *packet)
 {
   assert(packet);
-  return gearman_command_info(packet->command)->name;
+  if (packet)
+  {
+    const gearman_command_info_st* info= gearman_command_info(packet->command);
+
+    if (info)
+    {
+      return info->name;
+    }
+  }
+
+  return "__INVALID_PACKET_COMMAND";
 }
 
 inline static gearmand_error_t packet_create_arg(gearmand_packet_st *packet,
@@ -289,22 +298,22 @@ inline static gearmand_error_t packet_create_arg(gearmand_packet_st *packet,
        packet->data))
   {
     gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "too many arguments for command(%s)", gearman_command_info(packet->command)->name);
-    return GEARMAN_TOO_MANY_ARGS;
+    return GEARMAND_TOO_MANY_ARGS;
   }
 
   if (packet->argc == gearman_command_info(packet->command)->argc)
   {
     packet->data= static_cast<const char *>(arg);
     packet->data_size= arg_size;
-    return GEARMAN_SUCCESS;
+    return GEARMAND_SUCCESS;
   }
 
   if (packet->args_size == 0 and packet->magic != GEARMAN_MAGIC_TEXT)
   {
-    packet->args_size= GEARMAN_PACKET_HEADER_SIZE;
+    packet->args_size= GEARMAND_PACKET_HEADER_SIZE;
   }
 
-  if ((packet->args_size + arg_size) < GEARMAN_ARGS_BUFFER_SIZE)
+  if ((packet->args_size + arg_size) < GEARMAND_ARGS_BUFFER_SIZE)
   {
     packet->args= packet->args_buffer;
   }
@@ -313,7 +322,7 @@ inline static gearmand_error_t packet_create_arg(gearmand_packet_st *packet,
     gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "resizing packet buffer");
     if (packet->args == packet->args_buffer)
     {
-      packet->args= (char *)malloc(packet->args_size + arg_size);
+      packet->args= (char *)realloc(NULL, packet->args_size + arg_size);
       memcpy(packet->args, packet->args_buffer, packet->args_size);
     }
     else
@@ -339,7 +348,7 @@ inline static gearmand_error_t packet_create_arg(gearmand_packet_st *packet,
   }
   else
   {
-    offset= GEARMAN_PACKET_HEADER_SIZE;
+    offset= GEARMAND_PACKET_HEADER_SIZE;
   }
 
   for (uint8_t x= 0; x < packet->argc; ++x)
@@ -348,7 +357,7 @@ inline static gearmand_error_t packet_create_arg(gearmand_packet_st *packet,
     offset+= packet->arg_size[x];
   }
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 /** @} */
@@ -383,14 +392,12 @@ void gearmand_packet_free(gearmand_packet_st *packet)
 {
   if (packet->args != packet->args_buffer && packet->args != NULL)
   {
-    gearmand_debug("free packet's args");
     free(packet->args);
     packet->args= NULL;
   }
 
   if (packet->options.free_data && packet->data != NULL)
   {
-    gearmand_debug("free() packet's data");
     free((void *)packet->data); //@todo fix the need for the casting.
     packet->data= NULL;
   }
@@ -401,13 +408,13 @@ gearmand_error_t gearmand_packet_pack_header(gearmand_packet_st *packet)
   if (packet->magic == GEARMAN_MAGIC_TEXT)
   {
     packet->options.complete= true;
-    return GEARMAN_SUCCESS;
+    return GEARMAND_SUCCESS;
   }
 
   if (packet->args_size == 0)
   {
     packet->args= packet->args_buffer;
-    packet->args_size= GEARMAN_PACKET_HEADER_SIZE;
+    packet->args_size= GEARMAND_PACKET_HEADER_SIZE;
   }
 
   switch (packet->magic)
@@ -425,27 +432,27 @@ gearmand_error_t gearmand_packet_pack_header(gearmand_packet_st *packet)
 
   default:
     gearmand_error("invalid magic value");
-    return GEARMAN_INVALID_MAGIC;
+    return GEARMAND_INVALID_MAGIC;
   }
 
   if (packet->command == GEARMAN_COMMAND_TEXT ||
       packet->command >= GEARMAN_COMMAND_MAX)
   {
     gearmand_error("invalid command value");
-    return GEARMAN_INVALID_COMMAND;
+    return GEARMAND_INVALID_COMMAND;
   }
 
   uint32_t tmp= packet->command;
   tmp= htonl(tmp);
   memcpy(packet->args + 4, &tmp, 4);
 
-  uint64_t length_64= packet->args_size + packet->data_size - GEARMAN_PACKET_HEADER_SIZE;
+  uint64_t length_64= packet->args_size + packet->data_size - GEARMAND_PACKET_HEADER_SIZE;
 
   // Check for overflow on 32bit(portable?).
   if (length_64 >= UINT32_MAX || length_64 < packet->data_size)
   {
     gearmand_error("data size too too long");
-    return GEARMAN_ARGUMENT_TOO_LARGE;
+    return GEARMAND_ARGUMENT_TOO_LARGE;
   }
 
   tmp= (uint32_t)length_64;
@@ -454,5 +461,6 @@ gearmand_error_t gearmand_packet_pack_header(gearmand_packet_st *packet)
 
   packet->options.complete= true;
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
+#pragma GCC diagnostic pop

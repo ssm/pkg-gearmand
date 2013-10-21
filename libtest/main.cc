@@ -2,7 +2,7 @@
  *
  *  Data Differential YATL (i.e. libtest)  library
  *
- *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2012-2013 Data Differential, http://datadifferential.com/
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are
@@ -38,12 +38,13 @@
 #include <libtest/common.h>
 
 #include <cassert>
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <fnmatch.h>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -59,33 +60,18 @@
 
 using namespace libtest;
 
-static void stats_print(libtest::Framework *frame)
-{
-  if (frame->failed() == 0 and frame->success() == 0)
-  {
-    return;
-  }
-
-  Outn();
-  Out << "Collections\t\t\t\t\t" << frame->total();
-  Out << "\tFailed\t\t\t\t\t" << frame->failed();
-  Out << "\tSkipped\t\t\t\t\t" << frame->skipped();
-  Out << "\tSucceeded\t\t\t\t" << frame->success();
-  Outn();
-  Out << "Tests\t\t\t\t\t" << frame->sum_total();
-  Out << "\tFailed\t\t\t\t" << frame->sum_failed();
-  Out << "\tSkipped\t\t\t\t" << frame->sum_skipped();
-  Out << "\tSucceeded\t\t\t" << frame->sum_success();
-}
-
 #include <getopt.h>
 #include <unistd.h>
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[], char* environ_[])
 {
   bool opt_massive= false;
+  bool opt_ssl= false;
   unsigned long int opt_repeat= 1; // Run all tests once
+  bool opt_verbose= false;
   bool opt_quiet= false;
+  bool opt_list_collection= false;
+  bool opt_list_tests= false;
   std::string collection_to_run;
   std::string wildcard;
   std::string binary_name;
@@ -110,7 +96,7 @@ int main(int argc, char *argv[])
     Valgrind does not currently work reliably, or sometimes at all, on OSX
     - Fri Jun 15 11:24:07 EDT 2012
   */
-#if defined(TARGET_OS_OSX) && TARGET_OS_OSX
+#if defined(__APPLE__) && __APPLE__
   if (valgrind_is_caller())
   {
     return EXIT_SKIP;
@@ -120,22 +106,33 @@ int main(int argc, char *argv[])
   // Options parsing
   {
     enum long_option_t {
+      OPT_LIBYATL_HELP,
+      OPT_LIBYATL_VERBOSE,
       OPT_LIBYATL_VERSION,
       OPT_LIBYATL_MATCH_COLLECTION,
+      OPT_LIBYATL_LIST_COLLECTIONS,
+      OPT_LIBYATL_LIST_TESTS,
       OPT_LIBYATL_MASSIVE,
       OPT_LIBYATL_QUIET,
       OPT_LIBYATL_MATCH_WILDCARD,
-      OPT_LIBYATL_REPEAT
+      OPT_LIBYATL_REPEAT,
+      OPT_LIBYATL_SSL,
+      OPT_LIBYATL_MAX
     };
 
     static struct option long_options[]=
     {
+      { "help", no_argument, NULL, OPT_LIBYATL_HELP },
+      { "verbose", no_argument, NULL, OPT_LIBYATL_VERBOSE },
       { "version", no_argument, NULL, OPT_LIBYATL_VERSION },
       { "quiet", no_argument, NULL, OPT_LIBYATL_QUIET },
       { "repeat", required_argument, NULL, OPT_LIBYATL_REPEAT },
       { "collection", required_argument, NULL, OPT_LIBYATL_MATCH_COLLECTION },
+      { "list-collections", no_argument, NULL, OPT_LIBYATL_LIST_COLLECTIONS },
+      { "list-tests", no_argument, NULL, OPT_LIBYATL_LIST_TESTS },
       { "wildcard", required_argument, NULL, OPT_LIBYATL_MATCH_WILDCARD },
       { "massive", no_argument, NULL, OPT_LIBYATL_MASSIVE },
+      { "ssl", no_argument, NULL, OPT_LIBYATL_SSL },
       { 0, 0, 0, 0 }
     };
 
@@ -150,6 +147,17 @@ int main(int argc, char *argv[])
 
       switch (option_rv)
       {
+      case OPT_LIBYATL_HELP:
+        for (struct option *opt= long_options; opt->name; ++opt)
+        {
+          Out << "--" << opt->name;
+        }
+        exit(EXIT_SUCCESS);
+
+      case OPT_LIBYATL_VERBOSE:
+        opt_verbose= true;
+        break;
+
       case OPT_LIBYATL_VERSION:
         break;
 
@@ -167,12 +175,23 @@ int main(int argc, char *argv[])
         }
         break;
 
+      case OPT_LIBYATL_LIST_TESTS:
+        opt_list_tests= true;
+
+      case OPT_LIBYATL_LIST_COLLECTIONS:
+        opt_list_collection= true;
+        break;
+
       case OPT_LIBYATL_MATCH_COLLECTION:
         collection_to_run= optarg;
         break;
 
       case OPT_LIBYATL_MATCH_WILDCARD:
         wildcard= optarg;
+        break;
+
+      case OPT_LIBYATL_SSL:
+        opt_ssl= true;
         break;
 
       case OPT_LIBYATL_MASSIVE:
@@ -187,6 +206,14 @@ int main(int argc, char *argv[])
       default:
         break;
       }
+    }
+  }
+
+  if (opt_verbose)
+  {
+    for (char** ptr= environ_; *ptr; ptr++)
+    {
+      Out << *ptr;
     }
   }
 
@@ -218,14 +245,29 @@ int main(int argc, char *argv[])
     }
   }
 
+  if ((bool(getenv("YATL_WILDCARD"))))
+  {
+    wildcard= getenv("YATL_WILDCARD");
+  }
+
   if ((bool(getenv("YATL_RUN_MASSIVE_TESTS"))) or opt_massive)
   {
     opt_massive= true;
   }
 
+  if ((bool(getenv("YATL_SSL"))) or opt_ssl)
+  {
+    opt_ssl= true;
+  }
+
   if (opt_quiet)
   {
     close(STDOUT_FILENO);
+  }
+
+  if (opt_ssl)
+  {
+    is_ssl(opt_ssl);
   }
 
   if (opt_massive)
@@ -296,6 +338,30 @@ int main(int argc, char *argv[])
 
       std::auto_ptr<libtest::Framework> frame(new libtest::Framework(signal, binary_name, collection_to_run, wildcard));
 
+      if (opt_list_collection)
+      {
+        for (Suites::iterator iter= frame->suites().begin();
+             iter != frame->suites().end();
+             ++iter)
+        {
+          if (opt_list_tests)
+          {
+            for (TestCases::iterator test_iter= (*iter)->tests().begin();
+                 test_iter != (*iter)->tests().end();
+                 ++test_iter)
+            {
+              Out << (*iter)->name() << "." << (*test_iter)->name();
+            }
+          }
+          else
+          {
+            Out << (*iter)->name();
+          }
+        }
+        
+        continue;
+      }
+
       // Run create(), bail on error.
       {
         switch (frame->create())
@@ -323,40 +389,59 @@ int main(int argc, char *argv[])
       shutdown_t status= signal.get_shutdown();
       if (status == SHUTDOWN_FORCED)
       {
-        Out << "Tests were aborted.";
+        // Tests were aborted
         exit_code= EXIT_FAILURE;
       }
       else if (frame->failed())
       {
-        Out << "Some test failed.";
+        // Some test failed
         exit_code= EXIT_FAILURE;
       }
       else if (frame->skipped() and frame->failed() and frame->success())
       {
-        Out << "Some tests were skipped.";
+        // Some tests were skipped
       }
       else if (frame->success() and (frame->failed() == 0))
       {
-        Out;
-        Out << "All tests completed successfully.";
+        // Success
       }
 
-      stats_print(frame.get());
+#if 0
+      {
+        std::ofstream xml_file;
+        std::string file_name;
+        if (getenv("WORKSPACE"))
+        {
+          file_name.append(getenv("WORKSPACE"));
+          file_name.append("/");
+        }
+        file_name.append(frame->name());
+        file_name.append(".xml");
+        xml_file.open(file_name.c_str(), std::ios::trunc);
+        libtest::Formatter::xml(*frame, xml_file);
+      }
+#endif
 
-      std::ofstream xml_file;
-      std::string file_name;
-      file_name.append(&tmp_directory[0]);
-      file_name.append(frame->name());
-      file_name.append(".xml");
-      xml_file.open(file_name.c_str(), std::ios::trunc);
-      libtest::Formatter::xml(*frame, xml_file);
-
-      Outn(); // Generate a blank to break up the messages if make check/test has been run
+#if 0
+      {
+        std::ofstream tap_file;
+        std::string file_name;
+        if (getenv("WORKSPACE"))
+        {
+          file_name.append(getenv("WORKSPACE"));
+          file_name.append("/");
+        }
+        file_name.append(frame->name());
+        file_name.append(".tap");
+        tap_file.open(file_name.c_str(), std::ios::trunc);
+        libtest::Formatter::tap(*frame, tap_file);
+      }
+#endif
     } while (exit_code == EXIT_SUCCESS and --opt_repeat);
   }
   catch (const libtest::__skipped& e)
   {
-    return EXIT_SKIP;
+    exit_code= EXIT_SKIP;
   }
   catch (const libtest::__failure& e)
   {

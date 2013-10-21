@@ -53,43 +53,64 @@
 # define SOCK_NONBLOCK 0
 #endif
 
+#ifndef MSG_DONTWAIT
+# define MSG_DONTWAIT 0
+#endif
+
 static void _connection_close(gearmand_io_st *connection)
 {
-  if (connection->fd == INVALID_SOCKET)
+  if (connection->has_fd())
   {
-    return;
+    assert(connection->options.external_fd);
+    if (connection->options.external_fd)
+    {
+      connection->options.external_fd= false;
+    }
+    else
+    {
+      gearmand_log_fatal(GEARMAN_DEFAULT_LOG_PARAM, "We should never have an internal fd");
+    }
+
+    connection->clear();
+    connection->_state= gearmand_io_st::GEARMAND_CON_UNIVERSAL_INVALID;
+
+    connection->send_state= gearmand_io_st::GEARMAND_CON_SEND_STATE_NONE;
+    connection->send_buffer_ptr= connection->send_buffer;
+    connection->send_buffer_size= 0;
+    connection->send_data_size= 0;
+    connection->send_data_offset= 0;
+
+    connection->recv_state= gearmand_io_st::GEARMAND_CON_RECV_UNIVERSAL_NONE;
+    if (connection->recv_packet != NULL)
+    {
+      gearmand_packet_free(connection->recv_packet);
+      connection->recv_packet= NULL;
+    }
+
+    connection->recv_buffer_ptr= connection->recv_buffer;
+    connection->recv_buffer_size= 0;
+  }
+}
+
+
+const char* gearmand_io_st::host() const
+{
+  if (context)
+  {
+    return context->host;
   }
 
-  if (connection->options.external_fd)
-  {
-    connection->options.external_fd= false;
-  }
-  else
-  {
-    (void)gearmand_sockfd_close(connection->fd);
-    assert_msg(false, "We should never have an internal fd");
-  }
+  return "-";
+}
 
-  connection->_state= gearmand_io_st::GEARMAND_CON_UNIVERSAL_INVALID;
-  connection->fd= INVALID_SOCKET;
-  connection->events= 0;
-  connection->revents= 0;
-
-  connection->send_state= gearmand_io_st::GEARMAND_CON_SEND_STATE_NONE;
-  connection->send_buffer_ptr= connection->send_buffer;
-  connection->send_buffer_size= 0;
-  connection->send_data_size= 0;
-  connection->send_data_offset= 0;
-
-  connection->recv_state= gearmand_io_st::GEARMAND_CON_RECV_UNIVERSAL_NONE;
-  if (connection->recv_packet != NULL)
+const char* gearmand_io_st::port() const
+{
+  if (context)
   {
-    gearmand_packet_free(connection->recv_packet);
-    connection->recv_packet= NULL;
+    return context->port;
   }
 
-  connection->recv_buffer_ptr= connection->recv_buffer;
-  connection->recv_buffer_size= 0;
+  return "-";
 }
 
 static size_t _connection_read(gearman_server_con_st *con, void *data, size_t data_size, gearmand_error_t &ret)
@@ -99,19 +120,69 @@ static size_t _connection_read(gearman_server_con_st *con, void *data, size_t da
 
   while (1)
   {
-    read_size= recv(connection->fd, data, data_size, MSG_DONTWAIT);
+#if defined(HAVE_SSL) && HAVE_SSL
+    if (con->_ssl)
+    {
+# if defined(HAVE_CYASSL) && HAVE_CYASSL
+      read_size= CyaSSL_recv(con->_ssl, data, int(data_size), MSG_DONTWAIT);
+# else
+      read_size= SSL_read(con->_ssl, data, int(data_size));
+# endif
+      assert(HAVE_SSL); // Just to make sure if macro is aligned.
+      int ssl_error;
+      switch ((ssl_error= SSL_get_error(con->_ssl, int(read_size))))
+      {
+        case SSL_ERROR_NONE:
+          break;
+
+        case SSL_ERROR_ZERO_RETURN:
+          read_size= 0;
+          break;
+
+        case SSL_ERROR_WANT_CONNECT:
+        case SSL_ERROR_WANT_ACCEPT:
+        case SSL_ERROR_WANT_READ:
+        case SSL_ERROR_WANT_WRITE:
+        case SSL_ERROR_WANT_X509_LOOKUP:
+          read_size= SOCKET_ERROR;
+          errno= EAGAIN;
+          break;
+
+        case SSL_ERROR_SYSCALL:
+
+          if (errno) // If errno is really set, then let our normal error logic handle.
+          {
+            read_size= SOCKET_ERROR;
+            break;
+          }
+
+        case SSL_ERROR_SSL:
+        default:
+          { // All other errors
+            char errorString[SSL_ERROR_SIZE];
+            ERR_error_string_n(ssl_error, errorString, sizeof(errorString));
+            ret= GEARMAND_LOST_CONNECTION;
+            gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "SSL failure(%s) errno:%d", errorString);
+            _connection_close(connection);
+
+            return 0;
+          }
+      }
+    }
+    else
+#endif
+    {
+      read_size= recv(connection->fd(), data, data_size, MSG_DONTWAIT);
+    }
 
     if (read_size == 0)
     {
-      ret= GEARMAN_LOST_CONNECTION;
-      gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, 
-                        "Peer connection has called close() %s:%s",
-                        connection->context == NULL ? "-" : connection->context->host,
-                        connection->context == NULL ? "-" : connection->context->port);
+      ret= GEARMAND_LOST_CONNECTION;
+      gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Peer connection has called close()");
       _connection_close(connection);
       return 0;
     }
-    else if (read_size == -1)
+    else if (read_size == SOCKET_ERROR)
     {
       int local_errno= errno;
       switch (local_errno)
@@ -124,7 +195,7 @@ static size_t _connection_read(gearman_server_con_st *con, void *data, size_t da
           return 0;
         }
 
-        ret= GEARMAN_IO_WAIT;
+        ret= GEARMAND_IO_WAIT;
         return 0;
 
       case EINTR:
@@ -134,18 +205,14 @@ static size_t _connection_read(gearman_server_con_st *con, void *data, size_t da
       case ECONNRESET:
       case EHOSTDOWN:
         {
-          ret= GEARMAN_LOST_CONNECTION;
-          gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, 
-                            "Peer connection has called close() %s:%s",
-                            connection->context == NULL ? "-" : connection->context->host,
-                            connection->context == NULL ? "-" : connection->context->port);
+          ret= GEARMAND_LOST_CONNECTION;
+          gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Peer connection has called close()");
           _connection_close(connection);
           return 0;
         }
-        break;
 
       default:
-        ret= GEARMAN_ERRNO;
+        ret= GEARMAND_ERRNO;
       }
 
       gearmand_perror(local_errno, "closing connection due to previous errno error");
@@ -156,7 +223,7 @@ static size_t _connection_read(gearman_server_con_st *con, void *data, size_t da
     break;
   }
 
-  ret= GEARMAN_SUCCESS;
+  ret= GEARMAND_SUCCESS;
   return size_t(read_size);
 }
 
@@ -166,7 +233,7 @@ static gearmand_error_t gearmand_connection_recv_data(gearman_server_con_st *con
 
   if (connection->recv_data_size == 0)
   {
-    return GEARMAN_SUCCESS;
+    return GEARMAND_SUCCESS;
   }
 
   if ((connection->recv_data_size - connection->recv_data_offset) < data_size)
@@ -200,7 +267,7 @@ static gearmand_error_t gearmand_connection_recv_data(gearman_server_con_st *con
   else
   {
     connection->recv_data_offset+= recv_size;
-    ret= GEARMAN_SUCCESS;
+    ret= GEARMAND_SUCCESS;
   }
 
   if (connection->recv_data_size == connection->recv_data_offset)
@@ -224,33 +291,96 @@ static gearmand_error_t _connection_flush(gearman_server_con_st *con)
     {
     case gearmand_io_st::GEARMAND_CON_UNIVERSAL_INVALID:
       assert(0);
-      return GEARMAN_ERRNO;
+      return GEARMAND_ERRNO;
 
     case gearmand_io_st::GEARMAND_CON_UNIVERSAL_CONNECTED:
+      uint32_t loop_counter= 0;
       while (connection->send_buffer_size)
       {
-        ssize_t write_size= send(connection->fd, connection->send_buffer_ptr, connection->send_buffer_size, MSG_NOSIGNAL|MSG_DONTWAIT);
+        ssize_t write_size;
+#if defined(HAVE_SSL) && HAVE_SSL
+        if (con->_ssl)
+        {
+#if defined(HAVE_CYASSL) && HAVE_CYASSL
+          write_size= CyaSSL_send(con->_ssl, connection->send_buffer_ptr, int(connection->send_buffer_size), MSG_NOSIGNAL|MSG_DONTWAIT);
+#elif defined(HAVE_OPENSSL) && HAVE_OPENSSL
+          write_size= SSL_write(con->_ssl, connection->send_buffer_ptr, int(connection->send_buffer_size));
+#endif
+          assert(HAVE_SSL); // Just to make sure if macro is aligned.
+
+          int ssl_error;
+          switch ((ssl_error= SSL_get_error(con->_ssl, int(write_size))))
+          {
+            case SSL_ERROR_NONE:
+              break;
+
+            case SSL_ERROR_ZERO_RETURN:
+              errno= ECONNRESET;
+              write_size= SOCKET_ERROR;
+              break;
+
+            case SSL_ERROR_WANT_ACCEPT:
+            case SSL_ERROR_WANT_CONNECT:
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+            case SSL_ERROR_WANT_X509_LOOKUP:
+              write_size= SOCKET_ERROR;
+              errno= EAGAIN;
+              break;
+
+            case SSL_ERROR_SYSCALL:
+              if (errno) // If errno is really set, then let our normal error logic handle.
+              {
+                write_size= SOCKET_ERROR;
+                break;
+              }
+
+            case SSL_ERROR_SSL:
+            default:
+              {
+                char errorString[SSL_ERROR_SIZE];
+                ERR_error_string_n(ssl_error, errorString, sizeof(errorString));
+                _connection_close(connection);
+                return gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, GEARMAND_LOST_CONNECTION, "SSL failure(%s)",
+                                           errorString);
+              }
+          }
+        }
+        else
+#endif
+        {
+          write_size= send(connection->fd(), connection->send_buffer_ptr, connection->send_buffer_size, MSG_NOSIGNAL|MSG_DONTWAIT);
+        }
 
         if (write_size == 0) // detect infinite loop?
         {
-          gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "send() sent zero bytes to peer %s:%s",
-                             connection->context == NULL ? "-" : connection->context->host,
-                             connection->context == NULL ? "-" : connection->context->port);
+          ++loop_counter;
+          gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "send() sent zero bytes of %u",
+                             uint32_t(connection->send_buffer_size));
+
+          if (loop_counter > 5)
+          {
+            _connection_close(connection);
+            return gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, GEARMAND_LOST_CONNECTION, "send() failed to send data");
+          }
           continue;
         }
-        else if (write_size == -1)
+        else if (write_size == SOCKET_ERROR)
         {
           int local_errno= errno;
           switch (local_errno)
           {
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+          case EWOULDBLOCK:
+#endif
           case EAGAIN:
             {
               gearmand_error_t gret= gearmand_io_set_events(con, POLLOUT);
-              if (gret != GEARMAN_SUCCESS)
+              if (gret != GEARMAND_SUCCESS)
               {
                 return gret;
               }
-              return GEARMAN_IO_WAIT;
+              return GEARMAND_IO_WAIT;
             }
 
           case EINTR:
@@ -259,23 +389,19 @@ static gearmand_error_t _connection_flush(gearman_server_con_st *con)
           case EPIPE:
           case ECONNRESET:
           case EHOSTDOWN:
-            gearmand_perror(local_errno, "lost connection to client during send(EPIPE || ECONNRESET || EHOSTDOWN)");
             _connection_close(connection);
-            return GEARMAN_LOST_CONNECTION;
+            return gearmand_perror(local_errno, "lost connection to client during send(EPIPE || ECONNRESET || EHOSTDOWN)");
 
           default:
             break;
           }
 
-          gearmand_perror(local_errno, "send() failed, closing connection");
           _connection_close(connection);
-          return GEARMAN_ERRNO;
+          return gearmand_perror(local_errno, "send() failed, closing connection");
         }
 
-        gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "send() %u bytes to peer %s:%s",
-                           uint32_t(write_size),
-                           connection->context == NULL ? "-" : connection->context->host,
-                           connection->context == NULL ? "-" : connection->context->port);
+        gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "send() %u bytes to peer",
+                           uint32_t(write_size));
 
         connection->send_buffer_size-= static_cast<size_t>(write_size);
         if (connection->send_state == gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_FLUSH_DATA)
@@ -290,7 +416,7 @@ static gearmand_error_t _connection_flush(gearman_server_con_st *con)
 
           if (connection->send_buffer_size == 0)
           {
-            return GEARMAN_SUCCESS;
+            return GEARMAND_SUCCESS;
           }
         }
         else if (connection->send_buffer_size == 0)
@@ -303,7 +429,7 @@ static gearmand_error_t _connection_flush(gearman_server_con_st *con)
 
       connection->send_state= gearmand_io_st::GEARMAND_CON_SEND_STATE_NONE;
       connection->send_buffer_ptr= connection->send_buffer;
-      return GEARMAN_SUCCESS;
+      return GEARMAND_SUCCESS;
     }
   }
 }
@@ -337,13 +463,10 @@ void gearmand_connection_init(gearmand_connection_list_st *gearman,
     }
   }
 
-
   connection->_state= gearmand_io_st::GEARMAND_CON_UNIVERSAL_INVALID;
   connection->send_state= gearmand_io_st::GEARMAND_CON_SEND_STATE_NONE;
   connection->recv_state= gearmand_io_st::GEARMAND_CON_RECV_UNIVERSAL_NONE;
-  connection->events= 0;
-  connection->revents= 0;
-  connection->fd= INVALID_SOCKET;
+  connection->clear();
   connection->created_id= 0;
   connection->created_id_next= 0;
   connection->send_buffer_size= 0;
@@ -354,7 +477,7 @@ void gearmand_connection_init(gearmand_connection_list_st *gearman,
   connection->recv_data_offset= 0;
   connection->universal= gearman;
 
-  GEARMAN_LIST__ADD(gearman->con, connection);
+  GEARMAND_LIST__ADD(gearman->con, connection);
 
   connection->context= dcon;
 
@@ -391,16 +514,18 @@ void gearmand_connection_list_st::init(gearmand_event_watch_fn *watch_fn, void *
 
 void gearmand_io_free(gearmand_io_st *connection)
 {
-  if (connection->fd != INVALID_SOCKET)
+  if (connection->has_fd())
+  {
     _connection_close(connection);
+  }
 
   if (connection->options.ready)
   {
     connection->options.ready= false;
-    GEARMAN_LIST_DEL(connection->universal->ready_con, connection, ready_);
+    GEARMAND_LIST_DEL(connection->universal->ready_con, connection, ready_);
   }
 
-  GEARMAN_LIST__DEL(connection->universal->con, connection);
+  GEARMAND_LIST__DEL(connection->universal->con, connection);
 
   if (connection->options.packet_in_use)
   {
@@ -409,8 +534,8 @@ void gearmand_io_free(gearmand_io_st *connection)
 }
 
 gearmand_error_t gearman_io_set_option(gearmand_io_st *connection,
-                                               gearmand_connection_options_t options,
-                                               bool value)
+                                       gearmand_connection_options_t options,
+                                       bool value)
 {
   switch (options)
   {
@@ -424,16 +549,11 @@ gearmand_error_t gearman_io_set_option(gearmand_io_st *connection,
     connection->options.close_after_flush= value;
     break;
   case GEARMAND_CON_MAX:
-    return GEARMAN_INVALID_COMMAND;
+    return GEARMAND_INVALID_COMMAND;
   }
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
-
-/**
- * Set socket options for a connection.
- */
-static gearmand_error_t _io_setsockopt(gearmand_io_st &connection);
 
 /** @} */
 
@@ -441,15 +561,10 @@ static gearmand_error_t _io_setsockopt(gearmand_io_st &connection);
  * Public Definitions
  */
 
-gearmand_error_t gearman_io_set_fd(gearmand_io_st *connection, int fd)
+gearmand_error_t gearman_io_set_fd(gearmand_io_st *connection, int fd_)
 {
   assert(connection);
-
-  connection->options.external_fd= true;
-  connection->fd= fd;
-  connection->_state= gearmand_io_st::GEARMAND_CON_UNIVERSAL_CONNECTED;
-
-  return _io_setsockopt(*connection);
+  return connection->set_fd(fd_);
 }
 
 gearmand_con_st *gearman_io_context(const gearmand_io_st *connection)
@@ -470,7 +585,7 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
     if (! (packet->options.complete))
     {
       gearmand_error("packet not complete");
-      return GEARMAN_INVALID_PACKET;
+      return GEARMAND_INVALID_PACKET;
     }
 
     /* Pack first part of packet, which is everything but the payload. */
@@ -480,18 +595,18 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
       send_size= con->protocol->pack(packet,
                                      con,
                                      connection->send_buffer +connection->send_buffer_size,
-                                     GEARMAN_SEND_BUFFER_SIZE -connection->send_buffer_size,
+                                     GEARMAND_SEND_BUFFER_SIZE -connection->send_buffer_size,
                                      ret);
-      if (ret == GEARMAN_SUCCESS)
+      if (ret == GEARMAND_SUCCESS)
       {
         connection->send_buffer_size+= send_size;
         break;
       }
-      else if (ret == GEARMAN_IGNORE_PACKET)
+      else if (ret == GEARMAND_IGNORE_PACKET)
       {
-        return GEARMAN_SUCCESS;
+        return GEARMAND_SUCCESS;
       }
-      else if (ret != GEARMAN_FLUSH_DATA)
+      else if (ret != GEARMAND_FLUSH_DATA)
       {
         return ret;
       }
@@ -501,7 +616,7 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
       {
         gearmand_error("send buffer too small");
 
-        return GEARMAN_SEND_BUFFER_TOO_SMALL;
+        return GEARMAND_SEND_BUFFER_TOO_SMALL;
       }
 
       /* Flush buffer now if first part of packet won't fit in. */
@@ -510,7 +625,7 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
     case gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_PRE_FLUSH:
       {
         gearmand_error_t local_ret;
-        if ((local_ret= _connection_flush(con)) != GEARMAN_SUCCESS)
+        if ((local_ret= _connection_flush(con)) != GEARMAND_SUCCESS)
         {
           return local_ret;
         }
@@ -524,9 +639,9 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
     }
 
     /* If there is any room in the buffer, copy in data. */
-    if (packet->data and (GEARMAN_SEND_BUFFER_SIZE - connection->send_buffer_size) > 0)
+    if (packet->data and (GEARMAND_SEND_BUFFER_SIZE - connection->send_buffer_size) > 0)
     {
-      connection->send_data_offset= GEARMAN_SEND_BUFFER_SIZE - connection->send_buffer_size;
+      connection->send_data_offset= GEARMAND_SEND_BUFFER_SIZE - connection->send_buffer_size;
       if (connection->send_data_offset > packet->data_size)
       {
         connection->send_data_offset= packet->data_size;
@@ -551,7 +666,7 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
   case gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_FORCE_FLUSH:
     {
       gearmand_error_t local_ret;
-      if ((local_ret= _connection_flush(con)) != GEARMAN_SUCCESS)
+      if ((local_ret= _connection_flush(con)) != GEARMAND_SUCCESS)
       {
         return local_ret;
       }
@@ -563,12 +678,12 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
     if (packet->data == NULL)
     {
       connection->send_state= gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_FLUSH_DATA;
-      return GEARMAN_SUCCESS;
+      return GEARMAND_SUCCESS;
     }
 
     /* Copy into the buffer if it fits, otherwise flush from packet buffer. */
     connection->send_buffer_size= packet->data_size - connection->send_data_offset;
-    if (connection->send_buffer_size < GEARMAN_SEND_BUFFER_SIZE)
+    if (connection->send_buffer_size < GEARMAND_SEND_BUFFER_SIZE)
     {
       memcpy(connection->send_buffer,
              packet->data + connection->send_data_offset,
@@ -585,11 +700,11 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
   case gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_FLUSH_DATA:
     {
       gearmand_error_t local_ret= _connection_flush(con);
-      if (local_ret == GEARMAN_SUCCESS and
+      if (local_ret == GEARMAND_SUCCESS and
           connection->options.close_after_flush)
       {
         _connection_close(connection);
-        local_ret= GEARMAN_LOST_CONNECTION;
+        local_ret= GEARMAND_LOST_CONNECTION;
         gearmand_debug("closing connection after flush by request");
       }
       return local_ret;
@@ -600,24 +715,21 @@ gearmand_error_t gearman_io_send(gearman_server_con_st *con,
   {
     connection->send_state= gearmand_io_st::GEARMAND_CON_SEND_UNIVERSAL_FLUSH;
     gearmand_error_t local_ret= _connection_flush(con);
-    if (local_ret == GEARMAN_SUCCESS and connection->options.close_after_flush)
+    if (local_ret == GEARMAND_SUCCESS and connection->options.close_after_flush)
     {
       _connection_close(connection);
-      local_ret= GEARMAN_LOST_CONNECTION;
+      local_ret= GEARMAND_LOST_CONNECTION;
       gearmand_debug("closing connection after flush by request");
     }
     return local_ret;
   }
 
   connection->send_state= gearmand_io_st::GEARMAND_CON_SEND_STATE_NONE;
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
-#ifndef __INTEL_COMPILER
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
-#endif
-
-
 gearmand_error_t gearman_io_recv(gearman_server_con_st *con, bool recv_data)
 {
   gearmand_io_st *connection= &con->con;
@@ -629,7 +741,7 @@ gearmand_error_t gearman_io_recv(gearman_server_con_st *con, bool recv_data)
     if (connection->_state != gearmand_io_st::GEARMAND_CON_UNIVERSAL_CONNECTED)
     {
       gearmand_error("not connected");
-      return GEARMAN_NOT_CONNECTED;
+      return GEARMAND_NOT_CONNECTED;
     }
 
     connection->recv_packet= packet;
@@ -656,7 +768,7 @@ gearmand_error_t gearman_io_recv(gearman_server_con_st *con, bool recv_data)
         {
           break;
         }
-        else if (ret != GEARMAN_IO_WAIT)
+        else if (ret != GEARMAND_IO_WAIT)
         {
           gearmand_gerror_warn("protocol failure, closing connection", ret);
           _connection_close(connection);
@@ -672,18 +784,19 @@ gearmand_error_t gearman_io_recv(gearman_server_con_st *con, bool recv_data)
       connection->recv_buffer_ptr= connection->recv_buffer;
 
       size_t recv_size= _connection_read(con, connection->recv_buffer + connection->recv_buffer_size,
-					 GEARMAN_RECV_BUFFER_SIZE - connection->recv_buffer_size, ret);
+					 GEARMAND_RECV_BUFFER_SIZE - connection->recv_buffer_size, ret);
       if (gearmand_failed(ret))
       {
-        // GEARMAN_LOST_CONNECTION is not worth a warning, clients/workers just
+        // GEARMAND_LOST_CONNECTION is not worth a warning, clients/workers just
         // drop connections for close.
-        if (ret != GEARMAN_LOST_CONNECTION)
+        if (ret != GEARMAND_LOST_CONNECTION)
         {
           gearmand_gerror_warn("Failed while in _connection_read()", ret);
         }
         return ret;
       }
-      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "read %lu bytes", (unsigned long)recv_size);
+      gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "read %lu bytes",
+                         (unsigned long)recv_size);
 
       connection->recv_buffer_size+= recv_size;
     }
@@ -702,14 +815,14 @@ gearmand_error_t gearman_io_recv(gearman_server_con_st *con, bool recv_data)
       break;
     }
 
-    packet->data= static_cast<char *>(malloc(packet->data_size));
+    packet->data= static_cast<char *>(realloc(NULL, packet->data_size));
     if (not packet->data)
     {
       // Server up the memory error first, in case _connection_close()
       // creates any.
-      gearmand_merror("malloc", char, packet->data_size);
+      gearmand_merror("realloc", char, packet->data_size);
       _connection_close(connection);
-      return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+      return GEARMAND_MEMORY_ALLOCATION_FAILURE;
     }
 
     packet->options.free_data= true;
@@ -737,7 +850,7 @@ gearmand_error_t gearman_io_recv(gearman_server_con_st *con, bool recv_data)
   packet= connection->recv_packet;
   connection->recv_packet= NULL;
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 gearmand_error_t gearmand_io_set_events(gearman_server_con_st *con, short events)
@@ -746,7 +859,7 @@ gearmand_error_t gearmand_io_set_events(gearman_server_con_st *con, short events
 
   if ((connection->events | events) == connection->events)
   {
-    return GEARMAN_SUCCESS;
+    return GEARMAND_SUCCESS;
   }
 
   connection->events|= events;
@@ -763,7 +876,7 @@ gearmand_error_t gearmand_io_set_events(gearman_server_con_st *con, short events
     }
   }
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 gearmand_error_t gearmand_io_set_revents(gearman_server_con_st *con, short revents)
@@ -773,7 +886,7 @@ gearmand_error_t gearmand_io_set_revents(gearman_server_con_st *con, short reven
   if (revents != 0)
   {
     connection->options.ready= true;
-    GEARMAN_LIST_ADD(connection->universal->ready_con, connection, ready_);
+    GEARMAND_LIST_ADD(connection->universal->ready_con, connection, ready_);
   }
 
   connection->revents= revents;
@@ -797,19 +910,18 @@ gearmand_error_t gearmand_io_set_revents(gearman_server_con_st *con, short reven
 
   connection->events&= (short)~revents;
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 /*
  * Static Definitions
  */
 
-static gearmand_error_t _io_setsockopt(gearmand_io_st &connection)
+gearmand_error_t gearmand_io_st::_io_setsockopt()
 {
-  gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "setsockopt() %d", connection.fd);
   {
     int setting= 1;
-    if (setsockopt(connection.fd, IPPROTO_TCP, TCP_NODELAY, &setting, (socklen_t)sizeof(int)) and errno != EOPNOTSUPP)
+    if (setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, &setting, (socklen_t)sizeof(int)) and errno != EOPNOTSUPP)
     {
       return gearmand_perror(errno, "setsockopt(TCP_NODELAY)");
     }
@@ -818,8 +930,8 @@ static gearmand_error_t _io_setsockopt(gearmand_io_st &connection)
   {
     struct linger linger;
     linger.l_onoff= 1;
-    linger.l_linger= GEARMAN_DEFAULT_SOCKET_TIMEOUT;
-    if (setsockopt(connection.fd, SOL_SOCKET, SO_LINGER, &linger, (socklen_t)sizeof(struct linger)))
+    linger.l_linger= GEARMAND_DEFAULT_SOCKET_TIMEOUT;
+    if (setsockopt(_fd, SOL_SOCKET, SO_LINGER, &linger, (socklen_t)sizeof(struct linger)))
     {
       return gearmand_perror(errno, "setsockopt(SO_LINGER)");
     }
@@ -830,94 +942,118 @@ static gearmand_error_t _io_setsockopt(gearmand_io_st &connection)
     int setting= 1;
 
     // This is not considered a fatal error 
-    if (setsockopt(connection.fd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&setting, sizeof(int)))
+    if (setsockopt(_fd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&setting, sizeof(int)))
     {
       gearmand_perror(errno, "setsockopt(SO_NOSIGPIPE)");
     }
   }
 #endif
 
+#if 0
   if (0)
   {
     struct timeval waittime;
-    waittime.tv_sec= GEARMAN_DEFAULT_SOCKET_TIMEOUT;
+    waittime.tv_sec= GEARMAND_DEFAULT_SOCKET_TIMEOUT;
     waittime.tv_usec= 0;
-    if (setsockopt(connection.fd, SOL_SOCKET, SO_SNDTIMEO, &waittime, (socklen_t)sizeof(struct timeval)) and errno != ENOPROTOOPT)
+    if (setsockopt(_fd, SOL_SOCKET, SO_SNDTIMEO, &waittime, (socklen_t)sizeof(struct timeval)) and errno != ENOPROTOOPT)
     {
       return gearmand_perror(errno, "setsockopt(SO_SNDTIMEO)");
     }
 
-    if (setsockopt(connection.fd, SOL_SOCKET, SO_RCVTIMEO, &waittime, (socklen_t)sizeof(struct timeval)) and errno != ENOPROTOOPT)
+    if (setsockopt(_fd, SOL_SOCKET, SO_RCVTIMEO, &waittime, (socklen_t)sizeof(struct timeval)) and errno != ENOPROTOOPT)
     {
       return gearmand_perror(errno, "setsockopt(SO_RCVTIMEO)");
     }
   }
+#endif
 
+#if 0
   if (0)
   {
-    int setting= GEARMAN_DEFAULT_SOCKET_SEND_SIZE;
-    if (setsockopt(connection.fd, SOL_SOCKET, SO_SNDBUF, &setting, (socklen_t)sizeof(int)))
+    int setting= GEARMAND_DEFAULT_SOCKET_SEND_SIZE;
+    if (setsockopt(_fd, SOL_SOCKET, SO_SNDBUF, &setting, (socklen_t)sizeof(int)))
     {
       return gearmand_perror(errno, "setsockopr(SO_SNDBUF)");
     }
 
-    setting= GEARMAN_DEFAULT_SOCKET_RECV_SIZE;
-    if (setsockopt(connection.fd, SOL_SOCKET, SO_RCVBUF, &setting, (socklen_t)sizeof(int)))
+    setting= GEARMAND_DEFAULT_SOCKET_RECV_SIZE;
+    if (setsockopt(_fd, SOL_SOCKET, SO_RCVBUF, &setting, (socklen_t)sizeof(int)))
     {
       return gearmand_perror(errno, "setsockopt(SO_RCVBUF)");
     }
   }
+#endif
 
   if (SOCK_NONBLOCK == 0)
   {
-    int flags;
-    do
+    gearmand_error_t local_ret;
+    if ((local_ret= gearmand_sockfd_nonblock(_fd)))
     {
-      flags= fcntl(connection.fd, F_GETFL, 0);
-    } while (flags == -1 and (errno == EINTR or errno == EAGAIN));
-
-    if (flags == -1)
-    {
-      return gearmand_perror(errno, "fcntl(F_GETFL)");
-    }
-    else if ((flags & O_NONBLOCK) == 0)
-    {
-      int retval;
-      do
-      {
-        retval= fcntl(connection.fd, F_SETFL, flags | O_NONBLOCK);
-      } while (retval == -1 and (errno == EINTR or errno == EAGAIN));
-
-      if (retval == -1)
-      {
-        return gearmand_perror(errno, "fcntl(F_SETFL)");
-      }
+      return local_ret;
     }
   }
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
+}
+
+gearmand_error_t gearmand_sockfd_nonblock(const int& sockfd)
+{
+  int flags;
+  do
+  {
+    flags= fcntl(sockfd, F_GETFL, 0);
+    if (flags == -1)
+    {
+      gearmand_log_perror_warn(GEARMAN_DEFAULT_LOG_PARAM, flags, "gearmand_sockfd_nonblock");
+    }
+  } while (flags == -1 and (errno == EINTR or errno == EAGAIN));
+
+  if (flags == -1)
+  {
+    return gearmand_perror(errno, "fcntl(F_GETFL)");
+  }
+  else if ((flags & O_NONBLOCK) == 0)
+  {
+    int retval;
+    do
+    {
+      retval= fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+      if (retval == -1)
+      {
+        gearmand_log_perror_warn(GEARMAN_DEFAULT_LOG_PARAM, retval, "gearmand_sockfd_nonblock");
+      }
+    } while (retval == -1 and (errno == EINTR or errno == EAGAIN));
+
+    if (retval == -1)
+    {
+      return gearmand_perror(errno, "fcntl(F_SETFL)");
+    }
+  }
+
+  return GEARMAND_SUCCESS;
 }
 
 void gearmand_sockfd_close(int& sockfd)
 {
-  if (sockfd == INVALID_SOCKET)
+  if (sockfd != INVALID_SOCKET)
   {
-    gearmand_error("gearmand_sockfd_close() called with an invalid socket");
-    return;
-  }
+    /* in case of death shutdown to avoid blocking at close() */
+    if (shutdown(sockfd, SHUT_RDWR) == SOCKET_ERROR && get_socket_errno() != ENOTCONN)
+    {
+      gearmand_perror(errno, "shutdown");
+      assert(errno != ENOTSOCK);
+    }
+    else if (closesocket(sockfd) == SOCKET_ERROR)
+    {
+      gearmand_perror(errno, "close");
+    }
 
-  /* in case of death shutdown to avoid blocking at close() */
-  if (shutdown(sockfd, SHUT_RDWR) == SOCKET_ERROR && get_socket_errno() != ENOTCONN)
-  {
-    gearmand_perror(errno, "shutdown");
-    assert(errno != ENOTSOCK);
+    sockfd= INVALID_SOCKET;
   }
-  else if (closesocket(sockfd) == SOCKET_ERROR)
+  else
   {
-    gearmand_perror(errno, "close");
+    gearmand_debug("gearmand_sockfd_close() called with an invalid socket, this was probably ok");
   }
-
-  sockfd= INVALID_SOCKET;
 }
 
 void gearmand_pipe_close(int& pipefd)
@@ -935,3 +1071,4 @@ void gearmand_pipe_close(int& pipefd)
 
   pipefd= -1;
 }
+#pragma GCC diagnostic pop

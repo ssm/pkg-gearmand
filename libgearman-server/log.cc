@@ -60,6 +60,7 @@
 # include <alloca.h>
 #endif
 
+#pragma GCC diagnostic push
 #ifndef __INTEL_COMPILER
 # pragma GCC diagnostic ignored "-Wold-style-cast"
 # pragma GCC diagnostic ignored "-Wformat-nonliteral"
@@ -107,12 +108,32 @@ gearmand_error_t gearmand_initialize_thread_logging(const char *identity)
       }
     }
 
-    return GEARMAN_SUCCESS;
+    return GEARMAND_SUCCESS;
   }
 
   gearmand_fatal("identity was NULL");
 
-  return GEARMAN_INVALID_ARGUMENT;
+  return GEARMAND_INVALID_ARGUMENT;
+}
+
+static gearmand_error_t __errno_to_gearmand_error_t(int local_errno)
+{
+  gearmand_error_t error_to_report= GEARMAND_ERRNO;
+
+  switch (local_errno)
+  {
+  case ENOMEM:
+    error_to_report= GEARMAND_MEMORY_ALLOCATION_FAILURE;
+
+  case ECONNRESET:
+  case EHOSTDOWN:
+    error_to_report= GEARMAND_LOST_CONNECTION;
+
+  default:
+    break;
+  }
+
+  return error_to_report;
 }
 
 /**
@@ -199,7 +220,7 @@ static void gearmand_log(const char *position, const char *func /* func */,
       }
     }
 
-    if (remaining_size and error_arg != GEARMAN_SUCCESS)
+    if (remaining_size and error_arg != GEARMAND_SUCCESS)
     {
       int length= snprintf(log_buffer_ptr, remaining_size, " %s(%s)", func, gearmand_strerror(error_arg));
       if (length <= 0 or size_t(length) >= remaining_size)
@@ -244,24 +265,25 @@ gearmand_error_t gearmand_log_fatal(const char *position, const char *func, cons
 {
   if (Gearmand() and  Gearmand()->verbose < GEARMAND_VERBOSE_FATAL)
   {
-    return GEARMAN_ERRNO;
+    return GEARMAND_ERRNO;
   }
 
   {
     va_list args;
     va_start(args, format);
-    gearmand_log(position, func, GEARMAND_VERBOSE_FATAL, GEARMAN_SUCCESS, format, args);
+    gearmand_log(position, func, GEARMAND_VERBOSE_FATAL, GEARMAND_SUCCESS, format, args);
     va_end(args);
   }
+  gearmand_wakeup(Gearmand(), GEARMAND_WAKEUP_SHUTDOWN_GRACEFUL);
 
-  return GEARMAN_ERRNO;
+  return GEARMAND_ERRNO;
 }
 
 gearmand_error_t gearmand_log_fatal_perror(const char *position, const char *function, const int local_errno, const char *format, ...)
 {
   if (Gearmand() and  Gearmand()->verbose < GEARMAND_VERBOSE_FATAL)
   {
-    return GEARMAN_ERRNO;
+    return GEARMAND_ERRNO;
   }
 
   char* message_buffer= NULL;
@@ -301,20 +323,7 @@ gearmand_error_t gearmand_log_fatal_perror(const char *position, const char *fun
     }
   }
 
-  switch (local_errno)
-  {
-  case ENOMEM:
-    return GEARMAN_MEMORY_ALLOCATION_FAILURE;
-
-  case ECONNRESET:
-  case EHOSTDOWN:
-    return GEARMAN_LOST_CONNECTION;
-
-  default:
-    break;
-  }
-
-  return GEARMAN_ERRNO;
+  return __errno_to_gearmand_error_t(local_errno);
 }
 
 gearmand_error_t gearmand_log_error(const char *position, const char *function, const char *format, ...)
@@ -323,11 +332,11 @@ gearmand_error_t gearmand_log_error(const char *position, const char *function, 
   {
     va_list args;
     va_start(args, format);
-    gearmand_log(position, function, GEARMAND_VERBOSE_ERROR, GEARMAN_SUCCESS, format, args);
+    gearmand_log(position, function, GEARMAND_VERBOSE_ERROR, GEARMAND_SUCCESS, format, args);
     va_end(args);
   }
 
-  return GEARMAN_UNKNOWN_OPTION;
+  return GEARMAND_UNKNOWN_OPTION;
 }
 
 void gearmand_log_warning(const char *position, const char *function, const char *format, ...)
@@ -336,7 +345,7 @@ void gearmand_log_warning(const char *position, const char *function, const char
   {
     va_list args;
     va_start(args, format);
-    gearmand_log(position, function, GEARMAND_VERBOSE_WARN, GEARMAN_SUCCESS, format, args);
+    gearmand_log(position, function, GEARMAND_VERBOSE_WARN, GEARMAND_SUCCESS, format, args);
     va_end(args);
   }
 }
@@ -348,7 +357,7 @@ void gearmand_log_notice(const char *position, const char *function, const char 
   {
     va_list args;
     va_start(args, format);
-    gearmand_log(position, function, GEARMAND_VERBOSE_NOTICE, GEARMAN_SUCCESS, format, args);
+    gearmand_log(position, function, GEARMAND_VERBOSE_NOTICE, GEARMAND_SUCCESS, format, args);
     va_end(args);
   }
 }
@@ -359,7 +368,7 @@ void gearmand_log_info(const char *position, const char *function, const char *f
   {
     va_list args;
     va_start(args, format);
-    gearmand_log(position, function, GEARMAND_VERBOSE_INFO, GEARMAN_SUCCESS, format, args);
+    gearmand_log(position, function, GEARMAND_VERBOSE_INFO, GEARMAND_SUCCESS, format, args);
     va_end(args);
   }
 }
@@ -371,7 +380,7 @@ void gearmand_log_debug(const char *position, const char *function, const char *
   if (not Gearmand() || Gearmand()->verbose >= GEARMAND_VERBOSE_DEBUG)
   {
     va_start(args, format);
-    gearmand_log(position, function, GEARMAND_VERBOSE_DEBUG, GEARMAN_SUCCESS, format, args);
+    gearmand_log(position, function, GEARMAND_VERBOSE_DEBUG, GEARMAND_SUCCESS, format, args);
     va_end(args);
   }
 }
@@ -413,25 +422,50 @@ gearmand_error_t gearmand_log_perror(const char *position, const char *function,
     }
   }
 
-  switch (local_errno)
+  return __errno_to_gearmand_error_t(local_errno);
+}
+
+void gearmand_log_perror_warn(const char *position, const char *function, const int local_errno, const char *format, ...)
+{
+  if (not Gearmand() or (Gearmand()->verbose >= GEARMAND_VERBOSE_WARN))
   {
-  case ENOMEM:
-    return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+    char* message_buffer= NULL;
+    {
+      va_list args;
+      va_start(args, format);
 
-  case ECONNRESET:
-  case EHOSTDOWN:
-    return GEARMAN_LOST_CONNECTION;
+      size_t ask= snprintf(0, 0, format);
+      ask++; // for null
+      message_buffer= (char*)alloca(sizeof(char) * ask);
+      vsnprintf(message_buffer, ask, format, args);
 
-  default:
-    break;
+      va_end(args);
+    }
+
+    const char *errmsg_ptr;
+    char errmsg[GEARMAN_MAX_ERROR_SIZE]; 
+    errmsg[0]= 0; 
+
+#ifdef STRERROR_R_CHAR_P
+    errmsg_ptr= strerror_r(local_errno, errmsg, sizeof(errmsg));
+#else
+    strerror_r(local_errno, errmsg, sizeof(errmsg));
+    errmsg_ptr= errmsg;
+#endif
+    if (message_buffer)
+    {
+      gearmand_log_warning(position, function, "%s(%s)", message_buffer, errmsg_ptr);
+    }
+    else
+    {
+      gearmand_log_warning(position, function, "%s", errmsg_ptr);
+    }
   }
-
-  return GEARMAN_ERRNO;
 }
 
 gearmand_error_t gearmand_log_gerror(const char *position, const char *function, const gearmand_error_t rc, const char *format, ...)
 {
-  if (gearmand_failed(rc) and rc != GEARMAN_IO_WAIT)
+  if (gearmand_failed(rc) and rc != GEARMAND_IO_WAIT)
   {
     va_list args;
 
@@ -442,15 +476,15 @@ gearmand_error_t gearmand_log_gerror(const char *position, const char *function,
       va_end(args);
     }
   }
-  else if (rc == GEARMAN_IO_WAIT)
+  else if (rc == GEARMAND_IO_WAIT)
   { }
 
   return rc;
 }
 
-gearmand_error_t gearmand_log_gerror_warn(const char *position, const char *function, const gearmand_error_t rc, const char *format, ...)
+void gearmand_log_gerror_warn(const char *position, const char *function, const gearmand_error_t rc, const char *format, ...)
 {
-  if (gearmand_failed(rc) and rc != GEARMAN_IO_WAIT)
+  if (gearmand_failed(rc) and rc != GEARMAND_IO_WAIT)
   {
     va_list args;
 
@@ -461,10 +495,6 @@ gearmand_error_t gearmand_log_gerror_warn(const char *position, const char *func
       va_end(args);
     }
   }
-  else if (rc == GEARMAN_IO_WAIT)
-  { }
-
-  return rc;
 }
 
 gearmand_error_t gearmand_log_gai_error(const char *position, const char *function, const int rc, const char *message)
@@ -476,7 +506,7 @@ gearmand_error_t gearmand_log_gai_error(const char *position, const char *functi
 
   gearmand_log_error(position, function, "%s getaddrinfo(%s)", message, gai_strerror(rc));
 
-  return GEARMAN_GETADDRINFO;
+  return GEARMAND_GETADDRINFO;
 }
 
 gearmand_error_t gearmand_log_memory_error(const char *position, const char *function, const char *allocator, const char *object_type, size_t count, size_t size)
@@ -490,5 +520,6 @@ gearmand_error_t gearmand_log_memory_error(const char *position, const char *fun
     gearmand_log_error(position, function, "%s(%s, size: %lu)", allocator, object_type, static_cast<unsigned long>(count), static_cast<unsigned long>(size));
   }
 
-  return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+  return GEARMAND_MEMORY_ALLOCATION_FAILURE;
 }
+#pragma GCC diagnostic pop

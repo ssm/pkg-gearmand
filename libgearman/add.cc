@@ -44,6 +44,7 @@
 #include <libgearman/packet.hpp>
 
 #include "libgearman/assert.hpp"
+#include "libgearman/log.hpp"
 
 #include "libgearman/vector.h"
 #include "libgearman/uuid.hpp"
@@ -118,7 +119,7 @@ namespace {
 
 } // namespace
 
-gearman_task_st *add_task(gearman_client_st& client,
+gearman_task_st *add_task(Client& client,
                           void *context,
                           gearman_command_t command,
                           const gearman_string_t &function,
@@ -130,7 +131,7 @@ gearman_task_st *add_task(gearman_client_st& client,
   return add_task(client, NULL, context, command, function, unique, workload, when, actions);
 }
 
-gearman_task_st *add_task_ptr(gearman_client_st& client,
+gearman_task_st *add_task_ptr(Client& client,
                               gearman_task_st *task,
                               void *context,
                               gearman_command_t command,
@@ -138,15 +139,9 @@ gearman_task_st *add_task_ptr(gearman_client_st& client,
                               const char *unique,
                               const void *workload_str, size_t workload_size,
                               time_t when,
-                              gearman_return_t *ret_ptr,
+                              gearman_return_t& ret_ptr,
                               const gearman_actions_t &actions)
 {
-  gearman_return_t unused;
-  if (ret_ptr == NULL)
-  {
-    ret_ptr= &unused;
-  }
-
   gearman_string_t function= { gearman_string_param_cstr(function_name) };
   gearman_unique_t local_unique= gearman_unique_make(unique, unique ? strlen(unique) : 0);
   gearman_string_t workload= { static_cast<const char *>(workload_str), workload_size };
@@ -154,17 +149,17 @@ gearman_task_st *add_task_ptr(gearman_client_st& client,
   task= add_task(client, task, context, command, function, local_unique, workload, when, actions);
   if (task == NULL)
   {
-    *ret_ptr= gearman_universal_error_code(client.universal);
+    ret_ptr= client.universal.error_code();
     return NULL;
   }
 
-  *ret_ptr= GEARMAN_SUCCESS;
+  ret_ptr= GEARMAN_SUCCESS;
 
   return task;
 }
 
-gearman_task_st *add_task(gearman_client_st& client,
-                          gearman_task_st *task,
+gearman_task_st *add_task(Client& client,
+                          gearman_task_st *task_shell,
                           void *context,
                           gearman_command_t command,
                           const gearman_string_t &function,
@@ -200,12 +195,15 @@ gearman_task_st *add_task(gearman_client_st& client,
     return NULL;
   }
 
-  task= gearman_task_internal_create(&client, task);
-  if (task == NULL)
+  task_shell= gearman_task_internal_create(&client, task_shell);
+  if (task_shell == NULL or task_shell->impl() == NULL)
   {
-    gearman_error(client.universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "");
+    assert(client.universal.error());
     return NULL;
   }
+  assert(task_shell->impl()->client);
+
+  Task* task= task_shell->impl();
 
   task->context= context;
   task->func= actions;
@@ -228,7 +226,10 @@ gearman_task_st *add_task(gearman_client_st& client,
   {
     if (client.options.generate_unique or is_background(command))
     {
-      safe_uuid_generate(task->unique, task->unique_length);
+      if (safe_uuid_generate(task->unique, task->unique_length) == -1)
+      {
+        gearman_log_debug(task->client->universal, "uuid_generate_time_safe() failed or does not exist on this platform");
+      }
     }
     else
     {
@@ -237,8 +238,9 @@ gearman_task_st *add_task(gearman_client_st& client,
     }
   }
 
+  gearman_unique_t final_unique= gearman_unique_make(task->unique, task->unique_length);
+
   assert(task->client);
-  assert(task->client == &client);
 
   gearman_return_t rc= GEARMAN_INVALID_ARGUMENT;
   switch (command)
@@ -246,14 +248,18 @@ gearman_task_st *add_task(gearman_client_st& client,
   case GEARMAN_COMMAND_SUBMIT_JOB:
   case GEARMAN_COMMAND_SUBMIT_JOB_LOW:
   case GEARMAN_COMMAND_SUBMIT_JOB_HIGH:
-    rc= libgearman::protocol::submit(*task,
+    rc= libgearman::protocol::submit(task->client->universal,
+                                     task->send,
+                                     final_unique,
                                      command,
                                      function,
                                      workload);
     break;
 
   case GEARMAN_COMMAND_SUBMIT_JOB_EPOCH:
-    rc= libgearman::protocol::submit_epoch(*task,
+    rc= libgearman::protocol::submit_epoch(task->client->universal,
+                                           task->send,
+                                           final_unique,
                                            function,
                                            workload,
                                            when);
@@ -262,7 +268,9 @@ gearman_task_st *add_task(gearman_client_st& client,
   case GEARMAN_COMMAND_SUBMIT_JOB_BG:
   case GEARMAN_COMMAND_SUBMIT_JOB_LOW_BG:
   case GEARMAN_COMMAND_SUBMIT_JOB_HIGH_BG:
-    rc= libgearman::protocol::submit_background(*task,
+    rc= libgearman::protocol::submit_background(task->client->universal,
+                                                task->send,
+                                                final_unique,
                                                 command,
                                                 function,
                                                 workload);
@@ -270,8 +278,8 @@ gearman_task_st *add_task(gearman_client_st& client,
 
   case GEARMAN_COMMAND_SUBMIT_REDUCE_JOB:
   case GEARMAN_COMMAND_SUBMIT_REDUCE_JOB_BACKGROUND:
-    assert(0);
     rc= GEARMAN_INVALID_ARGUMENT;
+    assert(rc != GEARMAN_INVALID_ARGUMENT);
     break;
 
   case GEARMAN_COMMAND_SUBMIT_JOB_SCHED:
@@ -309,8 +317,8 @@ gearman_task_st *add_task(gearman_client_st& client,
   case GEARMAN_COMMAND_WORK_WARNING:
   case GEARMAN_COMMAND_GET_STATUS_UNIQUE:
   case GEARMAN_COMMAND_STATUS_RES_UNIQUE:
-    assert(0);
     rc= GEARMAN_INVALID_ARGUMENT;
+    assert(rc != GEARMAN_INVALID_ARGUMENT);
     break;
   }
 
@@ -320,15 +328,15 @@ gearman_task_st *add_task(gearman_client_st& client,
     client.running_tasks++;
     task->options.send_in_use= true;
 
-    return task;
+    return task->shell();
   }
 
-  gearman_task_free(task);
+  gearman_task_free(task->shell());
 
   return NULL;
 }
 
-gearman_task_st *add_reducer_task(gearman_client_st *client,
+gearman_task_st *add_reducer_task(Client* client,
                                   gearman_command_t command,
                                   const gearman_job_priority_t,
                                   const gearman_string_t &function,
@@ -369,13 +377,14 @@ gearman_task_st *add_reducer_task(gearman_client_st *client,
     return NULL;
   }
 
-  gearman_task_st *task= gearman_task_internal_create(client, NULL);
-  if (task == NULL)
+  gearman_task_st *task_shell= gearman_task_internal_create(client, NULL);
+  if (task_shell == NULL)
   {
-    gearman_error(client->universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "");
+    assert(client->universal.error_code());
     return NULL;
   }
 
+  Task* task= task_shell->impl();
   task->context= context;
   task->func= actions;
 
@@ -481,5 +490,5 @@ gearman_task_st *add_reducer_task(gearman_client_st *client,
   }
   task->type= GEARMAN_TASK_KIND_EXECUTE;
 
-  return task;
+  return task->shell();
 }

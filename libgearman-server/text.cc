@@ -39,6 +39,7 @@
 
 #include "libgearman-server/common.h"
 #include "libgearman-server/log.h"
+#include "libgearman/command.h"
 #include "libgearman/vector.hpp"
 
 #include <cassert>
@@ -50,21 +51,33 @@
 #define TEXT_ERROR_CREATE_FUNCTION "ERR CREATE_FUNCTION %.*s\r\n"
 #define TEXT_ERROR_UNKNOWN_COMMAND "ERR UNKNOWN_COMMAND Unknown+server+command%.*s\r\n"
 #define TEXT_ERROR_INTERNAL_ERROR "ERR UNKNOWN_ERROR\r\n"
+#define TEXT_ERROR_UNKNOWN_SHOW_ARGUMENTS "ERR UNKNOWN_SHOW_ARGUMENTS\r\n"
+#define TEXT_ERROR_UNKNOWN_JOB "ERR UNKNOWN_JOB\r\n"
 
 gearmand_error_t server_run_text(gearman_server_con_st *server_con,
                                  gearmand_packet_st *packet)
 {
-  gearman_vector_st data(GEARMAN_TEXT_RESPONSE_SIZE);
+  gearman_vector_st data(GEARMAND_TEXT_RESPONSE_SIZE);
 
   if (packet->argc)
   {
-    gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "text command %.*s", packet->arg_size[0],  packet->arg[0]);
+    gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "text command %.*s %d arguments",
+                       packet->arg_size[0],  packet->arg[0],
+                       int(packet->argc));
   }
 
+#if 0
+  const struct gearman_command_info_st *command= NULL;
+#endif
   if (packet->argc == 0)
   {
     data.vec_printf(TEXT_ERROR_UNKNOWN_COMMAND, 4, "NULL");
   }
+#if 0
+  else if ((command= gearman_command_lookup((char *)(packet->arg[0]), packet->arg_size[0])))
+  {
+  }
+#endif
   else if (strcasecmp("workers", (char *)(packet->arg[0])) == 0)
   {
     for (gearman_server_thread_st *thread= Server->thread_list;
@@ -81,7 +94,7 @@ gearmand_error_t server_run_text(gearman_server_con_st *server_con,
             continue;
           }
 
-          data.vec_append_printf("%d %s %s :", con->con.fd, con->_host, con->id);
+          data.vec_append_printf("%d %s %s :", con->con.fd(), con->_host, con->id);
 
           for (gearman_server_worker_st *worker= con->worker_list; worker != NULL; worker= worker->con_next)
           {
@@ -124,6 +137,67 @@ gearmand_error_t server_run_text(gearman_server_con_st *server_con,
     }
 
     data.vec_append_printf(".\n");
+  }
+  else if (packet->argc >= 3 
+           and strcasecmp("cancel", (char *)(packet->arg[0])) == 0)
+  {
+    if (packet->argc == 3
+        and strcasecmp("job", (char *)(packet->arg[1])) == 0)
+    {
+      gearmand_error_t ret= gearman_server_job_cancel(Gearmand()->server, packet->arg[2], strlen(packet->arg[2]));
+
+      if (ret == GEARMAND_SUCCESS)
+      {
+        data.vec_printf(TEXT_SUCCESS);
+      }
+      else if (ret != GEARMAND_NO_JOBS)
+      {
+        data.vec_printf(TEXT_ERROR_INTERNAL_ERROR);
+      }
+      else
+      {
+        data.vec_printf(TEXT_ERROR_UNKNOWN_JOB);
+      }
+    }
+  }
+  else if (packet->argc >= 2 and strcasecmp("show", (char *)(packet->arg[0])) == 0)
+  {
+    if (packet->argc == 3
+        and strcasecmp("unique", (char *)(packet->arg[1])) == 0
+        and strcasecmp("jobs", (char *)(packet->arg[2])) == 0)
+    {
+      for (size_t x= 0; x < Server->hashtable_buckets; x++)
+      {
+        for (gearman_server_job_st* server_job= Server->unique_hash[x];
+             server_job != NULL;
+             server_job= server_job->unique_next)
+        {
+          data.vec_append_printf("%.*s\n", int(server_job->unique_length), server_job->unique);
+        }
+      }
+
+      data.vec_append_printf(".\n");
+    }
+    else if (packet->argc == 2
+             and strcasecmp("jobs", (char *)(packet->arg[1])) == 0)
+    {
+      for (size_t x= 0; x < Server->hashtable_buckets; ++x)
+      {
+        for (gearman_server_job_st *server_job= Server->job_hash[x];
+             server_job != NULL;
+             server_job= server_job->next)
+        {
+          data.vec_append_printf("%s\t%u\t%u\t%u\n", server_job->job_handle, uint32_t(server_job->retries),
+                                 uint32_t(server_job->ignore_job), uint32_t(server_job->job_queued));
+        }
+      }
+
+      data.vec_append_printf(".\n");
+    }
+    else
+    {
+      data.vec_printf(TEXT_ERROR_UNKNOWN_SHOW_ARGUMENTS);
+    }
   }
   else if (strcasecmp("create", (char *)(packet->arg[0])) == 0)
   {
@@ -215,7 +289,7 @@ gearmand_error_t server_run_text(gearman_server_con_st *server_con,
         }
         else
         {
-          max_queue_size[priority]= GEARMAN_DEFAULT_MAX_QUEUE_SIZE;
+          max_queue_size[priority]= GEARMAND_DEFAULT_MAX_QUEUE_SIZE;
         }
       }
 
@@ -292,7 +366,7 @@ gearmand_error_t server_run_text(gearman_server_con_st *server_con,
   gearman_server_packet_st *server_packet= gearman_server_packet_create(server_con->thread, false);
   if (server_packet == NULL)
   {
-    return gearmand_gerror("calling gearman_server_packet_create()", GEARMAN_MEMORY_ALLOCATION_FAILURE);
+    return gearmand_gerror("calling gearman_server_packet_create()", GEARMAND_MEMORY_ALLOCATION_FAILURE);
   }
 
   server_packet->packet.reset(GEARMAN_MAGIC_TEXT, GEARMAN_COMMAND_TEXT);
@@ -312,7 +386,7 @@ gearmand_error_t server_run_text(gearman_server_con_st *server_con,
   int error;
   if ((error= pthread_mutex_lock(&server_con->thread->lock)) == 0)
   {
-    GEARMAN_FIFO__ADD(server_con->io_packet, server_packet);
+    GEARMAND_FIFO__ADD(server_con->io_packet, server_packet);
     if ((error= pthread_mutex_unlock(&(server_con->thread->lock))))
     {
       gearmand_log_fatal_perror(GEARMAN_DEFAULT_LOG_PARAM, error, "pthread_mutex_unlock");
@@ -325,5 +399,5 @@ gearmand_error_t server_run_text(gearman_server_con_st *server_con,
 
   gearman_server_con_io_add(server_con);
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }

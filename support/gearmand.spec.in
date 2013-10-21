@@ -99,8 +99,8 @@ fi
 %{_bindir}/gearadmin
 %{_bindir}/gearman
 %{_libdir}/libgearman.la
-%{_libdir}/libgearman.so.7
-%{_libdir}/libgearman.so.7.0.1
+%{_libdir}/libgearman.so.8
+%{_libdir}/libgearman.so.8.0.0
 %{_mandir}/man1/gearadmin.1.gz
 %{_mandir}/man1/gearman.1.gz
 
@@ -121,6 +121,7 @@ fi
 %{_includedir}/libgearman-1.0/aggregator.h
 %{_includedir}/libgearman-1.0/allocator.h
 %{_includedir}/libgearman-1.0/argument.h
+%{_includedir}/libgearman-1.0/cancel.h
 %{_includedir}/libgearman-1.0/client.h
 %{_includedir}/libgearman-1.0/client_callbacks.h
 %{_includedir}/libgearman-1.0/configure.h
@@ -132,12 +133,14 @@ fi
 %{_includedir}/libgearman-1.0/gearman.h
 %{_includedir}/libgearman-1.0/interface/status.h
 %{_includedir}/libgearman-1.0/interface/task.h
+%{_includedir}/libgearman-1.0/interface/client.h
+%{_includedir}/libgearman-1.0/interface/job.h
+%{_includedir}/libgearman-1.0/interface/worker.h
 %{_includedir}/libgearman-1.0/job.h
 %{_includedir}/libgearman-1.0/job_handle.h
 %{_includedir}/libgearman-1.0/kill.h
 %{_includedir}/libgearman-1.0/limits.h
 %{_includedir}/libgearman-1.0/ostream.hpp
-%{_includedir}/libgearman-1.0/packet.h
 %{_includedir}/libgearman-1.0/parse.h
 %{_includedir}/libgearman-1.0/priority.h
 %{_includedir}/libgearman-1.0/protocol.h
@@ -149,13 +152,13 @@ fi
 %{_includedir}/libgearman-1.0/string.h
 %{_includedir}/libgearman-1.0/task.h
 %{_includedir}/libgearman-1.0/task_attr.h
-%{_includedir}/libgearman-1.0/universal.h
 %{_includedir}/libgearman-1.0/util.h
 %{_includedir}/libgearman-1.0/version.h
 %{_includedir}/libgearman-1.0/visibility.h
 %{_includedir}/libgearman-1.0/worker.h
 %{_libdir}/pkgconfig/gearmand.pc
 %{_libdir}/libgearman.so
+%{_libdir}/libgearman.a
 %{_mandir}/man3/gearman_actions_t.3.gz
 %{_mandir}/man3/gearman_allocator_t.3.gz
 %{_mandir}/man3/gearman_argument_make.3.gz
@@ -232,6 +235,7 @@ fi
 %{_mandir}/man3/gearman_job_st.3.gz
 %{_mandir}/man3/gearman_job_take_workload.3.gz
 %{_mandir}/man3/gearman_job_unique.3.gz
+%{_mandir}/man3/gearman_job_use_client.3.gz
 %{_mandir}/man3/gearman_job_workload.3.gz
 %{_mandir}/man3/gearman_job_workload_size.3.gz
 %{_mandir}/man3/gearman_log_fn.3.gz
@@ -308,7 +312,6 @@ fi
 %{_mandir}/man3/gearman_worker_wait.3.gz
 %{_mandir}/man3/gearman_worker_work.3.gz
 %{_mandir}/man3/libgearman.3.gz
-
 
 %changelog
 * Wed Jan 7 2009 Brian Aker <brian@tangent.org> - 0.1-1

@@ -6,23 +6,32 @@
 # Use and distribution licensed under the BSD license.  See
 # the COPYING file in this directory for full text.
 
+m4_include([version.m4])
 AC_REVISION([m4_esyscmd_s([bzr revno])])
 AC_PREREQ([2.63])
-AC_INIT([gearmand],[1.0.6],[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+AC_INIT([gearmand],VERSION_NUMBER,[https://bugs.launchpad.net/gearmand],[gearmand],[http://gearman.info/])
+
+# Setup the compilers early on
+AC_PROG_CC([cc gcc clang])
+AC_PROG_CXX([c++ g++ clang++])
+
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 
-AC_CANONICAL_TARGET
+AC_CANONICAL_HOST
 AC_ARG_PROGRAM
 AC_USE_SYSTEM_EXTENSIONS
 
-AM_INIT_AUTOMAKE([1.11 color-tests -Wno-portability subdir-objects foreign tar-ustar])
+AM_INIT_AUTOMAKE([1.12 color-tests -Wno-portability subdir-objects foreign tar-ustar serial-tests])
 
 AC_CONFIG_HEADERS([gear_config.h:gear_config.in])dnl Keep filename to 8.3 for MS-DOS.
 AC_SUBST([AUTOHEADER_FILE],[gear_config.h])
 AC_CONFIG_SRCDIR([libgearman/gearman.cc])
 
-GEARMAN_LIBRARY_VERSION=7:1:0
+AC_PROG_CC_C99
+AS_IF([test "x${ac_cv_prog_cc_c99}" == "xno"],[AC_MSG_ERROR([No c99 compatible compiler found])])
+
+GEARMAN_LIBRARY_VERSION=8:0:0
 #                       | | |
 #                +------+ | +---+
 #                |        |     |
@@ -37,15 +46,11 @@ GEARMAN_LIBRARY_VERSION=7:1:0
 AC_SUBST([GEARMAN_LIBRARY_VERSION])
 
 LT_PREREQ([2.2])
-LT_INIT([disable-static])
+LT_INIT
 LT_LANG([C++])
-
-AC_PROG_CC_C99
-AS_IF([test "x${ac_cv_prog_cc_c99}" == "xno"],[AC_MSG_ERROR([No c99 compatible compiler found])])
 
 AX_PLATFORM
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
-AX_ASSERT
 
 # First look for Boost, maybe for a specific minimum version:
 AC_DEFUN([CHECK_BOOST],
@@ -96,9 +101,13 @@ AX_ENABLE_LIBHIREDIS
 
 # Checks for programs.
 AC_CHECK_PROGS([DPKG_GENSYMBOLS],[dpkg-gensymbols])
+AC_CHECK_PROGS([OPENSSL],[openssl])
 AC_CHECK_PROGS([PERL],[perl])
 AC_CHECK_PROGS([VALGRIND],['valgrind'])
 AC_CHECK_PROGS([WINE],['wine'])
+AC_PATH_PROG([GPERF],['gperf'],[])
+AS_IF([test -z "$GPERF"],
+      [AC_MSG_ERROR([could not find gperf])]])
 AC_PROG_AWK
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -182,6 +191,7 @@ AC_FUNC_VPRINTF
 AC_REPLACE_FNMATCH
 AC_CHECK_FUNCS([accept4])
 AC_CHECK_FUNCS([dup2])
+AC_CHECK_FUNCS([fork])
 AC_CHECK_FUNCS([gettimeofday])
 AC_CHECK_FUNCS([memchr])
 AC_CHECK_FUNCS([memmove])
@@ -199,33 +209,72 @@ AC_CHECK_FUNCS([strtol])
 AC_CHECK_FUNCS([strtoul])
 AC_CHECK_FUNCS([uname])
 AC_CHECK_FUNCS([atexit])
-AC_CHECK_FUNCS([clock_gettime])
 AC_CHECK_FUNCS([getcwd])
 AC_CHECK_FUNCS([strstr])
 AC_CHECK_FUNC([setsockopt],[],[AC_CHECK_LIB([socket],[setsockopt])])
 AC_CHECK_FUNC([bind],[],[AC_CHECK_LIB([bind],[bind])])
-
 
 # Check for the ability to call dlopen (used in libhostile)
 AX_DLOPEN
 
 # Check for -lrt
 AC_CHECK_LIB([rt],[clock_gettime],
-             [AC_SUBST([RT_LIB],[-lrt])
-             AC_DEFINE([HAVE_LIBRT],[1],[Have clock_gettime])
-             ])
+             [AX_SAVE_FLAGS
+              LIBS="$LIB -lrt"
+              AC_CHECK_FUNCS([clock_gettime])
+              AX_RESTORE_FLAGS
+
+              AC_SUBST([RT_LIB],[-lrt])
+              AC_DEFINE([HAVE_LIBRT],[1],[Have -lrt])
+             ],
+             [AC_CHECK_FUNCS([clock_gettime])])
 
 # Check for -lm
 LT_LIB_M
 
+# Check for OPENSSL
+AX_CHECK_OPENSSL([have_openssl=yes
+                  AC_DEFINE([HAVE_OPENSSL],[1],[Enable openssl Support])],
+                  [have_openssl=no]) 
+AM_CONDITIONAL([ENABLE_OPENSSL],[test "x${have_openssl}" = "xyes"])
+
 # Check for CyaSSL
-AX_CHECK_LIBRARY([CYASSL],[cyassl/ssl.h],[cyassl])
+AX_CHECK_CYASSL([have_cyassl=yes],[have_cyassl=no]) 
+AM_CONDITIONAL([ENABLE_CYASSL],[test "x${have_cyassl}" = "xyes"])
+
+AC_DEFUN([AX_ENABLE_SSL],
+         [AC_PREREQ([2.63])dnl
+         m4_define([_SSL_ENABLE_DEFAULT], [m4_if($1, no, no, no)])dnl
+         AC_ARG_ENABLE([ssl],
+                       [AS_HELP_STRING([--enable-ssl],
+                                       [Enable ssl support for Gearman @<:@default=]_SSL_ENABLE_DEFAULT[@:>@])],
+                                       [AS_CASE([$enableval],
+                                                [yes],[enable_ssl=yes],
+                                                [no],[enable_ssl=no],
+                                                [enable_ssl=no])
+                                        ],
+                                        [enable_ssl=]_SSL_ENABLE_DEFAULT)
+         AS_IF([test "x${enable_ssl}" = "xyes"],
+               [AS_IF([test "x${have_cyassl}" = "xyes"],
+                      [AC_DEFINE([HAVE_SSL],[1],[Enable SSL Support])
+                        AC_DEFINE([HAVE_OPENSSL],[0],[Enable OPENSSL Support])
+                      ],
+                      [test "x${have_openssl}" = "xyes"],
+                      [AC_DEFINE([HAVE_SSL],[1],[Enable SSL Support])],
+                      [enable_ssl=no])
+               ])
+         AM_CONDITIONAL([ENABLE_SSL],[test "x${enable_ssl}" = "xyes"])
+         ])
+
+AX_ENABLE_SSL
+
 AX_ENABLE_LIBMEMCACHED
 
 AC_DEFINE([GEARMAND_BLOBSLAP_WORKER],[1],[Have Gearman Blobslap Worker])
 
 AX_LIBEVENT(,[AC_MSG_ERROR([Unable to find libevent])])
 
+AX_UUID(,[AC_MSG_ERROR([Unable to find libuuid])])
 AX_UUID_GENERATE_TIME_SAFE
 
 AX_AM_JOBSERVER([yes])
@@ -249,6 +298,7 @@ AS_IF([test "x$enable_shared" = "xyes"],
 AM_CONDITIONAL([SHARED_ENABLED],[test "x$enable_shared" = "xyes"])
 
 AC_CONFIG_FILES([Makefile
+                 man/Makefile
                  docs/conf.py
                  libgearman-1.0/version.h
                  scripts/gearmand
@@ -266,9 +316,9 @@ echo ""
 echo "   * Installation prefix:       $prefix"
 echo "   * System type:               $host_vendor-$host_os"
 echo "   * Host CPU:                  $host_cpu"
-echo "   * C Compiler:                $CC_VERSION"
+echo "   * C Compiler:                $CC $CC_VERSION"
 echo "   * C Flags:                   $CFLAGS"
-echo "   * C++ Compiler:              $CXX_VERSION"
+echo "   * C++ Compiler:              $CXX $CXX_VERSION"
 echo "   * C++ Flags:                 $CXXFLAGS"
 echo "   * CPP Flags:                 $CPPFLAGS"
 echo "   * LIBS:                      $LIBS"
@@ -282,6 +332,9 @@ echo "   * Building with libmemcached $ax_enable_libmemcached"
 echo "   * Building with libpq        $ac_cv_libpq"
 echo "   * Building with tokyocabinet $ac_enable_libtokyocabinet"
 echo "   * Building with libmysql     $found_mysql"
+echo "   * SSL enabled:               $enable_ssl"
+echo "   * cyassl found:              $have_cyassl"
+echo "   * openssl found:             $have_openssl"
 echo "   * make -j:                   $enable_jobserver"
 echo "   * VCS checkout:              $ac_cv_vcs_checkout"
 echo ""

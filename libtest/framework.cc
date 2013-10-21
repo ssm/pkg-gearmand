@@ -39,10 +39,69 @@
 #include <libtest/common.h>
 #include <libtest/collection.h>
 #include <libtest/signal.h>
+#include <libtest/stream.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <fnmatch.h>
 #include <iostream>
+#include <set>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+namespace {
+#if defined(DEBUG) && DEBUG
+  int open_file_descriptors(std::set<int>& pre_existing_fd, const bool report)
+  {
+    int max= getdtablesize();
+
+    int counter= 0;
+
+    for (int x= 3; x < max; ++x)
+    {
+      struct stat stats;
+
+      if (fstat(x, &stats) == 0)
+      {
+        if (report)
+        {
+          std::set<int>::iterator it= pre_existing_fd.find(x);
+          if (it!= pre_existing_fd.end())
+          { }
+          else
+          {
+            std::cerr << "FD: " << x;
+
+            if (S_ISREG(stats.st_mode))
+            {
+              std::cerr << " regular file ";
+            }
+            else if (S_ISDIR(stats.st_mode))
+            {
+              std::cerr << " directory ";
+            }
+            else if (S_ISSOCK(stats.st_mode))
+            {
+              std::cerr << " socket ";
+            }
+
+            std::cerr << std::endl;
+          }
+        }
+        else
+        {
+          pre_existing_fd.insert(x);
+        }
+
+        ++counter;
+      }
+    }
+
+    return counter;
+  }
+#endif // #if defined(DEBUG) && DEBUG
+} // namespace
 
 namespace libtest {
 
@@ -66,6 +125,33 @@ Framework::Framework(libtest::SignalThread& signal_,
   _name(name_)
 {
   get_world(this);
+
+  {
+    std::string file_name;
+    if (getenv("WORKSPACE"))
+    {
+      file_name.append(getenv("WORKSPACE"));
+      file_name.append("/");
+    }
+    file_name.append(name());
+    file_name.append(".xml");
+    xml_file.open(file_name.c_str(), std::ios::trunc);
+    _formatter.push_back(new libtest::Junit(this, xml_file));
+  }
+
+  {
+    std::string file_name;
+    if (getenv("WORKSPACE"))
+    {
+      file_name.append(getenv("WORKSPACE"));
+      file_name.append("/");
+    }
+    file_name.append(name());
+    file_name.append(".tap");
+    tap_file.open(file_name.c_str(), std::ios::trunc);
+    _formatter.push_back(new libtest::TAP(this, tap_file));
+  }
+  _formatter.push_back(new libtest::Legacy(this, std::cout));
 }
 
 void Framework::collections(collection_st collections_[])
@@ -89,6 +175,9 @@ Framework::~Framework()
 
   std::for_each(_collection.begin(), _collection.end(), DeleteFromVector());
   _collection.clear();
+
+  std::for_each(_formatter.begin(), _formatter.end(), DeleteFromVector());
+  _formatter.clear();
 }
 
 bool Framework::match(const char* arg)
@@ -103,110 +192,74 @@ bool Framework::match(const char* arg)
 
 void Framework::exec()
 {
-  for (std::vector<Collection*>::iterator iter= _collection.begin();
+  for (Suites::iterator iter= _collection.begin();
        iter != _collection.end() and (_signal.is_shutdown() == false);
        ++iter)
   {
-    if (*iter)
+    if (_only_run.empty() == false and
+        fnmatch(_only_run.c_str(), (*iter)->name(), 0))
     {
-      if (_only_run.empty() == false and
-          fnmatch(_only_run.c_str(), (*iter)->name(), 0))
+      continue;
+    }
+
+    _total++;
+
+#if defined(DEBUG) && DEBUG
+    std::set<int> pre_existing_fd;
+    int open_fd= 0;
+    if (DEBUG)
+    {
+      open_fd= open_file_descriptors(pre_existing_fd, false);
+    }
+#endif
+
+    try {
+      switch ((*iter)->exec())
       {
-        continue;
-      }
-
-      _total++;
-
-      try {
-        switch ((*iter)->exec())
-        {
-          case TEST_FAILURE:
-            _failed++;
-            break;
-
-          case TEST_SKIPPED:
-            _skipped++;
-            break;
-
-            // exec() can return SUCCESS, but that doesn't mean that some tests did
-            // not fail or get skipped.
-          case TEST_SUCCESS:
-            _success++;
-            break;
-        }
-      }
-      catch (const libtest::fatal& e)
-      {
+      case TEST_FAILURE:
         _failed++;
-        stream::cerr(e.file(), e.line(), e.func()) << e.what();
-      }
-      catch (const libtest::disconnected& e)
-      {
-        _failed++;
-        Error << "Unhandled disconnection occurred:" << e.what();
-        throw;
-      }
-      catch (...)
-      {
-        _failed++;
-        throw;
+        break;
+
+      case TEST_SKIPPED:
+        _skipped++;
+        break;
+
+        // exec() can return SUCCESS, but that doesn't mean that some tests did
+        // not fail or get skipped.
+      case TEST_SUCCESS:
+        _success++;
+        break;
       }
     }
+    catch (const libtest::fatal& e)
+    {
+      _failed++;
+      stream::cerr(e.file(), e.line(), e.func()) << e.what();
+    }
+    catch (const libtest::disconnected& e)
+    {
+      _failed++;
+      Error << "Unhandled disconnection occurred:" << e.what();
+      throw;
+    }
+    catch (...)
+    {
+      _failed++;
+      throw;
+    }
+
+#if defined(DEBUG) && DEBUG
+    if (DEBUG)
+    {
+      int now_open_fd= open_file_descriptors(pre_existing_fd, true);
+
+      if (open_fd != now_open_fd)
+      {
+        Error << "Growing number of file descriptors: " << int(now_open_fd - open_fd);
+      }
+    }
+#endif
   }
-
-  void xml(const std::string& testsuites_name, std::ostream& output);
-}
-
-uint32_t Framework::sum_total()
-{
-  uint32_t count= 0;
-  for (std::vector<Collection*>::iterator iter= _collection.begin();
-       iter != _collection.end();
-       ++iter)
-  {
-    count+= (*iter)->total();
-  }
-
-  return count;
-}
-
-uint32_t Framework::sum_success()
-{
-  uint32_t count= 0;
-  for (std::vector<Collection*>::iterator iter= _collection.begin();
-       iter != _collection.end();
-       ++iter)
-  {
-    count+= (*iter)->success();
-  }
-
-  return count;
-}
-
-uint32_t Framework::sum_skipped()
-{
-  uint32_t count= 0;
-  for (std::vector<Collection*>::iterator iter= _collection.begin();
-       iter != _collection.end();
-       ++iter)
-  {
-    count+= (*iter)->skipped();
-  }
-
-  return count;
-}
-
-uint32_t Framework::sum_failed()
-{
-  uint32_t count= 0;
-  for (std::vector<Collection*>::iterator iter= _collection.begin();
-       iter != _collection.end();
-       ++iter)
-  {
-    count+= (*iter)->failed();
-  }
-
-  return count;
 }
 
 libtest::Runner *Framework::runner()

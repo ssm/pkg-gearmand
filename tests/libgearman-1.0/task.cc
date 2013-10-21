@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -52,6 +52,9 @@ using namespace libtest;
 using namespace org::gearmand;
 
 #include <cassert>
+
+#include "libgearman/interface/task.hpp"
+
 #include <iostream>
 #include <memory>
 
@@ -210,7 +213,7 @@ test_return_t gearman_client_add_task_test_fail(void *object)
                                                  &ret);
   ASSERT_EQ(GEARMAN_SUCCESS,ret);
   test_truth(task);
-  test_truth(task->client);
+  test_truth(task->impl()->client);
 
   do {
     ret= gearman_client_run_tasks(client);
@@ -224,11 +227,11 @@ test_return_t gearman_client_add_task_test_fail(void *object)
     return TEST_SUCCESS;
   }
 
-  test_truth(task->client);
+  test_truth(task->impl()->client);
 
   ASSERT_EQ(gearman_task_return(task), GEARMAN_WORK_FAIL);
 
-  test_truth(task->client);
+  test_truth(task->impl()->client);
   gearman_task_free(task);
 
   return TEST_SUCCESS;
@@ -313,7 +316,7 @@ test_return_t gearman_client_add_task_exception(void *object)
     return TEST_SUCCESS;
   }
 
-  fatal_assert(client->task_list);
+  fatal_assert(client->impl()->task_list);
   gearman_task_free(task);
 
   return TEST_SUCCESS;
@@ -379,7 +382,7 @@ test_return_t gearman_client_add_task_check_exception_TEST(void*)
     return TEST_SUCCESS;
   }
 
-  fatal_assert(&client->task_list);
+  fatal_assert(&client->impl()->task_list);
   gearman_task_free(task);
 
   return TEST_SUCCESS;
@@ -417,7 +420,7 @@ test_return_t gearman_client_add_task_background_test(void *object)
 
   } while (gearman_task_is_running(task));
 
-  fatal_assert(client->task_list);
+  fatal_assert(client->impl()->task_list);
   gearman_task_free(task);
 
   return TEST_SUCCESS;
@@ -574,14 +577,15 @@ test_return_t gearman_client_add_task_pause_test(void *object)
 
   // Don't do this.
   gearman_actions_t pause_actions= gearman_actions_pause();
-  client->actions= pause_actions;
+  client->impl()->actions= pause_actions;
 
   gearman_return_t ret;
   gearman_task_st *task= gearman_client_add_task(client, NULL, NULL,
                                                  worker_function, NULL, "dog", 3,
                                                  &ret);
-  test_true(client->actions.data_fn == pause_actions.data_fn);
+  test_true(client->impl()->actions.data_fn == pause_actions.data_fn);
   ASSERT_EQ(ret, GEARMAN_SUCCESS);
+
   test_truth(task);
   test_true(gearman_task_unique(task));
   ASSERT_EQ(size_t(GEARMAN_MAX_UUID_SIZE), strlen(gearman_task_unique(task)));
@@ -592,9 +596,9 @@ test_return_t gearman_client_add_task_pause_test(void *object)
     uint32_t count= 0;
     do {
       count++;
-      test_true(client->actions.data_fn == pause_actions.data_fn);
+      test_true(client->impl()->actions.data_fn == pause_actions.data_fn);
       ret= gearman_client_run_tasks(client);
-      test_true(client->actions.data_fn == pause_actions.data_fn);
+      test_true(client->impl()->actions.data_fn == pause_actions.data_fn);
     } while (gearman_continue(ret));
 
     ASSERT_EQ(ret, GEARMAN_SUCCESS);

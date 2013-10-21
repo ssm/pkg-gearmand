@@ -66,6 +66,8 @@ using namespace org::gearmand;
 #  define SERVER_TARGET "hostile-gearmand"
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunreachable-code"
 static bool has_hostile()
 {
 #if defined(HAVE_LIBHOSTILE)
@@ -77,6 +79,7 @@ static bool has_hostile()
 
   return false;
 }
+#pragma GCC diagnostic pop
 
 static in_port_t hostile_server= 0;
 static in_port_t& current_server_= hostile_server;
@@ -119,23 +122,25 @@ extern "C" {
     fatal_assert(success);
     fatal_assert(success->count == 0);
 
-    libgearman::Client client(current_server());
     {
-      gearman_client_set_timeout(&client, 400);
+      libgearman::Client client(current_server());
+
+      libtest::vchar_t payload;
+      payload.resize(success->payload_size);
+
+      gearman_client_set_timeout(&client, 1000);
       for (size_t x= 0; x < 100; x++)
       {
         int oldstate;
         pthread_setcanceltype(PTHREAD_CANCEL_DISABLE, &oldstate);
-        libtest::vchar_t payload;
-        payload.resize(success->payload_size);
         gearman_return_t rc;
         void *value= gearman_client_do(&client, WORKER_FUNCTION_NAME,
                                        NULL,
                                        &payload[0], 
                                        payload.size() ? random() % payload.size() : 0,
                                        NULL, &rc);
-        pthread_setcanceltype(oldstate, NULL);
 
+        fatal_assert(gearman_client_has_tasks(&client) == false);
         if (gearman_success(rc))
         {
           success->increment();
@@ -145,7 +150,10 @@ extern "C" {
         {
           free(value);
         }
+        pthread_setcanceltype(oldstate, NULL);
       }
+      
+      fatal_assert(gearman_client_has_tasks(&client) == false);
     }
 
     pthread_exit(0);
@@ -185,13 +193,15 @@ namespace {
 
 } // namespace
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunreachable-code"
 static bool join_thread(pthread_t& thread_arg)
 {
   int error;
 
+#if defined(HAVE_PTHREAD_TIMEDJOIN_NP) && HAVE_PTHREAD_TIMEDJOIN_NP
   if (HAVE_PTHREAD_TIMEDJOIN_NP)
   {
-#if defined(HAVE_PTHREAD_TIMEDJOIN_NP) && HAVE_PTHREAD_TIMEDJOIN_NP
     int limit= 2;
     while (--limit)
     {
@@ -222,10 +232,10 @@ static bool join_thread(pthread_t& thread_arg)
       Error << "pthread_cancel() " << strerror(error);
       return false;
     }
-#endif
 
     return true;
   }
+#endif
 
   if ((error= pthread_join(thread_arg, NULL)) != 0)
   {
@@ -235,6 +245,7 @@ static bool join_thread(pthread_t& thread_arg)
 
   return true;
 }
+#pragma GCC diagnostic pop
 
 static test_return_t send_random_port_data_TEST(void* )
 {
@@ -265,13 +276,13 @@ static test_return_t worker_ramp_exec(const size_t payload_size)
   std::vector<client_thread_context_st>  success;
   success.resize(children.size());
 
-  for (size_t x= 0; x < children.size(); x++)
+  for (size_t x= 0; x < children.size(); ++x)
   {
     success[x].payload_size= payload_size;
     pthread_create(&children[x], NULL, client_thread, &success[x]);
   }
   
-  for (size_t x= 0; x < children.size(); x++)
+  for (size_t x= 0; x < children.size(); ++x)
   {
     pthread_t& thread= children[x];
     bool join_success= false;
@@ -314,8 +325,6 @@ static test_return_t skip_SETUP(void*)
 
 static test_return_t worker_ramp_SETUP(void *object)
 {
-  test_skip_valgrind();
-
   worker_handles_st *handles= (worker_handles_st*)object;
 
   gearman_function_t echo_react_fn= gearman_function_create(echo_or_react_worker_v2);
@@ -381,6 +390,8 @@ static test_return_t getaddrinfo_SETUP(void* object)
 
 static test_return_t recv_corrupt_SETUP(void* object)
 {
+  return TEST_SKIPPED;
+
   test_skip_valgrind();
   test_skip(true, libtest::is_massive());
 
@@ -533,6 +544,7 @@ static test_return_t connect_TEARDOWN(void* object)
 
 static void *world_create(server_startup_st& servers, test_return_t&)
 {
+  SKIP_IF(valgrind_is_caller() == true);
   SKIP_IF(has_hostile() == false);
 
   hostile_server= libtest::get_free_port();

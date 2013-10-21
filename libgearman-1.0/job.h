@@ -43,23 +43,7 @@
 
 #pragma once
 
-struct gearman_job_st
-{
-  struct {
-    bool allocated;
-    bool assigned_in_use;
-    bool work_in_use;
-    bool finished;
-  } options;
-  gearman_worker_st *worker;
-  gearman_job_st *next;
-  gearman_job_st *prev;
-  gearman_connection_st *con;
-  gearman_packet_st assigned;
-  gearman_packet_st work;
-  struct gearman_job_reducer_st *reducer;
-  gearman_return_t error_code;
-};
+#include <libgearman-1.0/interface/job.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -164,6 +148,9 @@ void *gearman_job_take_workload(gearman_job_st *job, size_t *data_size);
 
 GEARMAN_API
 gearman_worker_st *gearman_job_clone_worker(gearman_job_st *job);
+
+GEARMAN_API
+gearman_client_st *gearman_job_use_client(gearman_job_st *job);
 
 GEARMAN_API
   const char *gearman_job_error(gearman_job_st *job);

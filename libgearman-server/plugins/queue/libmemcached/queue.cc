@@ -53,6 +53,7 @@
 
 #include <cerrno>
 
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 
 using namespace gearmand;
@@ -66,7 +67,7 @@ using namespace gearmand;
 /**
  * Default values.
  */
-#define GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX "gear_"
+#define GEARMAND_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX "gear_"
 
 namespace gearmand { namespace plugins { namespace queue { class Libmemcached;  }}}
 
@@ -151,7 +152,7 @@ gearmand_error_t Libmemcached::initialize()
   memcached_server_st *servers= memcached_servers_parse(server_list.c_str());
   if (servers == NULL)
   {
-    return gearmand_gerror("memcached_servers_parse", GEARMAN_QUEUE_ERROR);
+    return gearmand_gerror("memcached_servers_parse", GEARMAND_QUEUE_ERROR);
   }
 
   gearmand::queue::LibmemcachedQueue* exec_queue= new gearmand::queue::LibmemcachedQueue(this, servers);
@@ -161,10 +162,10 @@ gearmand_error_t Libmemcached::initialize()
 
     memcached_server_list_free(servers);
 
-    return GEARMAN_SUCCESS;
+    return GEARMAND_SUCCESS;
   }
 
-  return gearmand_gerror("Libmemcached::initialize()", GEARMAN_QUEUE_ERROR);
+  return gearmand_gerror("Libmemcached::initialize()", GEARMAND_QUEUE_ERROR);
 }
 
 void initialize_libmemcached()
@@ -192,7 +193,7 @@ gearmand_error_t LibmemcachedQueue::add(gearman_server_st *server,
 {
   if (when) // No support for EPOCH jobs
   {
-    return gearmand_gerror("libmemcached queue does not support epoch jobs", GEARMAN_QUEUE_ERROR);
+    return gearmand_gerror("libmemcached queue does not support epoch jobs", GEARMAND_QUEUE_ERROR);
   }
 
   (void)server;
@@ -201,7 +202,7 @@ gearmand_error_t LibmemcachedQueue::add(gearman_server_st *server,
 
   char key[MEMCACHED_MAX_KEY];
   size_t key_length= (size_t)snprintf(key, MEMCACHED_MAX_KEY, "%s%.*s-%.*s",
-                                      GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX,
+                                      GEARMAND_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX,
                                       (int)function_name_size,
                                       (const char *)function_name, (int)unique_size,
                                       (const char *)unique);
@@ -211,17 +212,17 @@ gearmand_error_t LibmemcachedQueue::add(gearman_server_st *server,
 
   if (rc != MEMCACHED_SUCCESS)
   {
-    return gearmand_gerror(memcached_last_error_message(memc_), GEARMAN_QUEUE_ERROR);
+    return gearmand_gerror(memcached_last_error_message(memc_), GEARMAND_QUEUE_ERROR);
   }
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 gearmand_error_t LibmemcachedQueue::flush(gearman_server_st *)
 {
   gearmand_debug("libmemcached flush");
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 gearmand_error_t LibmemcachedQueue::done(gearman_server_st*,
@@ -233,7 +234,7 @@ gearmand_error_t LibmemcachedQueue::done(gearman_server_st*,
   gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "libmemcached done: %.*s", (uint32_t)unique_size, (char *)unique);
 
   size_t key_length= (size_t)snprintf(key, MEMCACHED_MAX_KEY, "%s%.*s-%.*s",
-                                      GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX,
+                                      GEARMAND_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX,
                                       (int)function_name_size,
                                       (const char *)function_name, (int)unique_size,
                                       (const char *)unique);
@@ -242,10 +243,10 @@ gearmand_error_t LibmemcachedQueue::done(gearman_server_st*,
   memcached_return rc= memcached_delete(memc_, (const char *)key, key_length, 0);
   if (rc != MEMCACHED_SUCCESS)
   {
-    return gearmand_gerror(memcached_last_error_message(memc_), GEARMAN_QUEUE_ERROR);
+    return gearmand_gerror(memcached_last_error_message(memc_), GEARMAND_QUEUE_ERROR);
   }
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 class Replay
@@ -292,13 +293,13 @@ static memcached_return callback_loader(const memcached_st*,
   Replay* replay= (Replay*)context;
 
   const char *key= memcached_result_key_value(result);
-  if (strncmp(key, GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX, strlen(GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX)) != 0)
+  if (strncmp(key, GEARMAND_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX, strlen(GEARMAND_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX)) != 0)
   {
-    gearmand_debug("memcached key did not match GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX");
+    gearmand_debug("memcached key did not match GEARMAND_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX");
     return MEMCACHED_SUCCESS;
   }
 
-  const char* function= key +strlen(GEARMAN_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX);
+  const char* function= key +strlen(GEARMAND_QUEUE_LIBMEMCACHED_DEFAULT_PREFIX);
 
   const char* unique= index(function, '-');
   if (unique == NULL)
@@ -392,9 +393,10 @@ gearmand_error_t LibmemcachedQueue::replay(gearman_server_st *server)
   }
   gearmand_debug("libmemcached replay stop");
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 } // queue
 } // gearmand
 
+#pragma GCC diagnostic pop

@@ -51,6 +51,8 @@ static test_return_t gearmand_basic_option_test(void *)
   return TEST_SUCCESS;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunreachable-code"
 static test_return_t collection_init(void *object)
 {
   Context *test= (Context *)object;
@@ -90,6 +92,7 @@ static test_return_t collection_init(void *object)
 
   return TEST_SUCCESS;
 }
+#pragma GCC diagnostic pop
 
 static test_return_t collection_cleanup(void *object)
 {
@@ -105,7 +108,7 @@ static void *world_create(server_startup_st& servers, test_return_t&)
   SKIP_IF(HAVE_UUID_UUID_H != 1);
   SKIP_IF(has_drizzled() == false);
 
-  return new Context(default_port(), servers);
+  return new Context(servers);
 }
 
 static bool world_destroy(void *object)

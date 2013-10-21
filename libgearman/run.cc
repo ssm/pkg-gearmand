@@ -45,7 +45,7 @@
 #include <cstdlib>
 #include <cstring>
 
-gearman_return_t _client_run_task(gearman_task_st *task)
+gearman_return_t _client_run_task(Task *task)
 {
   // This should not be possible
   assert_msg(task->client, "Programmer error, somehow an invalid task was specified");
@@ -59,15 +59,17 @@ gearman_return_t _client_run_task(gearman_task_st *task)
   {
   case GEARMAN_TASK_STATE_NEW:
     
-    if (task->client->universal.con_list == NULL)
+    if (task->client->universal.has_connections() == false)
     {
+      assert(task->client->universal.con_count == 0);
+      assert(task->client->universal.con_list == NULL);
       task->client->new_tasks--;
       task->client->running_tasks--;
-      return gearman_universal_set_error(task->client->universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers added");
+      return gearman_universal_set_error(task->client->universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers provided");
     }
 
     for (task->con= task->client->universal.con_list; task->con;
-         task->con= task->con->next)
+         task->con= task->con->next_connection())
     {
       if (task->con->send_state == GEARMAN_CON_SEND_STATE_NONE)
       {
@@ -101,7 +103,7 @@ gearman_return_t _client_run_task(gearman_task_st *task)
       }
       else if (ret == GEARMAN_IO_WAIT)
       {
-        task->state= GEARMAN_TASK_STATE_SUBMIT;
+        task->set_state(GEARMAN_TASK_STATE_SUBMIT);
         return ret;
       }
       else if (gearman_failed(ret))
@@ -111,9 +113,9 @@ gearman_return_t _client_run_task(gearman_task_st *task)
 
         if (ret == GEARMAN_COULD_NOT_CONNECT)
         {
-          for (task->con= task->con->next; 
+          for (task->con= task->con->next_connection(); 
                task->con;
-               task->con= task->con->next)
+               task->con= task->con->next_connection())
           {
             if (task->con->send_state == GEARMAN_CON_SEND_STATE_NONE)
             {
@@ -128,16 +130,16 @@ gearman_return_t _client_run_task(gearman_task_st *task)
 
         if (not task->con)
         {
-          task->result_rc= ret;
+          task->error_code(ret);
 
           if (ret == GEARMAN_COULD_NOT_CONNECT) // If no connection is found, we will let the user try again
           {
-            task->state= GEARMAN_TASK_STATE_NEW;
+            task->set_state(GEARMAN_TASK_STATE_NEW);
             task->client->new_tasks++;
           }
           else
           {
-            task->state= GEARMAN_TASK_STATE_FAIL;
+            task->set_state(GEARMAN_TASK_STATE_FAIL);
             task->client->running_tasks--;
           }
           return ret;
@@ -161,16 +163,16 @@ gearman_return_t _client_run_task(gearman_task_st *task)
       }
 
   case GEARMAN_TASK_STATE_WORKLOAD:
-      gearman_return_t ret= task->func.workload_fn(task);
+      gearman_return_t ret= task->func.workload_fn(task->shell());
       if (gearman_failed(ret))
       {
-        task->state= GEARMAN_TASK_STATE_WORKLOAD;
+        task->set_state(GEARMAN_TASK_STATE_WORKLOAD);
         return ret;
       }
     }
 
     task->client->options.no_new= false;
-    task->state= GEARMAN_TASK_STATE_WORK;
+    task->set_state(GEARMAN_TASK_STATE_WORK);
     task->con->set_events(POLLIN);
     return GEARMAN_SUCCESS;
 
@@ -185,10 +187,10 @@ gearman_return_t _client_run_task(gearman_task_st *task)
   case GEARMAN_TASK_STATE_CREATED:
       if (task->func.created_fn)
       {
-        gearman_return_t ret= task->func.created_fn(task);
+        gearman_return_t ret= task->func.created_fn(task->shell());
         if (gearman_failed(ret))
         {
-          task->state= GEARMAN_TASK_STATE_CREATED;
+          task->set_state(GEARMAN_TASK_STATE_CREATED);
           return ret;
         }
       }
@@ -199,6 +201,7 @@ gearman_return_t _client_run_task(gearman_task_st *task)
           task->send.command == GEARMAN_COMMAND_SUBMIT_JOB_EPOCH ||
           task->send.command == GEARMAN_COMMAND_SUBMIT_REDUCE_JOB_BACKGROUND)
       {
+        task->error_code(GEARMAN_SUCCESS);
         break;
       }
     }
@@ -210,10 +213,10 @@ gearman_return_t _client_run_task(gearman_task_st *task)
   case GEARMAN_TASK_STATE_DATA:
       if (task->func.data_fn)
       {
-        gearman_return_t ret= task->func.data_fn(task);
+        gearman_return_t ret= task->func.data_fn(task->shell());
         if (gearman_failed(ret))
         {
-          task->state= GEARMAN_TASK_STATE_DATA;
+          task->set_state(GEARMAN_TASK_STATE_DATA);
           return ret;
         }
       }
@@ -223,10 +226,10 @@ gearman_return_t _client_run_task(gearman_task_st *task)
   case GEARMAN_TASK_STATE_WARNING:
       if (task->func.warning_fn)
       {
-        gearman_return_t ret= task->func.warning_fn(task);
+        gearman_return_t ret= task->func.warning_fn(task->shell());
         if (gearman_failed(ret))
         {
-          task->state= GEARMAN_TASK_STATE_WARNING;
+          task->set_state(GEARMAN_TASK_STATE_WARNING);
           return ret;
         }
       }
@@ -239,7 +242,7 @@ gearman_return_t _client_run_task(gearman_task_st *task)
 
       if (task->recv->command == GEARMAN_COMMAND_STATUS_RES)
       {
-        task->result_rc= GEARMAN_SUCCESS;
+        task->error_code(GEARMAN_SUCCESS);
         if (atoi(static_cast<char *>(task->recv->arg[1])) == 0)
         {
           task->options.is_known= false;
@@ -262,7 +265,7 @@ gearman_return_t _client_run_task(gearman_task_st *task)
       }
       else if (task->recv->command == GEARMAN_COMMAND_STATUS_RES_UNIQUE)
       {
-        task->result_rc= GEARMAN_SUCCESS;
+        task->error_code(GEARMAN_SUCCESS);
         strncpy(task->unique, task->recv->arg[0], GEARMAN_MAX_UNIQUE_SIZE);
         if (atoi(static_cast<char *>(task->recv->arg[1])) == 0)
         {
@@ -313,10 +316,10 @@ gearman_return_t _client_run_task(gearman_task_st *task)
   case GEARMAN_TASK_STATE_STATUS:
       if (task->func.status_fn)
       {
-        gearman_return_t ret= task->func.status_fn(task);
+        gearman_return_t ret= task->func.status_fn(task->shell());
         if (gearman_failed(ret))
         {
-          task->state= GEARMAN_TASK_STATE_STATUS;
+          task->set_state(GEARMAN_TASK_STATE_STATUS);
           return ret;
         }
       }
@@ -335,15 +338,15 @@ gearman_return_t _client_run_task(gearman_task_st *task)
     {
       task->options.is_known= false;
       task->options.is_running= false;
-      task->result_rc= GEARMAN_SUCCESS;
+      task->error_code(GEARMAN_SUCCESS);
 
   case GEARMAN_TASK_STATE_COMPLETE:
       if (task->func.complete_fn)
       {
-        gearman_return_t ret= task->func.complete_fn(task);
+        gearman_return_t ret= task->func.complete_fn(task->shell());
         if (gearman_failed(ret))
         {
-          task->state= GEARMAN_TASK_STATE_COMPLETE;
+          task->set_state(GEARMAN_TASK_STATE_COMPLETE);
           return ret;
         }
       }
@@ -352,16 +355,27 @@ gearman_return_t _client_run_task(gearman_task_st *task)
     }
     else if (task->recv->command == GEARMAN_COMMAND_WORK_EXCEPTION)
     {
+      task->options.is_known= false;
+      task->options.is_running= false;
+      if (task->recv->argc == 1 and task->recv->data_size)
+      {
+        task->exception.store((const char*)(task->recv->data), task->recv->data_size);
+      }
+      task->free_result();
+      task->error_code(GEARMAN_WORK_EXCEPTION);
+
   case GEARMAN_TASK_STATE_EXCEPTION:
       if (task->func.exception_fn)
       {
-        gearman_return_t ret= task->func.exception_fn(task);
+        gearman_return_t ret= task->func.exception_fn(task->shell());
         if (gearman_failed(ret))
         {
-          task->state= GEARMAN_TASK_STATE_EXCEPTION;
+          task->set_state(GEARMAN_TASK_STATE_EXCEPTION);
           return ret;
         }
       }
+
+      break;
     }
     else if (task->recv->command == GEARMAN_COMMAND_WORK_FAIL)
     {
@@ -369,17 +383,16 @@ gearman_return_t _client_run_task(gearman_task_st *task)
       // correctly.
       task->options.is_known= false;
       task->options.is_running= false;
-      delete task->result_ptr;
-      task->result_ptr= NULL;
-      task->result_rc= GEARMAN_WORK_FAIL;
+      task->free_result();
+      task->error_code(GEARMAN_WORK_FAIL);
 
   case GEARMAN_TASK_STATE_FAIL:
       if (task->func.fail_fn)
       {
-        gearman_return_t ret= task->func.fail_fn(task);
+        gearman_return_t ret= task->func.fail_fn(task->shell());
         if (gearman_failed(ret))
         {
-          task->state= GEARMAN_TASK_STATE_FAIL;
+          task->set_state(GEARMAN_TASK_STATE_FAIL);
           return ret;
         }
       }
@@ -387,19 +400,25 @@ gearman_return_t _client_run_task(gearman_task_st *task)
       break;
     }
 
-    task->state= GEARMAN_TASK_STATE_WORK;
+    task->set_state(GEARMAN_TASK_STATE_WORK);
     return GEARMAN_SUCCESS;
 
   case GEARMAN_TASK_STATE_FINISHED:
     break;
   }
 
-  task->client->running_tasks--;
-  task->state= GEARMAN_TASK_STATE_FINISHED;
+  if (task->state != GEARMAN_TASK_STATE_FINISHED)
+  {
+    task->client->running_tasks--;
+    task->set_state(GEARMAN_TASK_STATE_FINISHED);
+  }
+
+  // @todo this should never happen... but background tasks can signal it.
+  assert(task->error_code() != GEARMAN_UNKNOWN_STATE);
 
   if (task->client->options.free_tasks and task->type == GEARMAN_TASK_KIND_ADD_TASK)
   {
-    gearman_task_free(task);
+    gearman_task_free(task->shell());
   }
 
   return GEARMAN_SUCCESS;
