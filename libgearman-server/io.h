@@ -80,10 +80,10 @@ extern "C" {
  * @return On success, a pointer to the (possibly allocated) structure. On
  *  failure this will be NULL.
  */
-  void gearmand_connection_init(gearmand_connection_list_st *gearman,
-                                gearmand_io_st *connection,
-                                struct gearmand_con_st *dcon,
-                                gearmand_connection_options_t *options);
+void gearmand_connection_init(gearmand_connection_list_st *gearman,
+                              gearmand_io_st *connection,
+                              struct gearmand_con_st *dcon,
+                              gearmand_connection_options_t *options);
 
 /**
  * Free a connection structure.
@@ -131,9 +131,11 @@ gearmand_error_t gearmand_io_set_events(gearman_server_con_st *connection, short
  */
 gearmand_error_t gearmand_io_set_revents(gearman_server_con_st *connection, short revents);
 
-void gearmand_sockfd_close(int& sockfd);
+void gearmand_sockfd_close(int&);
 
-void gearmand_pipe_close(int& sockfd);
+void gearmand_pipe_close(int&);
+
+gearmand_error_t gearmand_sockfd_nonblock(const int&);
 
 /** @} */
 

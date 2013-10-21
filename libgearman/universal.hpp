@@ -38,18 +38,18 @@
 
 #pragma once
 
+#include "libgearman/interface/client.hpp"
+
 // Get next connection that is ready for I/O.
 gearman_connection_st *gearman_ready(gearman_universal_st&);
 
-void gearman_universal_initialize(gearman_universal_st &self, const gearman_universal_options_t *options= NULL);
-
-void gearman_universal_clone(gearman_universal_st &destination, const gearman_universal_st &source, bool has_wakeup_fd= false);
+void gearman_universal_clone(gearman_universal_st &destination, const gearman_universal_st &source);
 
 void gearman_universal_free(gearman_universal_st &gearman);
 
 void gearman_free_all_packets(gearman_universal_st &gearman);
 
-gearman_return_t gearman_universal_set_option(gearman_universal_st &self, gearman_universal_options_t option, bool value);
+gearman_return_t gearman_universal_set_option(gearman_universal_st &self, universal_options_t option, bool value);
 
 void gearman_set_log_fn(gearman_universal_st &self, gearman_log_fn *function, void *context, gearman_verbose_t verbose);
 
@@ -59,10 +59,8 @@ int gearman_universal_timeout(gearman_universal_st &self);
 
 void gearman_universal_set_namespace(gearman_universal_st &self, const char *namespace_key, size_t namespace_key_size);
 
-void gearman_reset(gearman_universal_st& universal);
-
-// Flush the send buffer for all connections.
-void gearman_flush_all(gearman_universal_st&);
+gearman_return_t cancel_job(gearman_universal_st& universal,
+                            gearman_job_handle_t job_handle);
 
 /**
  * Set custom memory allocation function for workloads. Normally gearman uses
@@ -98,39 +96,14 @@ void gearman_nap(gearman_universal_st &self);
 
 void gearman_nap(int arg);
 
-static inline void gearman_universal_add_options(gearman_universal_st &self, gearman_universal_options_t options)
+static inline void gearman_universal_add_options(gearman_universal_st &self, universal_options_t options)
 {
   (void)gearman_universal_set_option(self, options, true);
 }
 
-static inline void gearman_universal_remove_options(gearman_universal_st &self, gearman_universal_options_t options)
+static inline void gearman_universal_remove_options(gearman_universal_st &self, universal_options_t options)
 {
   (void)gearman_universal_set_option(self, options, false);
-}
-
-static inline bool gearman_universal_is_non_blocking(gearman_universal_st &self)
-{
-  return self.options.non_blocking;
-}
-
-static inline const char *gearman_universal_error(const gearman_universal_st &self)
-{
-  if (self.error.last_error[0] == 0)
-  {
-    return NULL;
-  }
-
-  return static_cast<const char *>(self.error.last_error);
-}
-
-static inline gearman_return_t gearman_universal_error_code(const gearman_universal_st &self)
-{
-  return self.error.rc;
-}
-
-static inline int gearman_universal_errno(const gearman_universal_st &self)
-{
-  return self.error.last_errno;
 }
 
 gearman_id_t gearman_universal_id(gearman_universal_st &universal);
@@ -141,61 +114,4 @@ gearman_return_t gearman_set_identifier(gearman_universal_st& universal,
 
 const char *gearman_univeral_namespace(gearman_universal_st& universal);
 
-#define PUSH(__original, __temp_value) Push _push((__original),(__temp_value));
-
-class Push {
-public:
-  Push(bool& original_, const bool temp_value) :
-    _saved(original_),
-    _origin(original_)
-  {
-    _origin= temp_value;
-  }
-
-  ~Push()
-  {
-    _origin= _saved;
-  }
-
-private:
-  bool _saved;
-  bool& _origin;
-};
-
-/**
-  Push the state of IO
-*/
-
-#define PUSH_BLOCKING(__univeral) Push push_blocking_((__univeral).options.non_blocking, false);
-
-#define PUSH_NON_BLOCKING(__univeral) Push push_non_blocking_((__univeral).options.non_blocking, true);
-
-class Check {
-public:
-  virtual gearman_return_t success(gearman_connection_st*)= 0;
-
-  virtual ~Check() {};
-};
-
-class EchoCheck : public Check {
-public:
-  EchoCheck(gearman_universal_st& universal_,
-            const void *workload_, const size_t workload_size_);
-
-  gearman_return_t success(gearman_connection_st* con);
-
-private:
-  gearman_universal_st& _universal;
-  const void *_workload;
-  const size_t _workload_size;
-};
-
-class OptionCheck : public Check {
-public:
-  OptionCheck(gearman_universal_st& universal_);
-
-  gearman_return_t success(gearman_connection_st* con);
-
-private:
-  gearman_universal_st& _universal;
-};
+gearman_return_t gearman_server_option(gearman_universal_st&, gearman_string_t&);

@@ -111,7 +111,9 @@ typedef enum
   GEARMAN_CLIENT_NO_NEW=            (1 << 4),
   GEARMAN_CLIENT_FREE_TASKS=        (1 << 5),
   GEARMAN_CLIENT_GENERATE_UNIQUE=   (1 << 6),
-  GEARMAN_CLIENT_MAX=               (1 << 7)
+  GEARMAN_CLIENT_EXCEPTION=         (1 << 7),
+  GEARMAN_CLIENT_SSL=               (1 << 8),
+  GEARMAN_CLIENT_MAX=               (1 << 9)
 } gearman_client_options_t;
 
 /**
@@ -129,12 +131,13 @@ typedef enum
   GEARMAN_WORKER_CHANGE=           (1 << 6),
   GEARMAN_WORKER_GRAB_UNIQ=        (1 << 7),
   GEARMAN_WORKER_TIMEOUT_RETURN=   (1 << 8),
-  GEARMAN_WORKER_GRAB_ALL=   (1 << 9),
-  GEARMAN_WORKER_MAX=   (1 << 10)
+  GEARMAN_WORKER_GRAB_ALL=         (1 << 9),
+  GEARMAN_WORKER_SSL=              (1 << 10),
+  GEARMAN_WORKER_IDENTIFIER=       (1 << 11),
+  GEARMAN_WORKER_MAX=   (1 << 12)
 } gearman_worker_options_t;
 
 /* Types. */
-typedef struct gearman_packet_st gearman_packet_st;
 typedef struct gearman_task_st gearman_task_st;
 typedef struct gearman_client_st gearman_client_st;
 typedef struct gearman_job_st gearman_job_st;

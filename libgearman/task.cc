@@ -54,379 +54,329 @@
  * Public Definitions
  */
 
-#define TASK_MAGIC 134
-#define TASK_ANTI_MAGIC 157
-
-gearman_task_st *gearman_task_internal_create(gearman_client_st *client, gearman_task_st *task)
+gearman_task_st *gearman_task_internal_create(Client* client, gearman_task_st *task_shell)
 {
-  assert(client);
+  Task* task= new (std::nothrow) Task(client, task_shell);
   if (task)
   {
-    task->options.allocated= false;
-  }
-  else
-  {
-    task= new (std::nothrow) gearman_task_st;
-    if (task == NULL)
-    {
-      gearman_perror(client->universal, "gearman_task_st new");
-      return NULL;
-    }
-
-    task->options.allocated= true;
-  }
-  task->options.is_initialized= true;
-
-  task->options.send_in_use= false;
-  task->options.is_known= false;
-  task->options.is_running= false;
-  task->options.was_reduced= false;
-  task->options.is_paused= false;
-
-  task->type= GEARMAN_TASK_KIND_ADD_TASK;
-
-  task->state= GEARMAN_TASK_STATE_NEW;
-  task->magic_= TASK_MAGIC;
-  task->created_id= 0;
-  task->numerator= 0;
-  task->denominator= 0;
-  task->client_count= 0;
-  task->client= client;
-
-  task->func= client->actions;
-  task->result_rc= GEARMAN_UNKNOWN_STATE;
-
-  // Add the task to the client
-  {
-    if (client->task_list)
-    {
-      client->task_list->prev= task;
-    }
-    task->next= client->task_list;
-    task->prev= NULL;
-    client->task_list= task;
-    client->task_count++;
+    return task->shell();
   }
 
-  task->context= NULL;
-  task->con= NULL;
-  task->recv= NULL;
-  task->result_ptr= NULL;
-  task->job_handle[0]= 0;
-  task->unique_length= 0;
-  task->unique[0]= 0;
+  gearman_perror(client->universal, errno, "gearman_task_st new");
+  gearman_task_free(task_shell);
 
-  return task;
+  return NULL;
 }
 
-
-void gearman_task_free(gearman_task_st *task)
+void gearman_task_free(Task* task)
 {
-  if (task)
+  gearman_task_free(task->shell());
+}
+
+void gearman_task_free(gearman_task_st *task_shell)
+{
+  if (task_shell and task_shell->impl())
   {
-    if (task->options.is_initialized == false)
+    Task* task= task_shell->impl();
+    assert(task_shell == task->shell());
     {
-      return;
-    }
-
-    assert(task->magic_ != TASK_ANTI_MAGIC);
-    assert(task->magic_ == TASK_MAGIC);
-    task->magic_= TASK_ANTI_MAGIC;
-
-    gearman_task_free_result(task);
-
-    if (task->client)
-    {
-      if (task->options.send_in_use)
+      assert(task->magic_ != TASK_ANTI_MAGIC);
+      assert(task->magic_ == TASK_MAGIC);
+      task->magic_= TASK_ANTI_MAGIC;
+      if (task->client)
       {
-        gearman_packet_free(&(task->send));
+        if (task->options.send_in_use)
+        {
+          gearman_packet_free(&(task->send));
+        }
+
+        if (task->type != GEARMAN_TASK_KIND_DO  and task->context and  task->client->task_context_free_fn)
+        {
+          task->client->task_context_free_fn(task_shell, static_cast<void *>(task->context));
+        }
+
+        if (task->client->task_list == task_shell)
+        {
+          task->client->task_list= task->next;
+        }
+
+        if (task->prev)
+        {
+          task->prev->impl()->next= task->next;
+        }
+
+        if (task->next)
+        {
+          task->next->impl()->prev= task->prev;
+        }
+
+        task->client->task_count--;
+
+        // If the task we are removing is a current task, remove it from the client
+        // structures.
+        if (task->client->task == task_shell)
+        {
+          task->client->task= NULL;
+        }
+        task->client= NULL;
       }
+      task->job_handle[0]= 0;
 
-      if (task->type != GEARMAN_TASK_KIND_DO  and task->context and  task->client->task_context_free_fn)
-      {
-        task->client->task_context_free_fn(task, static_cast<void *>(task->context));
-      }
+      task_shell->_impl= NULL;
 
-      if (task->client->task_list == task)
-      {
-        task->client->task_list= task->next;
-      }
-
-      if (task->prev)
-      {
-        task->prev->next= task->next;
-      }
-
-      if (task->next)
-      {
-        task->next->prev= task->prev;
-      }
-
-      task->client->task_count--;
-
-      // If the task we are removing is a current task, remove it from the client
-      // structures.
-      if (task->client->task == task)
-      {
-        task->client->task= NULL;
-      }
-      task->client= NULL;
-    }
-    task->job_handle[0]= 0;
-
-    task->options.is_initialized= false;
-    if (task->options.allocated)
-    {
       delete task;
     }
   }
-}
-
-void gearman_task_free_result(gearman_task_st *task)
-{
-  assert(task);
-  if (task)
+  else if (task_shell)
   {
-    delete task->result_ptr;
-    task->result_ptr= NULL;
+    task_shell->_impl= NULL;
   }
 }
 
-bool gearman_task_is_active(const gearman_task_st *self)
+bool gearman_task_is_active(const gearman_task_st *task_shell)
 {
-  assert(self);
-  switch (self->state)
+  assert(task_shell);
+  assert(task_shell->impl());
+  if (task_shell and task_shell->impl())
   {
-  case GEARMAN_TASK_STATE_NEW:
-  case GEARMAN_TASK_STATE_SUBMIT:
-  case GEARMAN_TASK_STATE_WORKLOAD:
-  case GEARMAN_TASK_STATE_WORK:
-  case GEARMAN_TASK_STATE_CREATED:
-  case GEARMAN_TASK_STATE_DATA:
-  case GEARMAN_TASK_STATE_WARNING:
-  case GEARMAN_TASK_STATE_STATUS:
-    return true;
+    switch (task_shell->impl()->state)
+    {
+    case GEARMAN_TASK_STATE_NEW:
+    case GEARMAN_TASK_STATE_SUBMIT:
+    case GEARMAN_TASK_STATE_WORKLOAD:
+    case GEARMAN_TASK_STATE_WORK:
+    case GEARMAN_TASK_STATE_CREATED:
+    case GEARMAN_TASK_STATE_DATA:
+    case GEARMAN_TASK_STATE_WARNING:
+    case GEARMAN_TASK_STATE_STATUS:
+      return true;
 
-  case GEARMAN_TASK_STATE_COMPLETE:
-  case GEARMAN_TASK_STATE_EXCEPTION:
-  case GEARMAN_TASK_STATE_FAIL:
-  case GEARMAN_TASK_STATE_FINISHED:
-    break;
+    case GEARMAN_TASK_STATE_COMPLETE:
+    case GEARMAN_TASK_STATE_EXCEPTION:
+    case GEARMAN_TASK_STATE_FAIL:
+    case GEARMAN_TASK_STATE_FINISHED:
+      break;
+    }
   }
 
   return false;
 }
 
-const char *gearman_task_strstate(const gearman_task_st *self)
+const char *gearman_task_strstate(const gearman_task_st *task_shell)
 {
-  if (self == NULL)
+  if (task_shell and task_shell->impl())
   {
-    return NULL;
-  }
-
-  switch (self->state)
-  {
-  case GEARMAN_TASK_STATE_NEW: return "GEARMAN_TASK_STATE_NEW";
-  case GEARMAN_TASK_STATE_SUBMIT: return "GEARMAN_TASK_STATE_SUBMIT";
-  case GEARMAN_TASK_STATE_WORKLOAD: return "GEARMAN_TASK_STATE_WORKLOAD";
-  case GEARMAN_TASK_STATE_WORK: return "GEARMAN_TASK_STATE_WORK";
-  case GEARMAN_TASK_STATE_CREATED: return "GEARMAN_TASK_STATE_CREATED";
-  case GEARMAN_TASK_STATE_DATA: return "GEARMAN_TASK_STATE_DATA";
-  case GEARMAN_TASK_STATE_WARNING: return "GEARMAN_TASK_STATE_WARNING";
-  case GEARMAN_TASK_STATE_STATUS: return "GEARMAN_TASK_STATE_STATUS";
-  case GEARMAN_TASK_STATE_COMPLETE: return "GEARMAN_TASK_STATE_COMPLETE";
-  case GEARMAN_TASK_STATE_EXCEPTION: return "GEARMAN_TASK_STATE_EXCEPTION";
-  case GEARMAN_TASK_STATE_FAIL: return "GEARMAN_TASK_STATE_FAIL";
-  case GEARMAN_TASK_STATE_FINISHED: return "GEARMAN_TASK_STATE_FINISHED";
-  }
-
-  return "";
-}
-
-void gearman_task_clear_fn(gearman_task_st *task)
-{
-  if (task == NULL)
-  {
-    return;
-  }
-
-  task->func= gearman_actions_default();
-}
-
-void *gearman_task_context(const gearman_task_st *task)
-{
-  if (task == NULL)
-  {
-    return NULL;
-  }
-
-  return const_cast<void *>(task->context);
-}
-
-void gearman_task_set_context(gearman_task_st *task, void *context)
-{
-  if (task)
-  {
-    task->context= context;
-  }
-}
-
-const char *gearman_task_function_name(const gearman_task_st *task)
-{
-  if (task == NULL)
-  {
-    return NULL;
-  }
-
-  return task->send.arg[0];
-}
-
-const char *gearman_task_unique(const gearman_task_st *task)
-{
-  if (task == NULL)
-  {
-    return NULL;
-  }
-
-  return task->unique;
-}
-
-const char *gearman_task_job_handle(const gearman_task_st *task)
-{
-  if (task == NULL)
-  {
-    return NULL;
-  }
-
-  return task->job_handle;
-}
-
-bool gearman_task_is_known(const gearman_task_st *task)
-{
-  if (task == NULL)
-  {
-    return false;
-  }
-
-  return task->options.is_known;
-}
-
-bool gearman_task_is_running(const gearman_task_st *task)
-{
-  if (task == NULL)
-  {
-    return false;
-  }
-
-  return task->options.is_running;
-}
-
-uint32_t gearman_task_numerator(const gearman_task_st *task)
-{
-  if (task == NULL)
-  {
-    return 0;
-  }
-
-  return task->numerator;
-}
-
-uint32_t gearman_task_denominator(const gearman_task_st *task)
-{
-  if (task == NULL)
-  {
-    return 0;
-  }
-
-  return task->denominator;
-}
-
-void gearman_task_give_workload(gearman_task_st *task, const void *workload,
-                                size_t workload_size)
-{
-  if (task)
-  {
-    gearman_packet_give_data(task->send, workload, workload_size);
-  }
-}
-
-size_t gearman_task_send_workload(gearman_task_st *task, const void *workload,
-                                  size_t workload_size,
-                                  gearman_return_t *ret_ptr)
-{
-  if (task == NULL)
-  {
-    if (ret_ptr)
+    switch (task_shell->impl()->state)
     {
-      *ret_ptr= GEARMAN_INVALID_ARGUMENT;
+    case GEARMAN_TASK_STATE_NEW: return "GEARMAN_TASK_STATE_NEW";
+    case GEARMAN_TASK_STATE_SUBMIT: return "GEARMAN_TASK_STATE_SUBMIT";
+    case GEARMAN_TASK_STATE_WORKLOAD: return "GEARMAN_TASK_STATE_WORKLOAD";
+    case GEARMAN_TASK_STATE_WORK: return "GEARMAN_TASK_STATE_WORK";
+    case GEARMAN_TASK_STATE_CREATED: return "GEARMAN_TASK_STATE_CREATED";
+    case GEARMAN_TASK_STATE_DATA: return "GEARMAN_TASK_STATE_DATA";
+    case GEARMAN_TASK_STATE_WARNING: return "GEARMAN_TASK_STATE_WARNING";
+    case GEARMAN_TASK_STATE_STATUS: return "GEARMAN_TASK_STATE_STATUS";
+    case GEARMAN_TASK_STATE_COMPLETE: return "GEARMAN_TASK_STATE_COMPLETE";
+    case GEARMAN_TASK_STATE_EXCEPTION: return "GEARMAN_TASK_STATE_EXCEPTION";
+    case GEARMAN_TASK_STATE_FAIL: return "GEARMAN_TASK_STATE_FAIL";
+    case GEARMAN_TASK_STATE_FINISHED: return "GEARMAN_TASK_STATE_FINISHED";
     }
-    return 0;
-  }
 
-  return task->con->send_and_flush(workload, workload_size, ret_ptr);
-}
-
-gearman_result_st *gearman_task_result(gearman_task_st *task)
-{
-  if (task)
-  {
-    return task->result_ptr;
+    assert_msg(false, "Invalid result");
+    return "";
   }
 
   return NULL;
 }
 
-gearman_result_st *gearman_task_mutable_result(gearman_task_st *task)
+void gearman_task_clear_fn(gearman_task_st *task_shell)
 {
-  assert(task); // Programmer error
-  if (task)
+  if (task_shell and task_shell->impl())
   {
-    if (task->result_ptr == NULL)
-    {
-      task->result_ptr= new (std::nothrow) gearman_result_st();
-      assert(task->result_ptr);
-    }
+    task_shell->impl()->func= gearman_actions_default();
+  }
+}
 
-    return task->result_ptr;
+void *gearman_task_context(const gearman_task_st *task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    return const_cast<void *>(task_shell->impl()->context);
+  }
+
+  return NULL;
+}
+
+void gearman_task_set_context(gearman_task_st *task_shell, void *context)
+{
+  if (task_shell and task_shell->impl())
+  {
+    task_shell->impl()->context= context;
+  }
+}
+
+const char *gearman_task_function_name(const gearman_task_st *task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    return task_shell->impl()->send.arg[0];
+  }
+
+  return NULL;
+}
+
+const char *gearman_task_unique(const gearman_task_st *task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    return task_shell->impl()->unique;
+  }
+
+  return 0;
+}
+
+const char *gearman_task_job_handle(const gearman_task_st *task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    return task_shell->impl()->job_handle;
+  }
+
+  return 0;
+}
+
+bool gearman_task_is_known(const gearman_task_st *task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    return task_shell->impl()->options.is_known;
+  }
+
+  return false;
+}
+
+bool gearman_task_is_running(const gearman_task_st *task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    return task_shell->impl()->options.is_running;
+  }
+
+  return false;
+}
+
+uint32_t gearman_task_numerator(const gearman_task_st *task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    return task_shell->impl()->numerator;
+  }
+
+  return 0;
+}
+
+uint32_t gearman_task_denominator(const gearman_task_st *task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    return task_shell->impl()->denominator;
+  }
+
+  return 0;
+}
+
+void gearman_task_give_workload(gearman_task_st *task_shell, const void *workload, size_t workload_size)
+{
+  if (task_shell and task_shell->impl())
+  {
+    gearman_packet_give_data(task_shell->impl()->send, workload, workload_size);
+  }
+}
+
+size_t gearman_task_send_workload(gearman_task_st *task_shell,
+                                  const void *workload, size_t workload_size,
+                                  gearman_return_t *ret_ptr)
+{
+  gearman_return_t unused;
+  if (ret_ptr == NULL)
+  {
+    ret_ptr= &unused;
+  }
+
+  if (task_shell and task_shell->impl())
+  {
+    return task_shell->impl()->con->send_and_flush(workload, workload_size, ret_ptr);
+  }
+
+  *ret_ptr= GEARMAN_INVALID_ARGUMENT;
+
+  return 0;
+}
+
+gearman_result_st *gearman_task_result(gearman_task_st *task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    return task_shell->impl()->result();
+  }
+
+  return NULL;
+}
+
+gearman_result_st *gearman_task_mutable_result(gearman_task_st* task_shell)
+{
+  if (task_shell)
+  {
+    Task* task= task_shell->impl();
+    if (task)
+    {
+      if (task->result() == NULL)
+      {
+        task->create_result(0);
+        assert(task->result());
+      }
+
+      return task->result();
+    }
   }
   
   return NULL;
 }
 
-const void *gearman_task_data(const gearman_task_st *task)
+const void *gearman_task_data(const gearman_task_st *task_shell)
 {
-  if (task and task->recv and task->recv->data)
+  if (task_shell and task_shell->impl() and task_shell->impl()->recv and task_shell->impl()->recv->data)
   {
-    return task->recv->data;
+    return task_shell->impl()->recv->data;
   }
 
   return NULL;
 }
 
-size_t gearman_task_data_size(const gearman_task_st *task)
+size_t gearman_task_data_size(const gearman_task_st *task_shell)
 {
-  if (task)
+  if (task_shell and task_shell->impl())
   {
-    if (task->recv and task->recv->data_size)
+    if (task_shell->impl()->recv and task_shell->impl()->recv->data_size)
     {
-      return task->recv->data_size;
+      return task_shell->impl()->recv->data_size;
     }
   }
 
   return 0;
 }
 
-void *gearman_task_take_data(gearman_task_st *task, size_t *data_size)
+void *gearman_task_take_data(gearman_task_st *task_shell, size_t *data_size)
 {
-  if (task == NULL)
+  if (task_shell and task_shell->impl())
   {
-    return 0;
+    return gearman_packet_take_data(*(task_shell->impl())->recv, data_size);
   }
 
-  return gearman_packet_take_data(*task->recv, data_size);
+  return NULL;
 }
 
-size_t gearman_task_recv_data(gearman_task_st *task, void *data,
+size_t gearman_task_recv_data(gearman_task_st *task_shell, void *data,
                                   size_t data_size,
                                   gearman_return_t *ret_ptr)
 {
@@ -436,36 +386,110 @@ size_t gearman_task_recv_data(gearman_task_st *task, void *data,
     ret_ptr= &unused;
   }
 
-  if (task == NULL)
+  if (task_shell and task_shell->impl())
   {
-    *ret_ptr= GEARMAN_INVALID_ARGUMENT;
-    return 0;
+    return task_shell->impl()->con->receive_data(data, data_size, *ret_ptr);
   }
 
-  return task->con->receive_data(data, data_size, *ret_ptr);
+  *ret_ptr= GEARMAN_INVALID_ARGUMENT;
+
+  return 0;
 }
 
-const char *gearman_task_error(const gearman_task_st *task)
+const char *gearman_task_error(const gearman_task_st *task_shell)
 {
-  if (task == NULL)
+  if (task_shell and task_shell->impl())
   {
-    return NULL;
+    if (task_shell->impl()->error_code() == GEARMAN_UNKNOWN_STATE or 
+        task_shell->impl()->error_code() == GEARMAN_SUCCESS)
+    {
+      return NULL;
+    }
+
+    return gearman_strerror(task_shell->impl()->error_code());
   }
 
-  if (task->result_rc == GEARMAN_UNKNOWN_STATE or task->result_rc == GEARMAN_SUCCESS)
-  {
-    return NULL;
-  }
-
-  return gearman_strerror(task->result_rc);
+  return NULL;
 }
 
-gearman_return_t gearman_task_return(const gearman_task_st *task)
+gearman_return_t gearman_task_return(const gearman_task_st *task_shell)
 {
-  if (task == NULL)
+  if (task_shell and task_shell->impl())
   {
-    return GEARMAN_INVALID_ARGUMENT;
+    return task_shell->impl()->error_code();
   }
 
-  return task->result_rc;
+  return GEARMAN_INVALID_ARGUMENT;
+}
+
+Task::~Task()
+{
+  free_result();
+
+  if (_shell)
+  {
+    if (_shell != &_owned_shell)
+    {
+      gearman_set_allocated(_shell, false);
+    }
+    _shell->_impl= NULL;
+    _shell= NULL;
+  }
+}
+
+void Task::result(gearman_result_st* result_)
+{
+  delete _result_ptr;
+  _result_ptr= result_;
+}
+
+bool Task::create_result(size_t initial_size)
+{
+  assert(_result_ptr == NULL);
+  if (_result_ptr)
+  {
+    _result_ptr->clear();
+    return _result_ptr;
+  }
+
+  _result_ptr= new (std::nothrow) gearman_result_st(initial_size);
+  return bool(_result_ptr);
+}
+
+bool gearman_task_has_exception(const gearman_task_st* task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    if (task_shell->impl()->exception.empty() == false)
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+gearman_string_t gearman_task_exception(const gearman_task_st* task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    if (task_shell->impl()->exception.empty() == false)
+    {
+      gearman_string_t ret= { task_shell->impl()->exception.value(), task_shell->impl()->exception.size() };
+      return ret;
+    }
+  }
+
+  static gearman_string_t ret= {0, 0};
+  return ret;
+}
+
+bool gearman_task_is_finished(const gearman_task_st *task_shell)
+{
+  if (task_shell and task_shell->impl())
+  {
+    task_shell->impl()->is_finished();
+  }
+
+  return false;
 }

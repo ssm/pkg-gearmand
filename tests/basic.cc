@@ -51,9 +51,11 @@ using namespace libtest;
 #include <tests/start_worker.h>
 
 #include "libgearman/client.hpp"
+#include "libgearman/worker.hpp"
 using namespace org::gearmand;
 
 #include "tests/workers/v2/called.h"
+#include "libgearman/interface/client.hpp"
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -89,11 +91,14 @@ test_return_t worker_echo_test(void *object)
   Context *test= (Context *)object;
   test_truth(test);
 
+#if 0
   gearman_worker_st *worker= test->worker;
-  test_truth(worker);
+  ASSERT_TRUE(worker);
+#endif
+  libgearman::Worker worker(test->port());
 
-  ASSERT_EQ(gearman_worker_echo(worker, test_literal_param("This is my echo test")),
-               GEARMAN_SUCCESS);
+  ASSERT_EQ(gearman_worker_echo(&worker, test_literal_param("This is my echo test")),
+            GEARMAN_SUCCESS);
 
   return TEST_SUCCESS;
 }
@@ -102,7 +107,7 @@ test_return_t queue_clean(void *object)
 {
   Context *test= (Context *)object;
   test_truth(test);
-  gearman_worker_st *worker= test->worker;
+  gearman_worker_st *worker= test->worker();
   test_truth(worker);
 
   gearman_worker_set_timeout(worker, 3000);
@@ -110,9 +115,9 @@ test_return_t queue_clean(void *object)
   Called called;
   gearman_function_t counter_function= gearman_function_create(called_worker);
   ASSERT_EQ(gearman_worker_define_function(worker,
-                                              test->worker_function_name(), strlen(test->worker_function_name()),
-                                              counter_function,
-                                              5, &called), GEARMAN_SUCCESS);
+                                           test->worker_function_name(), strlen(test->worker_function_name()),
+                                           counter_function,
+                                           5, &called), GEARMAN_SUCCESS);
 
   // Clean out any jobs that might still be in the queue from failed tests.
   while (GEARMAN_SUCCESS == gearman_worker_work(worker)) {};
@@ -160,22 +165,25 @@ test_return_t queue_worker(void *object)
   Context *test= (Context *)object;
   test_truth(test);
 
+  // Fetch worker
+  libgearman::Worker worker(test->port());
+
+  // Test worker
+  ASSERT_EQ(gearman_worker_echo(&worker, test_literal_param("This is my echo test")), GEARMAN_SUCCESS);
+
   // Setup job
   ASSERT_EQ(TEST_SUCCESS, queue_add(object));
-
-  gearman_worker_st *worker= test->worker;
-  test_truth(worker);
 
   test_true(test->run_worker);
 
   Called counter;
   gearman_function_t counter_function= gearman_function_create(called_worker);
-  ASSERT_EQ(gearman_worker_define_function(worker,
+  ASSERT_EQ(gearman_worker_define_function(&worker,
                                               test->worker_function_name(), strlen(test->worker_function_name()),
                                               counter_function,
                                               0, &counter), GEARMAN_SUCCESS);
 
-  gearman_return_t rc= gearman_worker_work(worker);
+  gearman_return_t rc= gearman_worker_work(&worker);
   ASSERT_EQ(rc, GEARMAN_SUCCESS);
 
   test_truth(counter.count());
@@ -196,7 +204,7 @@ test_return_t lp_734663(void *object)
   uint8_t value[JOB_SIZE]= { 'x' };
   memset(&value, 'x', sizeof(value));
 
-  libgearman::Client client(test->port());
+  libgearman::Client client(in_port_t(test->port()));
 
   ASSERT_EQ(gearman_client_echo(&client, value, sizeof(value)), GEARMAN_SUCCESS);
 

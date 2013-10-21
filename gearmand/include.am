@@ -32,6 +32,7 @@ gearmand_gearmand_SOURCES+= configmake.h
 gearmand_gearmand_SOURCES+= gearmand/gearmand.cc
 gearmand_gearmand_SOURCES+= util/daemon.cc
 gearmand_gearmand_SOURCES+= util/pidfile.cc
+gearmand_gearmand_SOURCES+= libtest/cpu.cc
 
 gearmand_hostile_gearmand_CXXFLAGS=
 EXTRA_gearmand_hostile_gearmand_DEPENDENCIES=
@@ -56,3 +57,6 @@ gearmand-valgrind: gearmand/gearmand
 
 gearmand-debug: gearmand/gearmand
 	$(LIBTOOL) --mode=execute gdb gearmand/gearmand
+
+internals: tests/libgearman-1.0/internals_test gearmand/gearmand
+	@$(GDB_COMMAND) tests/libgearman-1.0/internals_test

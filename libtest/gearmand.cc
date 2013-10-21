@@ -39,6 +39,8 @@
 
 #include <libtest/gearmand.h>
 
+#include "libgearman/ssl.h"
+
 using namespace libtest;
 
 #include <cassert>
@@ -79,9 +81,14 @@ public:
     std::string response;
     bool ret= client.send_message("version", response);
 
+    if (ret == false)
+    {
+      ASSERT_TRUE_(client.is_error(), "client.send_message() failed but no error was set");
+    }
+
     if (client.is_error())
     {
-      error(client.error());
+      error(client.error_file(), client.error_line(), client.error());
     }
 
     return ret;
@@ -98,7 +105,12 @@ public:
     {
       std::string buffer("--log-file=");
       buffer+= arg;
-      app.add_option("--verbose=DEBUG");
+      // @note leave the logic as a placeholder
+#if defined(VCS_CHECKOUT) && VCS_CHECKOUT
+      app.add_option("--verbose=INFO");
+#else
+      app.add_option("--verbose=INFO");
+#endif
       app.add_option(buffer);
     }
   }
@@ -140,6 +152,17 @@ bool Gearmand::build()
   }
 
   add_option("--listen=localhost");
+
+
+  if (is_ssl())
+  {
+#if defined(HAVE_SSL) && HAVE_SSL
+    add_option("--ssl");
+    add_option("--ssl-ca-file=" YATL_CA_CERT_PEM);
+    add_option("--ssl-certificate=" YATL_CERT_PEM);
+    add_option("--ssl-key=" YATL_CERT_KEY_PEM);
+#endif
+  }
 
   return true;
 }

@@ -43,11 +43,22 @@
  */
 
 #include "gear_config.h"
+#include "configmake.h"
 #include <libgearman/common.h>
 
 #include "libgearman/assert.hpp"
+#include "libgearman/interface/push.hpp"
 #include "libgearman/server_options.hpp"
+#include "libgearman/log.hpp"
 #include "libgearman/vector.h"
+#include "libgearman/uuid.hpp"
+#include "libgearman/pipe.h"
+
+
+#include "libgearman/protocol/echo.h"
+#include "libgearman/protocol/option.h"
+
+#include "libgearman/ssl.h"
 
 #include <cerrno>
 #include <cstdarg>
@@ -57,45 +68,6 @@
 #include <cctype>
 #include <unistd.h>
 #include <memory>
-
-void gearman_universal_initialize(gearman_universal_st &self, const gearman_universal_options_t *options)
-{
-  { // Set defaults on all options.
-    self.options.non_blocking= false;
-  }
-
-  if (options)
-  {
-    while (*options != GEARMAN_MAX)
-    {
-      /**
-        @note Check for bad value, refactor gearman_add_options().
-      */
-      gearman_universal_add_options(self, *options);
-      options++;
-    }
-  }
-
-  self.verbose= GEARMAN_VERBOSE_NEVER;
-  self.con_count= 0;
-  self.packet_count= 0;
-  self.pfds_size= 0;
-  self.sending= 0;
-  self.timeout= -1;
-  self.con_list= NULL;
-  self.packet_list= NULL;
-  self.server_options_list= NULL;
-  self.pfds= NULL;
-  self.log_fn= NULL;
-  self.log_context= NULL;
-  self.allocator= gearman_default_allocator();
-  self._namespace= NULL;
-  self.error.rc= GEARMAN_SUCCESS;
-  self.error.last_errno= 0;
-  self.error.last_error[0]= 0;
-  self.wakeup_fd[0]= INVALID_SOCKET;
-  self.wakeup_fd[1]= INVALID_SOCKET;
-}
 
 void gearman_nap(int arg)
 {
@@ -117,40 +89,30 @@ void gearman_nap(gearman_universal_st &self)
   gearman_nap(self.timeout);
 }
 
-void gearman_universal_clone(gearman_universal_st &destination, const gearman_universal_st &source, bool has_wakeup_fd)
+void gearman_universal_clone(gearman_universal_st &destination, const gearman_universal_st &source)
 {
-  int wakeup_fd[2];
+  destination.wakeup(source.has_wakeup());
 
-  if (has_wakeup_fd)
-  {
-    wakeup_fd[0]= destination.wakeup_fd[0];
-    wakeup_fd[1]= destination.wakeup_fd[1];
-  }
+  (void)gearman_universal_set_option(destination, GEARMAN_UNIVERSAL_NON_BLOCKING, source.options.non_blocking);
 
-  gearman_universal_initialize(destination);
-
-  if (has_wakeup_fd)
-  {
-    destination.wakeup_fd[0]= wakeup_fd[0];
-    destination.wakeup_fd[1]= wakeup_fd[1];
-  }
-
-  (void)gearman_universal_set_option(destination, GEARMAN_NON_BLOCKING, source.options.non_blocking);
+  destination.ssl(source.ssl());
 
   destination.timeout= source.timeout;
 
   destination._namespace= gearman_string_clone(source._namespace);
+  destination._identifier= gearman_string_clone(source._identifier);
   destination.verbose= source.verbose;
   destination.log_fn= source.log_fn;
   destination.log_context= source.log_context;
 
-  for (gearman_connection_st *con= source.con_list; con; con= con->next)
+  for (gearman_connection_st *con= source.con_list; con; con= con->next_connection())
   {
     if (gearman_connection_copy(destination, *con) == NULL)
     {
       return;
     }
   }
+
   assert(destination.con_count == source.con_count);
 }
 
@@ -158,7 +120,6 @@ void gearman_universal_free(gearman_universal_st &universal)
 {
   gearman_free_all_cons(universal);
   gearman_free_all_packets(universal);
-  gearman_string_free(universal._namespace);
 
   if (universal.pfds)
   {
@@ -174,20 +135,36 @@ void gearman_universal_free(gearman_universal_st &universal)
   }
 }
 
-gearman_return_t gearman_universal_set_option(gearman_universal_st &self, gearman_universal_options_t option, bool value)
+gearman_return_t gearman_universal_set_option(gearman_universal_st &self, universal_options_t option, bool value)
 {
   switch (option)
   {
-  case GEARMAN_NON_BLOCKING:
+  case GEARMAN_UNIVERSAL_NON_BLOCKING:
     self.options.non_blocking= value;
     break;
 
-  case GEARMAN_DONT_TRACK_PACKETS:
+  case GEARMAN_UNIVERSAL_DONT_TRACK_PACKETS:
     break;
 
-  case GEARMAN_MAX:
+  case GEARMAN_UNIVERSAL_IDENTIFY:
+    if (value)
+    {
+      if (self._identifier == NULL)
+      {
+        self._identifier= gearman_string_create_guid();
+      }
+      assert(self._identifier);
+    }
+    else
+    {
+      gearman_string_free(self._identifier);
+      self._identifier= NULL;
+    }
+    break;
+
+  case GEARMAN_UNIVERSAL_MAX:
   default:
-    return GEARMAN_INVALID_COMMAND;
+    return gearman_gerror(self, GEARMAN_INVALID_COMMAND);
   }
 
   return GEARMAN_SUCCESS;
@@ -209,6 +186,8 @@ void gearman_set_log_fn(gearman_universal_st &self, gearman_log_fn *function,
   self.log_fn= function;
   self.log_context= context;
   self.verbose= verbose;
+  
+  gearman_log_debug(self, "Enabled logging");
 }
 
 void gearman_set_workload_malloc_fn(gearman_universal_st& universal,
@@ -235,9 +214,26 @@ void gearman_free_all_cons(gearman_universal_st& universal)
   }
 }
 
-void gearman_reset(gearman_universal_st& universal)
+bool gearman_universal_st::wakeup(bool has_wakeup_)
 {
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  if (has_wakeup_)
+  {
+    if (wakeup_fd[0] == INVALID_SOCKET)
+    {
+      return setup_shutdown_pipe(wakeup_fd);
+    }
+
+    return true;
+  }
+
+  close_wakeup();
+
+  return true;
+}
+
+void gearman_universal_st::reset()
+{
+  for (gearman_connection_st *con= con_list; con; con= con->next_connection())
   {
     con->close_socket();
   }
@@ -248,9 +244,9 @@ void gearman_reset(gearman_universal_st& universal)
  * which connection experienced an issue. Error detection is better done in gearman_wait()
  * after flushing all the connections here.
  */
-void gearman_flush_all(gearman_universal_st& universal)
+void gearman_universal_st::flush()
 {
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= con_list; con; con= con->next_connection())
   {
     if (con->events & POLLOUT)
     {
@@ -265,7 +261,7 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
 {
   struct pollfd *pfds;
 
-  bool have_shutdown_pipe= universal.wakeup_fd[0] == INVALID_SOCKET ? false : true;
+  bool have_shutdown_pipe= universal.has_wakeup();
   size_t con_count= universal.con_count +int(have_shutdown_pipe);
 
   if (universal.pfds_size < con_count)
@@ -273,8 +269,8 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
     pfds= static_cast<pollfd*>(realloc(universal.pfds, con_count * sizeof(struct pollfd)));
     if (pfds == NULL)
     {
-      gearman_perror(universal, "pollfd realloc");
-      return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+      return gearman_universal_set_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, GEARMAN_AT,
+                                         "realloc failed to allocate %u pollfd", uint32_t(con_count));
     }
 
     universal.pfds= pfds;
@@ -286,14 +282,14 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
   }
 
   nfds_t x= 0;
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
     if (con->events == 0)
     {
       continue;
     }
 
-    pfds[x].fd= con->fd;
+    pfds[x].fd= con->socket_descriptor();
     pfds[x].events= con->events;
     pfds[x].revents= 0;
     x++;
@@ -327,10 +323,10 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
         continue;
 
       case EINVAL:
-        return gearman_perror(universal, "RLIMIT_NOFILE exceeded, or if OSX the timeout value was invalid");
+        return gearman_perror(universal, errno, "RLIMIT_NOFILE exceeded, or if OSX the timeout value was invalid");
 
       default:
-        return gearman_perror(universal, "poll");
+        return gearman_perror(universal, errno, "poll");
       }
     }
 
@@ -341,11 +337,11 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
   {
     return gearman_universal_set_error(universal, GEARMAN_TIMEOUT, GEARMAN_AT,
                                        "timeout reached, %u servers were poll(), no servers were available, pipe:%s",
-                                       uint32_t(x), have_shutdown_pipe ? "true" : "false");
+                                       uint32_t(x - have_shutdown_pipe), have_shutdown_pipe ? "true" : "false");
   }
 
   x= 0;
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
     if (con->events == 0)
     {
@@ -358,7 +354,7 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
       socklen_t len= sizeof (err);
       if (getsockopt(pfds[x].fd, SOL_SOCKET, SO_ERROR, &err, &len) == 0)
       {
-        con->cached_errno= err;
+        con->error(err);
       }
     }
 
@@ -376,15 +372,20 @@ gearman_return_t gearman_wait(gearman_universal_st& universal)
       gearman_return_t local_ret= gearman_kill(gearman_universal_id(universal), GEARMAN_INTERRUPT);
       if (gearman_failed(local_ret))
       {
-        return GEARMAN_SHUTDOWN;
+        return gearman_gerror(universal, GEARMAN_SHUTDOWN);
       }
 
-      return GEARMAN_SHUTDOWN_GRACEFUL;
+      return gearman_gerror(universal, GEARMAN_SHUTDOWN_GRACEFUL);
     }
 
     if (read_length == 0)
     {
-      return GEARMAN_SHUTDOWN;
+      return gearman_gerror(universal, GEARMAN_SHUTDOWN);
+    }
+
+    if (read_length == -1)
+    {
+      gearman_perror(universal, errno, "read() from shutdown pipe");
     }
 
 #if 0
@@ -402,7 +403,7 @@ gearman_connection_st *gearman_ready(gearman_universal_st& universal)
     We can't keep universal between calls since connections may be removed during
     processing. If this list ever gets big, we may want something faster.
   */
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
     if (con->options.ready)
     {
@@ -412,6 +413,109 @@ gearman_connection_st *gearman_ready(gearman_universal_st& universal)
   }
 
   return NULL;
+}
+
+void gearman_universal_st::close_wakeup()
+{
+  if (wakeup_fd[0] != INVALID_SOCKET)
+  {
+    close(wakeup_fd[0]);
+  }
+
+  if (wakeup_fd[1] != INVALID_SOCKET)
+  {
+    close(wakeup_fd[1]);
+  }
+}
+
+gearman_universal_st::~gearman_universal_st()
+{
+  close_wakeup();
+
+  gearman_string_free(_identifier);
+  gearman_string_free(_namespace);
+#if defined(HAVE_SSL) && HAVE_SSL
+  if (_ctx_ssl)
+  {
+    SSL_CTX_free(_ctx_ssl);
+  }
+#else
+  assert(_ctx_ssl == NULL);
+#endif
+}
+
+gearman_return_t gearman_universal_st::option(const universal_options_t& option_, bool value)
+{
+  switch (option_)
+  {
+    case GEARMAN_UNIVERSAL_NON_BLOCKING:
+      non_blocking(value);
+      break;
+
+    case GEARMAN_UNIVERSAL_DONT_TRACK_PACKETS:
+      break;
+
+    case GEARMAN_UNIVERSAL_IDENTIFY:
+      _identifier= gearman_string_create_guid();
+      assert(_identifier);
+      break;
+
+    case GEARMAN_UNIVERSAL_MAX:
+    default:
+      return gearman_gerror(*this, GEARMAN_INVALID_COMMAND);
+  }
+
+  return GEARMAN_SUCCESS;
+}
+
+bool gearman_universal_st::init_ssl()
+{
+  if (ssl())
+  {
+#if defined(HAVE_SSL) && HAVE_SSL
+    SSL_load_error_strings();
+    SSL_library_init();
+
+    if ((_ctx_ssl= SSL_CTX_new(TLSv1_client_method())) == NULL)
+    {
+      gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "CyaTLSv1_client_method() failed");
+      return false;
+    }
+
+    if (SSL_CTX_load_verify_locations(_ctx_ssl, ssl_ca_file(), 0) != SSL_SUCCESS)
+    {
+      gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "Failed to load CA certificate %s", ssl_ca_file());
+      return false;
+    }
+
+    if (SSL_CTX_use_certificate_file(_ctx_ssl, ssl_certificate(), SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    {   
+      gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "Failed to load certificate %s", ssl_certificate());
+      return false;
+    }
+
+    if (SSL_CTX_use_PrivateKey_file(_ctx_ssl, ssl_key(), SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    {   
+      gearman_universal_set_error(*this, GEARMAN_INVALID_ARGUMENT, GEARMAN_AT, "Failed to load certificate key %s", ssl_key());
+      return false;
+    }
+#endif // defined(HAVE_SSL) && HAVE_SSL
+  }
+
+  return true;
+}
+
+void gearman_universal_st::identifier(const char *identifier_, const size_t identifier_size_)
+{
+  gearman_string_free(_identifier);
+  if (identifier_ and identifier_size_)
+  {
+    _identifier= gearman_string_create(NULL, identifier_, identifier_size_);
+  }
+  else
+  {
+    _identifier= NULL;
+  }
 }
 
 gearman_return_t gearman_set_identifier(gearman_universal_st& universal,
@@ -440,64 +544,11 @@ gearman_return_t gearman_set_identifier(gearman_universal_st& universal,
     }
   }
 
-  gearman_packet_st packet;
-  gearman_return_t ret= gearman_packet_create_args(universal, packet, GEARMAN_MAGIC_REQUEST,
-                                                   GEARMAN_COMMAND_SET_CLIENT_ID,
-                                                   (const void**)&id, &id_size, 1);
-  if (gearman_success(ret))
+  universal.identifier(id, id_size);
+
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
-    PUSH_BLOCKING(universal);
-
-    for (gearman_connection_st *con= universal.con_list; con; con= con->next)
-    {
-      gearman_return_t local_ret= con->send_packet(packet, true);
-      if (gearman_failed(local_ret))
-      {
-        ret= local_ret;
-      }
-
-    }
-  }
-
-  gearman_packet_free(&packet);
-
-  return ret;
-}
-
-EchoCheck::EchoCheck(gearman_universal_st& universal_,
-    const void *workload_, const size_t workload_size_) :
-    _universal(universal_),
-    _workload(workload_),
-    _workload_size(workload_size_)
-{
-}
-
-gearman_return_t EchoCheck::success(gearman_connection_st* con)
-{
-  if (con->_packet.command != GEARMAN_COMMAND_ECHO_RES)
-  {
-    return gearman_error(_universal, GEARMAN_INVALID_COMMAND, "Wrong command sent in response to ECHO request");
-  }
-
-  if (con->_packet.data_size != _workload_size or
-      memcmp(_workload, con->_packet.data, _workload_size))
-  {
-    return gearman_error(_universal, GEARMAN_ECHO_DATA_CORRUPTION, "corruption during echo");
-  }
-
-  return GEARMAN_SUCCESS;
-}
-
-OptionCheck::OptionCheck(gearman_universal_st& universal_):
-    _universal(universal_)
-{
-}
-
-gearman_return_t OptionCheck::success(gearman_connection_st* con)
-{
-  if (con->_packet.command == GEARMAN_COMMAND_ERROR)
-  {
-    return gearman_error(_universal, GEARMAN_INVALID_SERVER_OPTION, "invalid server option");
+    con->send_identifier();
   }
 
   return GEARMAN_SUCCESS;
@@ -509,7 +560,7 @@ static gearman_return_t connection_loop(gearman_universal_st& universal,
 {
   gearman_return_t ret= GEARMAN_SUCCESS;
 
-  for (gearman_connection_st *con= universal.con_list; con; con= con->next)
+  for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
   {
     ret= con->send_packet(message, true);
     if (gearman_failed(ret))
@@ -524,7 +575,10 @@ static gearman_return_t connection_loop(gearman_universal_st& universal,
     gearman_packet_st *packet_ptr= con->receiving(con->_packet, ret, true);
     if (packet_ptr == NULL)
     {
-      assert(&con->_packet == universal.packet_list);
+      if (ret != GEARMAN_NOT_CONNECTED and ret != GEARMAN_LOST_CONNECTION)
+      {
+        assert(&con->_packet == universal.packet_list);
+      }
       con->options.packet_in_use= false;
       break;
     }
@@ -560,45 +614,97 @@ static gearman_return_t connection_loop(gearman_universal_st& universal,
   return ret;
 }
 
-
-gearman_return_t gearman_echo(gearman_universal_st& universal,
-                              const void *workload,
-                              size_t workload_size)
+gearman_return_t gearman_server_option(gearman_universal_st& universal, gearman_string_t& option)
 {
-  if (workload == NULL)
+  if (universal.has_connections() == false)
   {
-    return gearman_error(universal, GEARMAN_INVALID_ARGUMENT, "workload was NULL");
-  }
-
-  if (workload_size == 0)
-  {
-    return gearman_error(universal, GEARMAN_INVALID_ARGUMENT,  "workload_size was 0");
-  }
-
-  if (workload_size > GEARMAN_MAX_ECHO_SIZE)
-  {
-    return gearman_error(universal, GEARMAN_ARGUMENT_TOO_LARGE,  "workload_size was greater then GEARMAN_MAX_ECHO_SIZE");
+    return gearman_universal_set_error(universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers provided");
   }
 
   gearman_packet_st message;
-  gearman_return_t ret= gearman_packet_create_args(universal, message, GEARMAN_MAGIC_REQUEST,
-                                                   GEARMAN_COMMAND_ECHO_REQ,
-                                                   &workload, &workload_size, 1);
+  gearman_return_t ret=  libgearman::protocol::option(universal, message, option);
   if (gearman_success(ret))
   {
     PUSH_BLOCKING(universal);
 
-    EchoCheck check(universal, workload, workload_size);
+    OptionCheck check(universal, option);
     ret= connection_loop(universal, message, check);
   }
   else
   {
-    gearman_packet_free(&message);
-    gearman_error(universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "gearman_packet_create_args()");
-    return ret;
+    return universal.error_code();
   }
 
   gearman_packet_free(&message);
+
+  return ret;
+}
+
+
+gearman_return_t gearman_echo(gearman_universal_st& universal,
+                              const void *workload_str,
+                              size_t workload_size)
+{
+  if (universal.has_connections() == false)
+  {
+    return gearman_universal_set_error(universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers provided");
+  }
+
+  gearman_string_t workload= { static_cast<const char*>(workload_str), workload_size };
+  gearman_packet_st message;
+  gearman_return_t ret=  libgearman::protocol::echo(universal, message, workload);
+  if (gearman_success(ret))
+  {
+    PUSH_BLOCKING(universal);
+
+    EchoCheck check(universal, workload_str, workload_size);
+    ret= connection_loop(universal, message, check);
+  }
+  else
+  {
+    return universal.error_code();
+  }
+
+  gearman_packet_free(&message);
+
+  return ret;
+}
+
+gearman_return_t cancel_job(gearman_universal_st& universal,
+                            gearman_job_handle_t job_handle)
+{
+  if (universal.has_connections() == false)
+  {
+    return gearman_universal_set_error(universal, GEARMAN_NO_SERVERS, GEARMAN_AT, "no servers provided");
+  }
+
+  const void *args[1];
+  size_t args_size[1];
+
+  args[0]= job_handle;
+  args_size[0]= strlen(job_handle);
+
+  gearman_packet_st cancel_packet;
+
+  gearman_return_t ret= gearman_packet_create_args(universal,
+                                                   cancel_packet,
+                                                   GEARMAN_MAGIC_REQUEST,
+                                                   GEARMAN_COMMAND_WORK_FAIL,
+                                                   args, args_size, 1);
+  if (gearman_success(ret))
+  {
+    PUSH_BLOCKING(universal);
+
+    CancelCheck check(universal);
+    ret= connection_loop(universal, cancel_packet, check);
+  }
+  else
+  {
+    gearman_packet_free(&cancel_packet);
+    return universal.error_code();
+  }
+
+  gearman_packet_free(&cancel_packet);
 
   return ret;
 }

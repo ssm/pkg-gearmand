@@ -60,37 +60,56 @@ gearmand_error_t gearman_queue_add(gearman_server_st *server,
                                    int64_t when)
 {
   assert(server->state.queue_startup == false);
-  if (server->queue_version == QUEUE_VERSION_FUNCTION)
+  gearmand_error_t ret;
+  if (server->queue_version == QUEUE_VERSION_NONE)
+  {
+    return GEARMAND_SUCCESS;
+  }
+  else if (server->queue_version == QUEUE_VERSION_FUNCTION)
   {
     assert(server->queue.functions->_add_fn);
-    return (*(server->queue.functions->_add_fn))(server,
-                                                 (void *)server->queue.functions->_context,
-                                                 unique, unique_size,
-                                                 function_name,
-                                                 function_name_size,
-                                                 data, data_size, priority, 
-                                                when);
+    ret= (*(server->queue.functions->_add_fn))(server,
+                                               (void *)server->queue.functions->_context,
+                                               unique, unique_size,
+                                               function_name,
+                                               function_name_size,
+                                               data, data_size, priority, 
+                                               when);
+  }
+  else
+  {
+    assert(server->queue.object);
+    ret= server->queue.object->store(server,
+                                     unique, unique_size,
+                                     function_name,
+                                     function_name_size,
+                                     data, data_size, priority, 
+                                     when);
   }
 
-  assert(server->queue.object);
-  return server->queue.object->add(server,
-                                   unique, unique_size,
-                                   function_name,
-                                   function_name_size,
-                                   data, data_size, priority, 
-                                   when);
+  if (gearmand_success(ret))
+  {
+    ret= gearman_queue_flush(server);
+  }
+
+  return ret;
 }
 
 gearmand_error_t gearman_queue_flush(gearman_server_st *server)
 {
-  if (server->queue_version == QUEUE_VERSION_FUNCTION)
+  if (server->queue_version != QUEUE_VERSION_NONE)
   {
-    assert(server->queue.functions->_flush_fn);
-    return (*(server->queue.functions->_flush_fn))(server, (void *)server->queue.functions->_context);
+    if (server->queue_version == QUEUE_VERSION_FUNCTION)
+    {
+      assert(server->queue.functions->_flush_fn);
+      return (*(server->queue.functions->_flush_fn))(server, (void *)server->queue.functions->_context);
+    }
+
+    assert(server->queue.object);
+    return server->queue.object->flush(server);
   }
 
-  assert(server->queue.object);
-  return server->queue.object->flush(server);
+  return GEARMAND_SUCCESS;
 }
 
 gearmand_error_t gearman_queue_done(gearman_server_st *server,
@@ -99,7 +118,11 @@ gearmand_error_t gearman_queue_done(gearman_server_st *server,
                                     const char *function_name,
                                     size_t function_name_size)
 {
-  if (server->queue_version == QUEUE_VERSION_FUNCTION)
+  if (server->queue_version == QUEUE_VERSION_NONE)
+  {
+    return GEARMAND_SUCCESS;
+  }
+  else if (server->queue_version == QUEUE_VERSION_FUNCTION)
   {
     assert(server->queue.functions->_done_fn);
     return (*(server->queue.functions->_done_fn))(server,
@@ -108,12 +131,24 @@ gearmand_error_t gearman_queue_done(gearman_server_st *server,
                                                   function_name,
                                                   function_name_size);
   }
+  else
+  {
+    assert(server->queue.object);
+    return server->queue.object->done(server,
+                                      unique, unique_size,
+                                      function_name,
+                                      function_name_size);
+  }
+}
 
-  assert(server->queue.object);
-  return server->queue.object->done(server,
-                                    unique, unique_size,
-                                    function_name,
-                                    function_name_size);
+void gearman_server_save_job(gearman_server_st& server,
+                             const gearman_server_job_st* server_job)
+{
+  if (server.queue_version == QUEUE_VERSION_CLASS)
+  {
+    assert(server.queue.object);
+    server.queue.object->save_job(server, server_job);
+  }
 }
 
 void gearman_server_set_queue(gearman_server_st& server,
@@ -128,17 +163,24 @@ void gearman_server_set_queue(gearman_server_st& server,
   delete server.queue.object;
   server.queue.object= NULL;
 
-  server.queue_version= QUEUE_VERSION_FUNCTION;
-  server.queue.functions= new queue_st();
-  if (server.queue.functions)
+  if (add)
   {
-    server.queue.functions->_context= context;
-    server.queue.functions->_add_fn= add;
-    server.queue.functions->_flush_fn= flush;
-    server.queue.functions->_done_fn= done;
-    server.queue.functions->_replay_fn= replay;
+    server.queue_version= QUEUE_VERSION_FUNCTION;
+    server.queue.functions= new queue_st();
+    if (server.queue.functions)
+    {
+      server.queue.functions->_context= context;
+      server.queue.functions->_add_fn= add;
+      server.queue.functions->_flush_fn= flush;
+      server.queue.functions->_done_fn= done;
+      server.queue.functions->_replay_fn= replay;
+    }
+    assert(server.queue.functions);
   }
-  assert(server.queue.functions);
+  else
+  {
+    server.queue_version= QUEUE_VERSION_NONE;
+  }
 }
 
 void gearman_server_set_queue(gearman_server_st& server,
@@ -182,7 +224,7 @@ gearmand_error_t initialize(gearmand_st *, std::string name)
 
   if (name.empty())
   {
-    return GEARMAN_SUCCESS;
+    return GEARMAND_SUCCESS;
   }
 
   std::transform(name.begin(), name.end(), name.begin(), ::tolower);
@@ -195,7 +237,7 @@ gearmand_error_t initialize(gearmand_st *, std::string name)
     {
       if (launched)
       {
-        return gearmand_gerror("Attempt to initialize multiple queues", GEARMAN_UNKNOWN_OPTION);
+        return gearmand_gerror("Attempt to initialize multiple queues", GEARMAND_UNKNOWN_OPTION);
       }
 
       gearmand_error_t rc;
@@ -211,10 +253,10 @@ gearmand_error_t initialize(gearmand_st *, std::string name)
 
   if (launched == false)
   {
-    return gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, GEARMAN_UNKNOWN_OPTION, "Unknown queue %s", name.c_str());
+    return gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, GEARMAND_UNKNOWN_OPTION, "Unknown queue %s", name.c_str());
   }
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 } // namespace queue

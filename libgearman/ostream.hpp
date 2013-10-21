@@ -2,8 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
- *  Copyright (C) 2008 Brian Aker, Eric Day
+ *  Copyright (C) 2012 Data Differential, http://datadifferential.com/
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -38,43 +37,43 @@
 
 #pragma once
 
-#include <libgearman-1.0/allocator.h>
+#include <iostream>
+#include <ostream>
 
-/**
-  @todo this is only used by the server and should be made private.
- */
-typedef struct gearman_connection_st gearman_connection_st;
-typedef gearman_return_t (gearman_event_watch_fn)(gearman_connection_st *con,
-                                                  short events, void *context);
-typedef struct gearman_server_options_st gearman_server_options_st;
-
-/**
- * @ingroup gearman_universal
- */
-struct gearman_universal_st
+static inline std::ostream& operator<<(std::ostream& output, const gearman_packet_st &arg)
 {
-  struct {
-    bool dont_track_packets;
-    bool non_blocking;
-  } options;
-  gearman_verbose_t verbose;
-  uint32_t con_count;
-  uint32_t packet_count;
-  uint32_t pfds_size;
-  uint32_t sending;
-  int timeout; // Connection timeout.
-  gearman_connection_st *con_list;
-  gearman_server_options_st *server_options_list;
-  gearman_packet_st *packet_list;
-  struct pollfd *pfds;
-  gearman_log_fn *log_fn;
-  void *log_context;
-  gearman_allocator_t allocator;
-  struct gearman_vector_st *_namespace;
-  struct {
-    gearman_return_t rc;
-    int last_errno;
-    char last_error[GEARMAN_MAX_ERROR_SIZE];
-  } error;
-  int wakeup_fd[2];
-};
+  const char* command_str= gearman_enum_strcommand(arg.command);
+
+  output << std::boolalpha 
+    << "command: " << command_str
+    << " argc: " << int(arg.argc);
+
+  for (uint8_t x= 0; x < arg.argc; x++)
+  {
+    output << "arg[" << int(x) << "]: ";
+    output.write(arg.arg[x], arg.arg_size[x]);
+    output << " ";
+  }
+
+  return output;
+}
+
+static inline std::ostream& operator<<(std::ostream& output, const gearman_task_st &arg)
+{
+  output << std::boolalpha 
+    << "job: " << gearman_task_job_handle(&arg)
+    << " unique: " << gearman_task_unique(&arg)
+    << " has_result:" << bool(arg.result_ptr)
+    << " complete: " << gearman_task_numerator(&arg) << "/" << gearman_task_denominator(&arg)
+    << " state: " << gearman_task_strstate(&arg)
+    << " is_known: " << gearman_task_is_known(&arg)
+    << " is_running: " << gearman_task_is_running(&arg)
+    << " ret: " << gearman_task_return(&arg);
+
+  if (arg.recv)
+  {
+    output << " " << *arg.recv;
+  }
+
+  return output;
+}

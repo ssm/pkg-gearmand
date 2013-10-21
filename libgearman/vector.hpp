@@ -104,6 +104,21 @@ struct gearman_vector_st {
     return string;
   }
 
+  const char* c_str() const
+  {
+    return string;
+  }
+
+  const void* void_ptr() const
+  {
+    return (const void*)string;
+  }
+
+  bool empty() const
+  {
+    return string == end;
+  }
+
   size_t capacity() const
   {
     // We tell a white lie about size since we always keep things null
@@ -114,6 +129,18 @@ struct gearman_vector_st {
     }
 
     return current_size;
+  }
+
+  char* ptr(size_t expect)
+  {
+    if (resize(expect +1))
+    {
+      end= string +expect;
+      string[expect]= 0;
+      return string;
+    }
+
+    return NULL;
   }
 
   bool store(const gearman_vector_st&);
@@ -129,7 +156,6 @@ private:
   int	vec_size_printf(const char *format__, va_list args__);
   int	vec_ptr_printf(const int required_size, const char *format__, va_list args__);
 };
-
 
 gearman_vector_st *gearman_string_create(gearman_vector_st *string,
                                          size_t initial_size);

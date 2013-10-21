@@ -1,3 +1,58 @@
+1.1.11 Thu Oct  3 04:38:47 EDT 2013
+* Workers which return a bad gearman_return_t will be counted as an error by the server and not a final (i.e. they will be retried).
+* Fixed possible bug where the server would over count the number of NOOP sent if NOOP messages did not get sent.
+
+1.1.10 Mon Sep 16 04:20:13 CDT 2013
+* Added gearman_job_use_client()
+* Improve compile time.
+* Fix for NOOP failure (bad worker causes early exit of loop).
+* Fix for postgres (use INFORMATION_SCHEMA).
+* Added gearman_client_has_active_tasks() so that you can see if a client has active tasks that it is working on.
+
+1.1.9 Fri Aug  2 02:39:25 EDT 2013
+* Added gearman_task_is_finished()
+* Improved SSL support.
+* Exceptions are now supported.
+* gearmand excepts its root CA via the environmental variable GEARMAND_PORT. 
+* libgearman will now except GEARMAND_CA_CERTIFICATE, GEARMAN_CLIENT_PEM, and GEARMAN_CLIENT_KEY
+
+1.1.8 Thu Jun  6 18:47:01 EDT 2013
+* Postgres test case now passes.
+* SSL support added.
+* OSX fixes.
+
+1.1.7 Mon May  6 06:46:20 EDT 2013
+* Cleanup of error codes returned by gearmand.
+* gearmand will now set its port from the env variable GEARMAND_PORT.
+* Fix issue where identifier might not be set correctly on reconnect.
+
+1.1.6 Tue Apr 16 03:29:57 EDT 2013
+* Merge of 1.0.4 tree
+* Added support for gearadmin to "cancel" a job.
+* Keep-alive support for gearmand has been extended (more options to control behavior).
+* Fixed issues related to clients who didn't really support exceptions being passed exceptions.
+
+1.1.5 Mon Feb  4 00:59:19 EST 2013
+* Rollup of bug fixes for 1.0.3
+* --threads=0 for gearmand will now result in gearmand using all available cores.
+
+1.1.4 Mon Dec 17 21:24:16 EST 2012
+* Add GEARMAN_CLIENT_GENERATE_UNIQUE, with default set to not generate.
+* Experimental addition to queue service which will allow a queue to be stored on shutdown (--libsqlite3-store-on-shutdown).
+* Rollup of all changes in 1.0.2
+
+1.1.3 Wed Nov  7 22:48:21 EST 2012
+* Merge with 1.0.1
+
+1.1.2 Fri Oct 12 05:34:29 EDT 2012
+* Merge with 0.41
+
+1.1.1 Wed Sep 19 22:04:56 EDT 2012
+* Merge with 0.39
+
+1.1.0 Wed Sep  5 08:33:37 PDT 2012
+* Fix for ABI compatibility issues.
+
 1.0.6 Mon May  6 02:48:30 EDT 2013
 * strlen() of zero on name passed for instance did not result in a connection to localhost (which the php driver thought would happen).
 * Fix regression in log not updating time on all platforms.

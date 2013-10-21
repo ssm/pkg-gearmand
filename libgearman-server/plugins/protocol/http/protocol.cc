@@ -60,8 +60,9 @@
 /**
  * Default values.
  */
-#define GEARMAN_PROTOCOL_HTTP_DEFAULT_PORT "8080"
+#define GEARMAND_PROTOCOL_HTTP_DEFAULT_PORT "8080"
 
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 
 class HTTPtext;
@@ -105,7 +106,7 @@ public:
         }
 
         gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "HTTP gearmand_command_t: GEARMAN_COMMAND_WORK_DATA length:%" PRIu64, uint64_t(content.size()));
-        ret_ptr= GEARMAN_IGNORE_PACKET;
+        ret_ptr= GEARMAND_IGNORE_PACKET;
         return 0;
       }
 
@@ -163,7 +164,7 @@ public:
         gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
                            "Sending HTTP told to ignore packet: gearmand_command_t:%s", 
                            gearman_strcommand(packet->command));
-        ret_ptr= GEARMAN_IGNORE_PACKET;
+        ret_ptr= GEARMAND_IGNORE_PACKET;
         return 0;
       }
     }
@@ -244,7 +245,7 @@ public:
     if (pack_size > send_buffer_size)
     {
       gearmand_debug("Sending HTTP had to flush");
-      ret_ptr= GEARMAN_FLUSH_DATA;
+      ret_ptr= GEARMAND_FLUSH_DATA;
       return 0;
     }
 
@@ -258,7 +259,7 @@ public:
       gearman_io_set_option(&connection->con, GEARMAND_CON_CLOSE_AFTER_FLUSH, true);
     }
 
-    ret_ptr= GEARMAN_SUCCESS;
+    ret_ptr= GEARMAND_SUCCESS;
 
     return pack_size;
   }
@@ -281,7 +282,7 @@ public:
     if (request == NULL or request_size == 0)
     {
       gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "Zero length request made");
-      ret_ptr= GEARMAN_IO_WAIT;
+      ret_ptr= GEARMAND_IO_WAIT;
       return offset;
     }
 
@@ -293,7 +294,7 @@ public:
     {
       gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "bad request line: %.*s", (uint32_t)request_size, request);
       set_response(gearmand::protocol::httpd::HTTP_NOT_FOUND);
-      ret_ptr= GEARMAN_SUCCESS;
+      ret_ptr= GEARMAND_SUCCESS;
       return 0;
     }
 
@@ -329,7 +330,7 @@ public:
       {
         gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "bad method: %.*s", (uint32_t)method_size, method_str);
         set_response(gearmand::protocol::httpd::HTTP_METHOD_NOT_ALLOWED);
-        ret_ptr= GEARMAN_SUCCESS;
+        ret_ptr= GEARMAND_SUCCESS;
         return 0;
       }
     }
@@ -352,7 +353,7 @@ public:
     {
       gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "bad request line: %.*s",
                          (uint32_t)request_size, request);
-      ret_ptr= GEARMAN_INVALID_PACKET;
+      ret_ptr= GEARMAND_INVALID_PACKET;
       return 0;
     }
 
@@ -391,7 +392,7 @@ public:
     else
     {
       gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "bad version: %.*s", (uint32_t)version_size, version);
-      ret_ptr= GEARMAN_INVALID_PACKET;
+      ret_ptr= GEARMAND_INVALID_PACKET;
       return 0;
     }
 
@@ -449,7 +450,7 @@ public:
     if (header == NULL and response() == gearmand::protocol::httpd::HTTP_OK)
     {
       gearmand_log_info(GEARMAN_DEFAULT_LOG_PARAM, "No headers were found");
-      ret_ptr= GEARMAN_IO_WAIT;
+      ret_ptr= GEARMAND_IO_WAIT;
       return 0;
     }
 
@@ -460,7 +461,7 @@ public:
     {
       packet->command= GEARMAN_COMMAND_ECHO_REQ;
 
-      if ((ret_ptr= gearmand_packet_pack_header(packet)) != GEARMAN_SUCCESS)
+      if ((ret_ptr= gearmand_packet_pack_header(packet)) != GEARMAND_SUCCESS)
       {
         return 0;
       }
@@ -472,7 +473,7 @@ public:
     {
       packet->command= GEARMAN_COMMAND_ECHO_REQ;
 
-      if ((ret_ptr= gearmand_packet_pack_header(packet)) != GEARMAN_SUCCESS)
+      if ((ret_ptr= gearmand_packet_pack_header(packet)) != GEARMAND_SUCCESS)
       {
         return 0;
       }
@@ -484,7 +485,7 @@ public:
     {
       packet->command= GEARMAN_COMMAND_ECHO_REQ;
 
-      if ((ret_ptr= gearmand_packet_pack_header(packet)) != GEARMAN_SUCCESS)
+      if ((ret_ptr= gearmand_packet_pack_header(packet)) != GEARMAND_SUCCESS)
       {
         return 0;
       }
@@ -522,17 +523,17 @@ public:
         }
       }
 
-      if ((ret_ptr= gearmand_packet_pack_header(packet)) != GEARMAN_SUCCESS)
+      if ((ret_ptr= gearmand_packet_pack_header(packet)) != GEARMAND_SUCCESS)
       {
         return 0;
       }
 
-      if ((ret_ptr= gearmand_packet_create(packet, uri, (size_t)uri_size +1)) != GEARMAN_SUCCESS)
+      if ((ret_ptr= gearmand_packet_create(packet, uri, (size_t)uri_size +1)) != GEARMAND_SUCCESS)
       {
         return 0;
       }
 
-      if ((ret_ptr= gearmand_packet_create(packet, unique, unique_size +1)) != GEARMAN_SUCCESS)
+      if ((ret_ptr= gearmand_packet_create(packet, unique, unique_size +1)) != GEARMAND_SUCCESS)
       {
         return 0;
       }
@@ -541,7 +542,7 @@ public:
       packet->arg[0][uri_size]= 0;
       packet->arg[1][unique_size]= 0;
 
-      ret_ptr= GEARMAN_SUCCESS;
+      ret_ptr= GEARMAND_SUCCESS;
     }
 
     gearmand_info("Receiving HTTP response(finished)");
@@ -632,6 +633,11 @@ private:
   std::vector<char> content;
 };
 
+static gearmand_error_t _http_con_remove(gearman_server_con_st*)
+{
+  return GEARMAND_SUCCESS;
+}
+
 static gearmand_error_t _http_con_add(gearman_server_con_st *connection)
 {
   gearmand_info("HTTP connection made");
@@ -640,12 +646,12 @@ static gearmand_error_t _http_con_add(gearman_server_con_st *connection)
   if (http == NULL)
   {
     gearmand_error("new");
-    return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+    return GEARMAND_MEMORY_ALLOCATION_FAILURE;
   }
 
   connection->set_protocol(http);
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 namespace gearmand {
@@ -655,7 +661,7 @@ HTTP::HTTP() :
   Plugin("HTTP")
 {
   command_line_options().add_options()
-    ("http-port", boost::program_options::value(&_port)->default_value(GEARMAN_PROTOCOL_HTTP_DEFAULT_PORT), "Port to listen on.");
+    ("http-port", boost::program_options::value(&_port)->default_value(GEARMAND_PROTOCOL_HTTP_DEFAULT_PORT), "Port to listen on.");
 }
 
 HTTP::~HTTP()
@@ -665,10 +671,11 @@ HTTP::~HTTP()
 gearmand_error_t HTTP::start(gearmand_st *gearmand)
 {
   gearmand_info("Initializing HTTP");
-  return gearmand_port_add(gearmand, _port.c_str(), _http_con_add);
+  return gearmand_port_add(gearmand, _port.c_str(), _http_con_add, _http_con_remove);
 }
 
 } // namespace protocol
 } // namespace gearmand
 
 /** @} */
+#pragma GCC diagnostic pop

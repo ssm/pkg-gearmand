@@ -19,18 +19,15 @@ noinst_LTLIBRARIES=
 check_LTLIBRARIES=
 nobase_include_HEADERS=
 noinst_HEADERS=
-man1_MANS=
-man3_MANS=
-man8_MANS=
 DISTCLEANFILES=
+MAINTAINERCLEANFILES=
 EXTRA_DIST=
 CLEANFILES=
 BUILT_SOURCES=
 TESTS=
 XFAIL_TESTS=
-.PHONY=
-dist_man_MANS=
-man_MANS=
+
+SUBDIRS= man .
 
 #includes additional rules from aminclude.am
 @INC_AMINCLUDE@
@@ -41,6 +38,8 @@ include libtest/include.am
 include libhostile/include.am
 include libhashkit-1.0/include.am
 
+include docs/examples.mk
+include libgearmancore/include.am
 include libhashkit/include.am
 include benchmark/include.am
 include bin/include.am
@@ -52,8 +51,6 @@ include libgearman-1.0/include.am
 include util/include.am
 include tests/include.am
 include support/include.am
-include docs/include.am
-include man/include.am
 
 include m4/include.am
 
@@ -73,6 +70,11 @@ configmake.h: Makefile
 	@{ echo '/* DO NOT EDIT! GENERATED AUTOMATICALLY! */'; \
 	  echo '#define SYSCONFDIR "$(sysconfdir)"'; \
 	  echo '#define GEARMAND_CONFIG "$(sysconfdir)/gearmand.conf"'; \
+	  echo '#define GEARMAND_CA_CERTIFICATE "$(sysconfdir)/ssl/certs/gearmand-ca.pem"'; \
+	  echo '#define GEARMAND_SERVER_PEM "$(sysconfdir)/ssl/certs/gearmand.pem"'; \
+	  echo '#define GEARMAND_SERVER_KEY "$(sysconfdir)/ssl/certs/gearmand.key"'; \
+	  echo '#define GEARMAN_CLIENT_PEM "$(sysconfdir)/ssl/certs/gearman.pem"'; \
+	  echo '#define GEARMAN_CLIENT_KEY "$(sysconfdir)/ssl/certs/gearman.key"'; \
 	  echo '#define LOCALSTATEDIR "$(localstatedir)"'; \
 	  echo '#define GEARMAND_PID "$(localstatedir)/gearmand.pid"'; \
 	  } | sed '/""/d' > $@-t
@@ -82,7 +84,7 @@ configmake.h: Makefile
 	  mv $@-t $@ ; \
 	  fi
 
-clean-local: clean-libtest-check clean-docs-check
+clean-local: clean-libtest-check
 
 maintainer-clean-local:
 	find . -type f -name '*~' -exec rm -f '{}' \;

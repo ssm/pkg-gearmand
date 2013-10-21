@@ -1,4 +1,6 @@
-.TH "GEARMAND" "8" "May 09, 2013" "1.0.6" "Gearmand"
+.\" Man page generated from reStructuredText.
+.
+.TH "GEARMAND" "8" "October 03, 2013" "1.1.11" "Gearmand"
 .SH NAME
 gearmand \- Gearmand Documentation, http://gearman.info/
 .
@@ -28,8 +30,33 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.\" Man page generated from reStructuredText.
 .
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
 .SH SYNOPSIS
 .sp
 \fBGeneral options\fP
@@ -122,6 +149,26 @@ Display the version of gearmand and exit.
 .TP
 .B \-w [ \-\-worker\-wakeup ] arg (=0)
 Number of workers to wakeup for each job received. The default is to wakeup all available workers.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-keepalive
+Enable keepalive on sockets.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-keepalive\-idle arg (=\-1)
+If keepalive is enabled, set the value for TCP_KEEPIDLE for systems that support it. A value of \-1 means that either the system does not support it or an error occurred when trying to retrieve the default value.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-keepalive\-interval arg (=\-1)
+If keepalive is enabled, set the value for TCP_KEEPINTVL for systems that support it. A value of \-1 means that either the system does not support it or an error occurred when trying to retrieve the default value.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-keepalive\-count arg (=\-1)
+If keepalive is enabled, set the value for TCP_KEEPCNT for systems that support it. A value of \-1 means that either the system does not support it or an error occurred when trying to retrieve the default value.
 .UNINDENT
 .sp
 \fBHTTP:\fP

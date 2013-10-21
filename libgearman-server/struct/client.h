@@ -46,6 +46,16 @@ struct gearman_server_client_st
   gearman_server_client_st *job_next;
   gearman_server_client_st *job_prev;
 
+  gearman_server_client_st():
+    con(NULL),
+    con_next(NULL),
+    con_prev(NULL),
+    job(NULL),
+    job_next(NULL),
+    job_prev(NULL)
+  {
+  }
+
   void init(gearman_server_con_st* con_)
   {
     con= con_;

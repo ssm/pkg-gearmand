@@ -87,12 +87,17 @@ struct client_test_st
 
   void add_server(const char* hostname, in_port_t port_arg)
   {
-    gearman_client_add_server(&_client, hostname, port_arg);
+    ASSERT_EQ(GEARMAN_SUCCESS, gearman_client_add_server(&_client, hostname, port_arg));
   }
 
   const char *worker_name() const
   {
     return _worker_name;
+  }
+
+  void log_fn(gearman_log_fn *function, void *context, gearman_verbose_t verbose)
+  {
+    gearman_client_set_log_fn(&_client, function, context, verbose);
   }
 
   void set_worker_name(const char *arg)

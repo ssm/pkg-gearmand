@@ -82,6 +82,8 @@
 
 #include <iostream>
 
+#include "libtest/cpu.hpp"
+
 #include "gearmand/error.hpp"
 #include "gearmand/log.hpp"
 
@@ -115,7 +117,7 @@ int main(int argc, char *argv[])
   std::string protocol;
   std::string queue_type;
   std::string job_handle_prefix;
-  std::string verbose_string= "ERROR";
+  std::string verbose_string;
   std::string config_file;
 
   uint32_t threads;
@@ -126,6 +128,11 @@ int main(int argc, char *argv[])
   bool opt_syslog;
   bool opt_coredump;
   uint32_t hashtable_buckets;
+  bool opt_keepalive;
+  int opt_keepalive_idle;
+  int opt_keepalive_interval;
+  int opt_keepalive_count;
+
 
   boost::program_options::options_description general("General options");
 
@@ -152,6 +159,18 @@ int main(int argc, char *argv[])
 
   ("hashtable-buckets", boost::program_options::value(&hashtable_buckets)->default_value(GEARMAND_DEFAULT_HASH_SIZE),
    "Number of buckets in the internal job hash tables. The default of 991 works well for about three million jobs in queue. If the number of jobs in the queue at any time will exceed three million, use proportionally larger values (991 * # of jobs / 3M). For example, to accomodate 2^32 jobs, use 1733003. This will consume ~26MB of extra memory. Gearmand cannot support more than 2^32 jobs in queue at this time.")
+
+  ("keepalive", boost::program_options::bool_switch(&opt_keepalive)->default_value(false),
+   "Enable keepalive on sockets.")
+
+  ("keepalive-idle", boost::program_options::value(&opt_keepalive_idle)->default_value(-1),
+   "If keepalive is enabled, set the value for TCP_KEEPIDLE for systems that support it. A value of -1 means that either the system does not support it or an error occurred when trying to retrieve the default value.")
+
+  ("keepalive-interval", boost::program_options::value(&opt_keepalive_interval)->default_value(-1),
+   "If keepalive is enabled, set the value for TCP_KEEPINTVL for systems that support it. A value of -1 means that either the system does not support it or an error occurred when trying to retrieve the default value.")
+
+  ("keepalive-count", boost::program_options::value(&opt_keepalive_count)->default_value(-1),
+   "If keepalive is enabled, set the value for TCP_KEEPCNT for systems that support it. A value of -1 means that either the system does not support it or an error occurred when trying to retrieve the default value.")
 
   ("log-file,l", boost::program_options::value(&log_file)->default_value(LOCALSTATEDIR"/log/gearmand.log"),
    "Log file to write errors and information to. If the log-file parameter is specified as 'stderr', then output will go to stderr. If 'none', then no logfile will be generated.")
@@ -181,12 +200,12 @@ int main(int argc, char *argv[])
    "Whether to create a core dump for uncaught signals.")
 
   ("threads,t", boost::program_options::value(&threads)->default_value(4),
-   "Number of I/O threads to use. Default=4.")
+   "Number of I/O threads to use, 0 means that gearmand will try to guess the maximum number it can use. Default=4.")
 
   ("user,u", boost::program_options::value(&user),
    "Switch to given user after startup.")
 
-  ("verbose", boost::program_options::value(&verbose_string)->default_value(verbose_string),
+  ("verbose", boost::program_options::value(&verbose_string)->default_value("ERROR"),
    "Set verbose level (FATAL, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG).")
 
   ("version,V", "Display the version of gearmand and exit.")
@@ -349,7 +368,27 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  gearmand_st *_gearmand= gearmand_create(host.empty() ? NULL : host.c_str(),
+  if (threads == 0)
+  {
+    uint32_t number_of_threads= libtest::number_of_cpus();
+
+    if (number_of_threads > 4)
+    {
+      threads= number_of_threads;
+    }
+  }
+
+  gearmand_config_st *gearmand_config= gearmand_config_create();
+
+  if (gearmand_config == NULL)
+  {
+    return EXIT_FAILURE;
+  }
+
+  gearmand_config_sockopt_keepalive(gearmand_config, opt_keepalive);
+
+  gearmand_st *_gearmand= gearmand_create(gearmand_config,
+                                          host.empty() ? NULL : host.c_str(),
                                           threads, backlog,
                                           static_cast<uint8_t>(job_retries),
                                           job_handle_prefix.empty() ? NULL : job_handle_prefix.c_str(),
@@ -363,11 +402,13 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
+  gearmand_config_free(gearmand_config);
+
   assert(queue_type.size());
   if (queue_type.empty() == false)
   {
     gearmand_error_t rc;
-    if ((rc= gearmand::queue::initialize(_gearmand, queue_type.c_str())) != GEARMAN_SUCCESS)
+    if ((rc= gearmand::queue::initialize(_gearmand, queue_type.c_str())) != GEARMAND_SUCCESS)
     {
       error::message("Error while initializing the queue", queue_type.c_str());
       gearmand_free(_gearmand);
@@ -376,7 +417,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  if (gear.start(_gearmand) != GEARMAN_SUCCESS)
+  if (gear.start(_gearmand) != GEARMAND_SUCCESS)
   {
     error::message("Error while enabling Gear protocol module");
     gearmand_free(_gearmand);
@@ -386,7 +427,7 @@ int main(int argc, char *argv[])
 
   if (protocol.compare("http") == 0)
   {
-    if (http.start(_gearmand) != GEARMAN_SUCCESS)
+    if (http.start(_gearmand) != GEARMAND_SUCCESS)
     {
       error::message("Error while enabling protocol module", protocol.c_str());
       gearmand_free(_gearmand);
@@ -415,7 +456,7 @@ int main(int argc, char *argv[])
   gearmand_free(_gearmand);
   _gearmand= NULL;
 
-  return (ret == GEARMAN_SUCCESS || ret == GEARMAN_SHUTDOWN) ? 0 : 1;
+  return (ret == GEARMAND_SUCCESS || ret == GEARMAND_SHUTDOWN) ? 0 : 1;
 }
 
 static bool _set_fdlimit(rlim_t fds)

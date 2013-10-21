@@ -50,6 +50,7 @@
 bool gearman_request_option(gearman_universal_st &universal,
                             gearman_string_t &option)
 {
+  // Since we append to universal when we build the options, the below is not a memory leak.
   gearman_server_options_st *server_options = new (std::nothrow) gearman_server_options_st(universal, gearman_c_str(option), gearman_size(option));
   if (server_options == NULL)
   {
@@ -60,11 +61,11 @@ bool gearman_request_option(gearman_universal_st &universal,
   return true;
 }
 
-gearman_server_options_st::gearman_server_options_st(gearman_universal_st &universal_arg,
+gearman_server_options_st::gearman_server_options_st(gearman_universal_st &universal_,
                                                      const char* option_arg, const size_t option_arg_size) : 
   _option(option_arg_size),
   next(NULL), prev(NULL),
-  universal(universal_arg)
+  universal(universal_)
 {
   _option.append(option_arg, option_arg_size);
   if (universal.server_options_list)

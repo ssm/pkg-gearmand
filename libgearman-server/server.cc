@@ -53,6 +53,10 @@
 #include <cstring>
 #include <cassert>
 
+#include "libgearman-1.0/return.h"
+#include "libgearman-1.0/strerror.h"
+#include "libgearman/magic.h"
+
 /*
  * Private declarations
  */
@@ -67,9 +71,21 @@
 /**
  * Queue an error packet.
  */
-static gearmand_error_t _server_error_packet(gearman_server_con_st *server_con,
-                                             const char *error_code,
-                                             const char *error_string);
+static gearmand_error_t _server_error_packet(const char *position_, const char *func_,
+                                             gearman_server_con_st *server_con,
+                                             gearman_return_t client_return_code, const char *error_string, const size_t error_string_length)
+{
+  const char* error_code_string= gearman_strerror(client_return_code);
+  error_code_string+= 8;
+
+  gearmand_log_warning(position_, func_, "%s:%.*s", gearman_strerror(client_return_code), int(error_string_length), error_string);
+
+  return gearman_server_io_packet_add(server_con, false, GEARMAN_MAGIC_RESPONSE,
+                                      GEARMAN_COMMAND_ERROR, error_code_string,
+                                      (size_t)(strlen(error_code_string) + 1),
+                                      error_string, error_string_length,
+                                      NULL);
+}
 
 /**
  * Send work result packets with data back to clients.
@@ -92,14 +108,16 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
 
   if (packet->magic == GEARMAN_MAGIC_RESPONSE)
   {
-    return _server_error_packet(server_con, "bad_magic", "Request magic expected");
+    return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_INVALID_MAGIC, gearman_literal_param("Request magic expected"));
+  }
+
+  if (uint32_t(packet->command) >= uint32_t(GEARMAN_COMMAND_MAX))
+  {
+    return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_INVALID_COMMAND, gearman_literal_param("Invalid command expected"));
   }
 
   gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,
-                     "%15s:%5s packet command  %s",
-                     server_con->con.context == NULL || server_con->con.context->host == NULL ? "-" : server_con->con.context->host,
-                     server_con->con.context == NULL || server_con->con.context->port == NULL ? "-" : server_con->con.context->port, 
-                     gearmand_strcommand(packet));
+                     "PACKET COMMAND: %s", gearmand_strcommand(packet));
 
   switch (packet->command)
   {
@@ -121,7 +139,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
     server_client= gearman_server_client_add(server_con);
     if (server_client == NULL)
     {
-      return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+      return GEARMAND_MEMORY_ALLOCATION_FAILURE;
     }
 
   case GEARMAN_COMMAND_SUBMIT_REDUCE_JOB_BACKGROUND:
@@ -135,8 +153,8 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       if (packet->arg_size[2] -1 > GEARMAN_UNIQUE_SIZE)
       {
         gearman_server_client_free(server_client);
-        gearmand_gerror("unique value too large", GEARMAN_ARGUMENT_TOO_LARGE);
-        return _server_error_packet(server_con, "job_failure", "Unique value too large");
+        gearmand_gerror("unique value too large", GEARMAND_ARGUMENT_TOO_LARGE);
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_ARGUMENT_TOO_LARGE, gearman_literal_param("Unique value too large"));
       }
 
       gearman_job_priority_t map_priority= GEARMAN_JOB_PRIORITY_NORMAL;
@@ -153,16 +171,16 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       {
         packet->options.free_data= false;
       }
-      else if (ret == GEARMAN_JOB_QUEUE_FULL)
+      else if (ret == GEARMAND_JOB_QUEUE_FULL)
       {
         gearman_server_client_free(server_client);
-        return _server_error_packet(server_con, "queue_full", "Job queue is full");
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_QUEUE_ERROR, gearman_literal_param("Job queue is full"));
       }
-      else if (ret != GEARMAN_JOB_EXISTS)
+      else if (ret != GEARMAND_JOB_EXISTS)
       {
         gearman_server_client_free(server_client);
         gearmand_gerror("gearman_server_job_add", ret);
-        return _server_error_packet(server_con, "queue_insert_error", gearmand_strerror(ret));
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_QUEUE_ERROR, gearmand_strerror(ret), strlen(gearmand_strerror(ret)));
       }
 
       /* Queue the job created packet. */
@@ -174,8 +192,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       if (gearmand_failed(ret))
       {
         gearman_server_client_free(server_client);
-        gearmand_gerror("gearman_server_io_packet_add", ret);
-        return ret;
+        return gearmand_gerror("gearman_server_io_packet_add", ret);
       }
 
       gearmand_log_notice(GEARMAN_DEFAULT_LOG_PARAM,"accepted,%.*s,%.*s,%.*s",
@@ -196,13 +213,13 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
     {
       gearman_job_priority_t priority;
 
-      if (packet->command == GEARMAN_COMMAND_SUBMIT_JOB ||
-          packet->command == GEARMAN_COMMAND_SUBMIT_JOB_BG ||
+      if (packet->command == GEARMAN_COMMAND_SUBMIT_JOB or
+          packet->command == GEARMAN_COMMAND_SUBMIT_JOB_BG or
           packet->command == GEARMAN_COMMAND_SUBMIT_JOB_EPOCH)
       {
         priority= GEARMAN_JOB_PRIORITY_NORMAL;
       }
-      else if (packet->command == GEARMAN_COMMAND_SUBMIT_JOB_HIGH ||
+      else if (packet->command == GEARMAN_COMMAND_SUBMIT_JOB_HIGH or
                packet->command == GEARMAN_COMMAND_SUBMIT_JOB_HIGH_BG)
       {
         priority= GEARMAN_JOB_PRIORITY_HIGH;
@@ -212,9 +229,9 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
         priority= GEARMAN_JOB_PRIORITY_LOW;
       }
 
-      if (packet->command == GEARMAN_COMMAND_SUBMIT_JOB_BG ||
-          packet->command == GEARMAN_COMMAND_SUBMIT_JOB_HIGH_BG ||
-          packet->command == GEARMAN_COMMAND_SUBMIT_JOB_LOW_BG ||
+      if (packet->command == GEARMAN_COMMAND_SUBMIT_JOB_BG or
+          packet->command == GEARMAN_COMMAND_SUBMIT_JOB_HIGH_BG or
+          packet->command == GEARMAN_COMMAND_SUBMIT_JOB_LOW_BG or
           packet->command == GEARMAN_COMMAND_SUBMIT_JOB_EPOCH)
       {
         server_client= NULL;
@@ -224,7 +241,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
         server_client= gearman_server_client_add(server_con);
         if (server_client == NULL)
         {
-          return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+          return GEARMAND_MEMORY_ALLOCATION_FAILURE;
         }
       }
 
@@ -256,9 +273,9 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
 
       if (packet->arg_size[1] -1 > GEARMAN_UNIQUE_SIZE)
       {
-        gearmand_gerror("unique value too large", GEARMAN_ARGUMENT_TOO_LARGE);
+        gearmand_gerror("unique value too large", GEARMAND_ARGUMENT_TOO_LARGE);
         gearman_server_client_free(server_client);
-        return _server_error_packet(server_con, "job_failure", "Unique value too large");
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_ARGUMENT_TOO_LARGE, gearman_literal_param("Unique value too large"));
       }
 
       /* Schedule job. */
@@ -273,16 +290,16 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       {
         packet->options.free_data= false;
       }
-      else if (ret == GEARMAN_JOB_QUEUE_FULL)
+      else if (ret == GEARMAND_JOB_QUEUE_FULL)
       {
         gearman_server_client_free(server_client);
-        return _server_error_packet(server_con, "queue_full", "Job queue is full");
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_QUEUE_ERROR, gearman_literal_param("Job queue is full"));
       }
-      else if (ret != GEARMAN_JOB_EXISTS)
+      else if (ret != GEARMAND_JOB_EXISTS)
       {
         gearman_server_client_free(server_client);
         gearmand_gerror("gearman_server_job_add", ret);
-        return _server_error_packet(server_con, "queue_insert_error", gearmand_strerror(ret));
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_QUEUE_ERROR, gearmand_strerror(ret), strlen(gearmand_strerror(ret)));
       }
 
       /* Queue the job created packet. */
@@ -294,8 +311,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       if (gearmand_failed(ret))
       {
         gearman_server_client_free(server_client);
-        gearmand_gerror("gearman_server_io_packet_add", ret);
-        return ret;
+        return gearmand_gerror("gearman_server_io_packet_add", ret);
       }
 
       gearmand_log_notice(GEARMAN_DEFAULT_LOG_PARAM,"accepted,%.*s,%.*s,%jd",
@@ -316,7 +332,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       if (unique_handle_length >= GEARMAN_MAX_UNIQUE_SIZE || unique_handle_length < 0)
       {
         gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "snprintf(%d)", unique_handle_length);
-        return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+        return GEARMAND_MEMORY_ALLOCATION_FAILURE;
       }
 
       gearman_server_job_st *server_job= gearman_server_job_get_by_unique(Server,
@@ -347,7 +363,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
         if ((size_t)numerator_buffer_length >= sizeof(numerator_buffer) || numerator_buffer_length < 0)
         {
           gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "snprintf(%d)", numerator_buffer_length);
-          return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+          return GEARMAND_MEMORY_ALLOCATION_FAILURE;
         }
 
         char denominator_buffer[11]; /* Max string size to hold a uint32_t. */
@@ -355,7 +371,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
         if ((size_t)denominator_buffer_length >= sizeof(denominator_buffer) || denominator_buffer_length < 0)
         {
           gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "snprintf(%d)", denominator_buffer_length);
-          return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+          return GEARMAND_MEMORY_ALLOCATION_FAILURE;
         }
 
         char client_count_buffer[11]; /* Max string size to hold a uint32_t. */
@@ -363,7 +379,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
         if ((size_t)client_count_buffer_length >= sizeof(client_count_buffer) || client_count_buffer_length < 0)
         {
           gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "snprintf(%d)", client_count_buffer_length);
-          return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+          return GEARMAND_MEMORY_ALLOCATION_FAILURE;
         }
 
         ret= gearman_server_io_packet_add(server_con, false,
@@ -378,10 +394,9 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                                           NULL);
       }
 
-      if (ret != GEARMAN_SUCCESS)
+      if (gearmand_failed(ret))
       {
-        gearmand_gerror("gearman_server_io_packet_add", ret);
-        return ret;
+        return gearmand_gerror("gearman_server_io_packet_add", ret);
       }
     }
     break;
@@ -397,7 +412,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       if (job_handle_length >= GEARMAND_JOB_HANDLE_SIZE || job_handle_length < 0)
       {
         gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "snprintf(%d)", job_handle_length);
-        return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+        return GEARMAND_MEMORY_ALLOCATION_FAILURE;
       }
 
       gearman_server_job_st *server_job= gearman_server_job_get(Server,
@@ -427,7 +442,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
         if ((size_t)numerator_buffer_length >= sizeof(numerator_buffer) || numerator_buffer_length < 0)
         {
           gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "snprintf(%d)", numerator_buffer_length);
-          return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+          return GEARMAND_MEMORY_ALLOCATION_FAILURE;
         }
 
         char denominator_buffer[11]; /* Max string size to hold a uint32_t. */
@@ -435,7 +450,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
         if ((size_t)denominator_buffer_length >= sizeof(denominator_buffer) || denominator_buffer_length < 0)
         {
           gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "snprintf(%d)", denominator_buffer_length);
-          return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+          return GEARMAND_MEMORY_ALLOCATION_FAILURE;
         }
 
         gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM,"status,%.*s,known,%s,%.*s,%.*s",
@@ -456,10 +471,9 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                                           NULL);
       }
 
-      if (ret != GEARMAN_SUCCESS)
+      if (gearmand_failed(ret))
       {
-        gearmand_gerror("gearman_server_io_packet_add", ret);
-        return ret;
+        return gearmand_gerror("gearman_server_io_packet_add", ret);
       }
     }
 
@@ -467,17 +481,17 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
 
   case GEARMAN_COMMAND_OPTION_REQ:
     {
-      char option[GEARMAN_OPTION_SIZE];
+      char option[GEARMAND_OPTION_SIZE];
 
       /* This may not be NULL terminated, so copy to make sure it is. */
       int option_length= snprintf(option, sizeof(option), "%.*s",
                                (int)(packet->arg_size[0]), (char *)(packet->arg[0]));
 
-      if (option_length >= GEARMAN_OPTION_SIZE || option_length < 0)
+      if (option_length >= GEARMAND_OPTION_SIZE || option_length < 0)
       {
         gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "snprintf(%d)", option_length);
-        return _server_error_packet(server_con, "unknown_option",
-                                    "Server does not recognize given option");
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_UNKNOWN_OPTION,
+                                    gearman_literal_param("Server does not recognize given option"));
       }
 
       if (strcasecmp(option, "exceptions") == 0)
@@ -487,18 +501,17 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       }
       else
       {
-        return _server_error_packet(server_con, "unknown_option",
-                                    "Server does not recognize given option");
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_UNKNOWN_OPTION,
+                                    gearman_literal_param("Server does not recognize given option"));
       }
 
       ret= gearman_server_io_packet_add(server_con, false, GEARMAN_MAGIC_RESPONSE,
                                         GEARMAN_COMMAND_OPTION_RES,
                                         packet->arg[0], packet->arg_size[0],
                                         NULL);
-      if (ret != GEARMAN_SUCCESS)
+      if (gearmand_failed(ret))
       {
-        gearmand_gerror("gearman_server_io_packet_add", ret);
-        return ret;
+        return gearmand_gerror("gearman_server_io_packet_add", ret);
       }
     }
 
@@ -510,18 +523,27 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
     if (gearman_server_worker_add(server_con, (char *)(packet->arg[0]),
                                   packet->arg_size[0], 0) == NULL)
     {
-      return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+      return GEARMAND_MEMORY_ALLOCATION_FAILURE;
     }
 
     break;
 
   case GEARMAN_COMMAND_CAN_DO_TIMEOUT:
     {
-      char *endptr;
-      long timeout= strtol((char *)packet->arg[1], &endptr, 10);
-      if (timeout == LONG_MIN or timeout == LONG_MAX)
+      if (packet->arg_size[1] > GEARMAN_MAXIMUM_INTEGER_DISPLAY_LENGTH)
       {
-        return gearmand_log_perror(GEARMAN_DEFAULT_LOG_PARAM, errno, "GEARMAN_COMMAND_CAN_DO_TIMEOUT:strtol");
+        return gearmand_log_gerror(GEARMAN_DEFAULT_LOG_PARAM, GEARMAND_INVALID_PACKET, "GEARMAND_INVALID_PACKET:strtol");
+      }
+
+      char strtol_buffer[GEARMAN_MAXIMUM_INTEGER_DISPLAY_LENGTH +1];
+      memcpy(strtol_buffer, packet->arg[1], packet->arg_size[1]);
+      strtol_buffer[packet->arg_size[1]]= 0;
+      char *endptr;
+      errno= 0;
+      long timeout= strtol(strtol_buffer, &endptr, 10);
+      if (timeout == LONG_MIN or timeout == LONG_MAX or errno != 0)
+      {
+        return gearmand_log_perror(GEARMAN_DEFAULT_LOG_PARAM, errno, "GEARMAN_COMMAND_CAN_DO_TIMEOUT:strtol: %s", strtol_buffer);
       }
 
       gearmand_log_debug(GEARMAN_DEFAULT_LOG_PARAM, "Registering function: %.*s with timeout %dl",
@@ -531,7 +553,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                                     packet->arg_size[0] - 1,
                                     timeout) == NULL)
       {
-        return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+        return GEARMAND_MEMORY_ALLOCATION_FAILURE;
       }
     }
 
@@ -563,10 +585,9 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
         ret= gearman_server_io_packet_add(server_con, false,
                                           GEARMAN_MAGIC_RESPONSE,
                                           GEARMAN_COMMAND_NOOP, NULL);
-        if (ret != GEARMAN_SUCCESS)
+        if (gearmand_failed(ret))
         {
-          gearmand_gerror("gearman_server_io_packet_add", ret);
-          return ret;
+          return gearmand_gerror("gearman_server_io_packet_add", ret);
         }
       }
     }
@@ -682,16 +703,14 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                                                                 server_con);
       if (server_job == NULL)
       {
-        return _server_error_packet(server_con, "job_not_found",
-                                    "Job given in work result not found");
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_JOB_NOT_FOUND, gearman_literal_param("Job does not exist on server"));
       }
 
       /* Queue the data/warning packet for all clients. */
       ret= _server_queue_work_data(server_job, packet, packet->command);
       if (gearmand_failed(ret))
       {
-        gearmand_gerror("_server_queue_work_data", ret);
-        return ret;
+        return gearmand_gerror("_server_queue_work_data", ret);
       }
     }
 
@@ -704,8 +723,8 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                                                                 server_con);
       if (server_job == NULL)
       {
-        return _server_error_packet(server_con, "job_not_found",
-                                    "Job given in work result not found");
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_JOB_NOT_FOUND,
+                                    gearman_literal_param("Job given in work result not found"));
       }
 
       /* Update job status. */
@@ -720,7 +739,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
       if ((size_t)denominator_buffer_length > sizeof(denominator_buffer) || denominator_buffer_length < 0)
       {
         gearmand_log_error(GEARMAN_DEFAULT_LOG_PARAM, "snprintf(%d)", denominator_buffer_length);
-        return GEARMAN_MEMORY_ALLOCATION_FAILURE;
+        return GEARMAND_MEMORY_ALLOCATION_FAILURE;
       }
 
 
@@ -739,8 +758,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                                           NULL);
         if (gearmand_failed(ret))
         {
-          gearmand_gerror("gearman_server_io_packet_add", ret);
-          return ret;
+          gearmand_log_gerror_warn(GEARMAN_DEFAULT_LOG_PARAM, ret, "Failed to send WORK_STATUS packet to %s:%s", server_client->con->host(), server_client->con->port());
         }
       }
     }
@@ -754,7 +772,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                                                                 server_con);
       if (server_job == NULL)
       {
-        return _server_error_packet(server_con, "job_not_found", "Job given in work result not found");
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_JOB_NOT_FOUND, gearman_literal_param("Job given in work result not found"));
       }
 
       /* Queue the complete packet for all clients. */
@@ -762,8 +780,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                                    GEARMAN_COMMAND_WORK_COMPLETE);
       if (gearmand_failed(ret))
       {
-        gearmand_gerror("_server_queue_work_data", ret);
-        return ret;
+        return gearmand_gerror("_server_queue_work_data", ret);
       }
 
       /* Remove from persistent queue if one exists. */
@@ -776,8 +793,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                                 server_job->function->function_name_size);
         if (gearmand_failed(ret))
         {
-          gearmand_gerror("Remove from persistent queue", ret);
-          return ret;
+          return gearmand_gerror("Remove from persistent queue", ret);
         }
       }
 
@@ -796,17 +812,35 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                          server_job->function->function_name_size, server_job->function->function_name, server_job->function->function_name_size);
       if (server_job == NULL)
       {
-        return _server_error_packet(server_con, "job_not_found", "Job given in work result not found");
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_JOB_NOT_FOUND, 
+                                    gearman_literal_param("An exception was received for a job that does not exist"));
       }
 
       /* Queue the exception packet for all clients. */
       ret= _server_queue_work_data(server_job, packet, GEARMAN_COMMAND_WORK_EXCEPTION);
       if (gearmand_failed(ret))
       {
-        gearmand_gerror("_server_queue_work_data", ret);
-        return ret;
+        return gearmand_gerror("_server_queue_work_data", ret);
       }
+
+      /* Remove from persistent queue if one exists. */
+      if (server_job->job_queued)
+      {
+        ret= gearman_queue_done(Server,
+                                server_job->unique,
+                                server_job->unique_length,
+                                server_job->function->function_name,
+                                server_job->function->function_name_size);
+        if (gearmand_failed(ret))
+        {
+          return gearmand_gerror("Remove from persistent queue", ret);
+        }
+      }
+
+      /* Job is done, remove it. */
+      gearman_server_job_free(server_job);
     }
+
     break;
 
   case GEARMAN_COMMAND_WORK_FAIL:
@@ -819,16 +853,16 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
 
       if (job_handle_length >= GEARMAND_JOB_HANDLE_SIZE || job_handle_length < 0)
       {
-        return _server_error_packet(server_con, "job_name_too_large",
-                                    "Error occured due to GEARMAND_JOB_HANDLE_SIZE being too small from snprintf");
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_ARGUMENT_TOO_LARGE,
+                                    gearman_literal_param("Error occured due to GEARMAND_JOB_HANDLE_SIZE being too small from snprintf"));
       }
 
       gearman_server_job_st *server_job= gearman_server_job_get(Server, job_handle, (size_t)job_handle_length,
                                                                 server_con);
       if (server_job == NULL)
       {
-        return _server_error_packet(server_con, "job_not_found",
-                                    "Job given in work result not found");
+        return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_JOB_NOT_FOUND,
+                                    gearman_literal_param("Job given in work result not found"));
       }
 
       /* Queue the fail packet for all clients. */
@@ -842,8 +876,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                                           NULL);
         if (gearmand_failed(ret))
         {
-          gearmand_gerror("gearman_server_io_packet_add", ret);
-          return ret;
+          gearmand_log_gerror_warn(GEARMAN_DEFAULT_LOG_PARAM, ret, "Failed to send WORK_FAIL packet to %s:%s", server_client->con->host(), server_client->con->port());
         }
       }
 
@@ -857,8 +890,7 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
                                 server_job->function->function_name_size);
         if (gearmand_failed(ret))
         {
-          gearmand_gerror("Remove from persistent queue", ret);
-          return ret;
+          return gearmand_gerror("Remove from persistent queue", ret);
         }
       }
 
@@ -892,10 +924,10 @@ gearmand_error_t gearman_server_run_command(gearman_server_con_st *server_con,
   case GEARMAN_COMMAND_MAX:
   case GEARMAN_COMMAND_STATUS_RES_UNIQUE:
   default:
-    return _server_error_packet(server_con, "bad_command", "Command not expected");
+    return _server_error_packet(GEARMAN_DEFAULT_LOG_PARAM, server_con, GEARMAN_INVALID_COMMAND, gearman_literal_param("Command not expected"));
   }
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }
 
 gearmand_error_t gearman_server_shutdown_graceful(gearman_server_st *server)
@@ -904,10 +936,10 @@ gearmand_error_t gearman_server_shutdown_graceful(gearman_server_st *server)
 
   if (server->job_count == 0)
   {
-    return GEARMAN_SHUTDOWN;
+    return GEARMAND_SHUTDOWN;
   }
 
-  return GEARMAN_SHUTDOWN_GRACEFUL;
+  return GEARMAND_SHUTDOWN_GRACEFUL;
 }
 
 static gearmand_error_t gearman_queue_replay(gearman_server_st& server)
@@ -932,7 +964,7 @@ gearmand_error_t gearman_server_queue_replay(gearman_server_st& server)
   server.state.queue_startup= true;
 
   gearmand_error_t ret= gearman_queue_replay(server);
-  assert(ret != GEARMAN_UNKNOWN_STATE);
+  assert(ret != GEARMAND_UNKNOWN_STATE);
 
   server.state.queue_startup= false;
 
@@ -953,7 +985,7 @@ namespace gearmand {
 namespace queue {
 
 gearmand_error_t Context::replay_add(gearman_server_st *server,
-                                     void *context __attribute__ ((unused)),
+                                     void*, // context
                                      const char *unique, size_t unique_size,
                                      const char *function_name, size_t function_name_size,
                                      const void *data, size_t data_size,
@@ -961,7 +993,7 @@ gearmand_error_t Context::replay_add(gearman_server_st *server,
                                      int64_t when)
 {
   assert(server->state.queue_startup == true);
-  gearmand_error_t ret= GEARMAN_UNKNOWN_STATE;
+  gearmand_error_t ret= GEARMAND_UNKNOWN_STATE;
 
   (void)gearman_server_job_add(server,
                                function_name, function_name_size,
@@ -982,71 +1014,60 @@ gearmand_error_t Context::replay_add(gearman_server_st *server,
 /*
  * Private definitions
  */
-static gearmand_error_t _server_error_packet(gearman_server_con_st *server_con,
-                                             const char *error_code,
-                                             const char *error_string)
-{
-  return gearman_server_io_packet_add(server_con, false, GEARMAN_MAGIC_RESPONSE,
-                                      GEARMAN_COMMAND_ERROR, error_code,
-                                      (size_t)(strlen(error_code) + 1),
-                                      error_string,
-                                      (size_t)strlen(error_string), NULL);
-}
 
 static gearmand_error_t
 _server_queue_work_data(gearman_server_job_st *server_job,
-                        gearmand_packet_st *packet, gearman_command_t command)
+                        gearmand_packet_st *packet, const gearman_command_t command)
 {
-
-  gearman_server_client_st *server_client;
-  for (server_client= server_job->client_list; server_client;
+  for (gearman_server_client_st* server_client= server_job->client_list; server_client;
        server_client= server_client->job_next)
   {
-    if (command == GEARMAN_COMMAND_WORK_EXCEPTION && !(server_client->con->is_exceptions))
-    {
-      gearmand_debug("Dropping GEARMAN_COMMAND_WORK_EXCEPTION");
-      continue;
-    }
-    else if (command == GEARMAN_COMMAND_WORK_EXCEPTION)
-    {
-      gearmand_debug("Sending GEARMAN_COMMAND_WORK_EXCEPTION");
-    }
+    gearmand_error_t ret;
 
-    uint8_t *data;
-    if (packet->data_size > 0)
+    if (command == GEARMAN_COMMAND_WORK_EXCEPTION and (server_client->con->is_exceptions == false))
     {
-      if (packet->options.free_data and
-          server_client->job_next == NULL)
-      {
-        data= (uint8_t *)(packet->data);
-        packet->options.free_data= false;
-      }
-      else
-      {
-        data= (uint8_t *)malloc(packet->data_size);
-        if (data == NULL)
-        {
-          return gearmand_perror(errno, "malloc");
-        }
-
-        memcpy(data, packet->data, packet->data_size);
-      }
+      ret= gearman_server_io_packet_add(server_client->con, true,
+                                        GEARMAN_MAGIC_RESPONSE, GEARMAN_COMMAND_WORK_FAIL,
+                                        packet->arg[0], packet->arg_size[0], NULL);
     }
     else
     {
-      data= NULL;
+      uint8_t *data;
+      if (packet->data_size > 0)
+      {
+        if (packet->options.free_data and
+            server_client->job_next == NULL)
+        {
+          data= (uint8_t *)(packet->data);
+          packet->options.free_data= false;
+        }
+        else
+        {
+          data= (uint8_t *)realloc(NULL, packet->data_size);
+          if (data == NULL)
+          {
+            return gearmand_perror(errno, "realloc");
+          }
+
+          memcpy(data, packet->data, packet->data_size);
+        }
+      }
+      else
+      {
+        data= NULL;
+      }
+
+      ret= gearman_server_io_packet_add(server_client->con, true,
+                                        GEARMAN_MAGIC_RESPONSE, command,
+                                        packet->arg[0], packet->arg_size[0],
+                                        data, packet->data_size, NULL);
     }
 
-    gearmand_error_t ret= gearman_server_io_packet_add(server_client->con, true,
-                                      GEARMAN_MAGIC_RESPONSE, command,
-                                      packet->arg[0], packet->arg_size[0],
-                                      data, packet->data_size, NULL);
-    if (ret != GEARMAN_SUCCESS)
+    if (gearmand_failed(ret))
     {
-      gearmand_gerror("gearman_server_io_packet_add", ret);
-      return ret;
+      gearmand_log_gerror_warn(GEARMAN_DEFAULT_LOG_PARAM, ret, "Failed to send WORK_FAIL packet to %s:%s", server_client->con->host(), server_client->con->port());
     }
   }
 
-  return GEARMAN_SUCCESS;
+  return GEARMAND_SUCCESS;
 }

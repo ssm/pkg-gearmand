@@ -50,16 +50,17 @@
 #include "util/memory.h"
 using namespace org::tangent;
 
+#pragma GCC diagnostic push
 #ifndef __INTEL_COMPILER
 # pragma GCC diagnostic ignored "-Wformat-nonliteral"
 # pragma GCC diagnostic ignored "-Wformat-security"
 #endif
-
 inline static bool _string_check(gearman_vector_st *string, const size_t need)
 {
   assert_msg(string, "Programmer error, _string_check() was passed a null gearman_vector_st");
   if (string)
   {
+    assert(string->end >= string->string);
     if (need and need > size_t(string->current_size - size_t(string->end - string->string)))
     {
       size_t current_offset= size_t(string->end - string->string);
@@ -485,3 +486,4 @@ gearman_string_t gearman_string_take_string(gearman_vector_st *self)
 
   return ret;
 }
+#pragma GCC diagnostic pop

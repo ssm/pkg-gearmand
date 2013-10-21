@@ -2,7 +2,7 @@
  * 
  *  Gearmand client and server library.
  *
- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+ *  Copyright (C) 2011-2013 Data Differential, http://datadifferential.com/
  *  Copyright (C) 2008 Brian Aker, Eric Day
  *  All rights reserved.
  *
@@ -40,10 +40,10 @@
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
-#define AT __FILE__ ":" TOSTRING(__LINE__)
+#define AT __FILE__ ":" TOSTRING(__LINE__) ":"
 #define GEARMAN_AT __func__, AT
 
-#define gearman_perror(__universal, __message) gearman_universal_set_perror((__universal), __func__, AT, (__message))
+#define gearman_perror(__universal, __local_errno, __message) gearman_universal_set_perror((__universal), GEARMAN_ERRNO, __local_errno,  __func__, AT, (__message))
 #define gearman_error(__universal, __error_t, __message) gearman_universal_set_error((__universal), (__error_t), __func__, AT, (__message))
 #define gearman_gerror(__universal, __gearman_return_t) gearman_universal_set_gerror((__universal), (__gearman_return_t), __func__, AT)
 
@@ -54,14 +54,15 @@ gearman_return_t gearman_universal_set_error(gearman_universal_st&,
                                              const char *format, ...);
 
 gearman_return_t gearman_universal_set_perror(gearman_universal_st&,
+                                              const gearman_return_t rc,
+                                              const int _system_errno,
                                               const char *function, const char *position, 
-                                              const char *message);
+                                              const char *format, ...);
 
 gearman_return_t gearman_universal_set_gerror(gearman_universal_st&,
                                               gearman_return_t rc,
                                               const char *func,
                                               const char *position);
 
-void universal_reset_error(gearman_universal_st& universal);
-
 void gearman_worker_reset_error(gearman_worker_st *worker);
+void gearman_worker_reset_error(Worker&);

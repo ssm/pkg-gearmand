@@ -45,6 +45,7 @@ using namespace libtest;
 #include <cassert>
 #include <libgearman/gearman.h>
 #include <tests/regression.h>
+#include <libgearman/interface/universal.hpp>
 #include <libgearman/universal.hpp>
 #include <libgearman/connection.hpp>
 #include <libgearman/packet.hpp>
@@ -121,15 +122,11 @@ test_return_t regression_bug_372074_test(void *)
   const void *args[1];
   size_t args_size[1];
 
-  gearman_universal_initialize(universal);
-
   for (uint32_t x= 0; x < 2; x++)
   {
     gearman_packet_st packet;
     gearman_connection_st *con_ptr;
-    test_truth(con_ptr= gearman_connection_create(universal, NULL));
-
-    con_ptr->set_host(NULL, default_port());
+    test_truth(con_ptr= gearman_connection_create(universal, NULL, default_port()));
 
     args[0]= "testUnregisterFunction";
     args_size[0]= strlen("testUnregisterFunction");
@@ -160,9 +157,7 @@ test_return_t regression_bug_372074_test(void *)
 
     delete con_ptr;
 
-    test_truth(con_ptr= gearman_connection_create(universal, NULL));
-
-    con_ptr->set_host(NULL, default_port());
+    test_truth(con_ptr= gearman_connection_create(universal, NULL, default_port()));
 
     args[0]= "testUnregisterFunction";
     args_size[0]= strlen("testUnregisterFunction");

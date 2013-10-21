@@ -42,6 +42,7 @@
 
 #include "libgearman/assert.hpp"
 #include "libgearman/vector.h"
+#include "libgearman/protocol/work_exception.h"
 
 #include <cstdio>
 #include <cstring>
@@ -67,6 +68,16 @@ struct gearman_job_reducer_st {
     gearman_string_append(reducer_function, gearman_string_param(reducer_function_name));
   }
 
+  const char* name() const
+  {
+    if (reducer_function)
+    {
+      return reducer_function->c_str();
+    }
+
+    return "__UNKNOWN";
+  }
+
   ~gearman_job_reducer_st() 
   {
     gearman_client_free(client);
@@ -76,32 +87,37 @@ struct gearman_job_reducer_st {
   bool init()
   {
     client= gearman_client_create(NULL);
-    if (not client)
-      return false;
-
-    if (universal._namespace)
+    if (client)
     {
-      gearman_client_set_namespace(client, 
-                                   gearman_string_value(universal._namespace),
-                                   gearman_string_length(universal._namespace));
-    }
-
-    for (gearman_connection_st *con= universal.con_list; con; con= con->next)
-    {
-      if (gearman_failed(gearman_client_add_server(client, con->host, con->port)))
+      gearman_universal_clone(client->impl()->universal, universal);
+#if 0
+      if (universal._namespace)
       {
-        return false;
+        gearman_client_set_namespace(client, 
+                                     gearman_string_value(universal._namespace),
+                                     gearman_string_length(universal._namespace));
       }
+
+      for (gearman_connection_st *con= universal.con_list; con; con= con->next_connection())
+      {
+        if (gearman_failed(client->impl()->add_server(con->_host, con->_service)))
+        {
+          return false;
+        }
+      }
+#endif
+
+      return true;
     }
 
-    return true;
+    return false;
   }
 
   bool add(gearman_argument_t &arguments)
   {
     gearman_string_t function= gearman_string(reducer_function);
     gearman_unique_t unique= gearman_unique_make(0, 0);
-    gearman_task_st *task= add_task(*client,
+    gearman_task_st *task= add_task(*(client->impl()),
                                     NULL,
                                     GEARMAN_COMMAND_SUBMIT_JOB,
                                     function,
@@ -111,7 +127,7 @@ struct gearman_job_reducer_st {
                                     gearman_actions_execute_defaults());
     if (task == NULL)
     {
-      gearman_universal_error_code(client->universal);
+      gearman_universal_error_code(client->impl()->universal);
 
       return false;
     }
@@ -127,22 +143,22 @@ struct gearman_job_reducer_st {
       return rc;
     }
 
-    gearman_task_st *check_task= client->task_list;
+    gearman_task_st *check_task= client->impl()->task_list;
 
     if (check_task)
     {
       do
       {
-        if (gearman_failed(check_task->result_rc))
+        if (gearman_failed(check_task->impl()->error_code()))
         {
-          return check_task->result_rc;
+          return check_task->impl()->error_code();
         }
       } while ((check_task= gearman_next(check_task)));
 
       if (aggregator_fn)
       {
-        gearman_aggregator_st aggregator(client->context);
-        aggregator_fn(&aggregator, client->task_list, &result);
+        gearman_aggregator_st aggregator(client->impl()->context);
+        aggregator_fn(&aggregator, client->impl()->task_list, &result);
       }
     }
 
@@ -159,53 +175,104 @@ struct gearman_job_reducer_st {
 /**
  * Send a packet for a job.
  */
-static gearman_return_t _job_send(gearman_job_st *job);
+static gearman_return_t _job_send(Job* job);
 
 /*
  * Public Definitions
  */
 
-gearman_job_st *gearman_job_create(gearman_worker_st *worker, gearman_job_st *job)
+gearman_job_st *gearman_job_create(Worker* worker, gearman_job_st *job_shell)
 {
-  if (job)
+  assert(worker);
+  if (worker)
   {
-    job->options.allocated= false;
+    Job* job;
+    assert(job_shell == NULL);
+    if (job_shell)
+    {
+      job= job_shell->impl();
+      assert(job);
+    }
+    else
+    {
+      job= new (std::nothrow) Job(job_shell, *(worker));
+
+      if (job == NULL)
+      {
+        gearman_error(worker->universal, GEARMAN_MEMORY_ALLOCATION_FAILURE, "new failed for Job");
+        return NULL;
+      }
+    }
+
+    job->reducer= NULL;
+    job->_error_code= GEARMAN_UNKNOWN_STATE;
+
+    if (job->_worker.job_list)
+    {
+      job->_worker.job_list->prev= job;
+    }
+    job->next= job->_worker.job_list;
+    job->prev= NULL;
+    job->_worker.job_list= job;
+    job->_worker.job_count++;
+
+    job->con= NULL;
+
+    return job->shell();
+  }
+
+  return NULL;
+}
+
+Job::Job(gearman_job_st* shell_, Worker& worker_):
+  _worker(worker_),
+  _client(NULL),
+  next(NULL),
+  prev(NULL),
+  con(NULL),
+  reducer(NULL),
+  _error_code(GEARMAN_UNKNOWN_STATE),
+  _shell(shell_)
+{
+  if (shell_)
+  {
+    gearman_set_allocated(_shell, false);
   }
   else
   {
-    job= new (std::nothrow) gearman_job_st;
-    if (not job)
-    {
-      gearman_perror(worker->universal, "new");
-      return NULL;
-    }
-
-    job->options.allocated= true;
+    _shell= &_owned_shell;
+    gearman_set_allocated(_shell, true);
   }
 
-  job->options.assigned_in_use= false;
-  job->options.work_in_use= false;
-  job->options.finished= false;
-
-  job->worker= worker;
-  job->reducer= NULL;
-  job->error_code= GEARMAN_UNKNOWN_STATE;
-
-  if (worker->job_list)
-  {
-    worker->job_list->prev= job;
-  }
-  job->next= worker->job_list;
-  job->prev= NULL;
-  worker->job_list= job;
-  worker->job_count++;
-
-  job->con= NULL;
-
-  return job;
+  _shell->impl(this);
+  gearman_set_initialized(_shell, true);
 }
 
-bool gearman_job_build_reducer(gearman_job_st *job, gearman_aggregator_fn *aggregator_fn)
+Job::~Job()
+{
+  if (_client)
+  {
+    gearman_client_free(_client);
+  }
+
+  delete reducer;
+}
+
+gearman_client_st* Job::client()
+{
+  if (_client == NULL)
+  {
+    _client= gearman_client_create(NULL);
+    if (_client)
+    {
+      gearman_universal_clone(_client->impl()->universal, _worker.universal);
+    }
+  }
+
+  return _client;
+}
+
+bool gearman_job_build_reducer(Job* job, gearman_aggregator_fn *aggregator_fn)
 {
   if (job->reducer)
   {
@@ -214,173 +281,217 @@ bool gearman_job_build_reducer(gearman_job_st *job, gearman_aggregator_fn *aggre
 
   gearman_string_t reducer_func= gearman_job_reducer_string(job);
 
-  job->reducer= new (std::nothrow) gearman_job_reducer_st(job->worker->universal, reducer_func, aggregator_fn);
-  if (not job->reducer)
+  job->reducer= new (std::nothrow) gearman_job_reducer_st(job->universal(), reducer_func, aggregator_fn);
+  if (job->reducer == NULL)
   {
-    gearman_job_free(job);
+    gearman_job_free(job->shell());
     return false;
   }
 
-  if (not job->reducer->init())
+  if (job->reducer->init() == false)
   {
-    gearman_job_free(job);
+    gearman_job_free(job->shell());
     return false;
   }
 
   return true;
 }
 
-static inline void gearman_job_reset_error(gearman_job_st *job)
+
+gearman_worker_st *gearman_job_clone_worker(gearman_job_st *job_shell)
 {
-  if (job->worker)
+  if (job_shell and job_shell->impl())
   {
-    gearman_worker_reset_error(job->worker);
+    return gearman_worker_clone(NULL, job_shell->impl()->_worker.shell());
   }
+
+  return NULL;
 }
 
-gearman_return_t gearman_job_send_data(gearman_job_st *job, const void *data, size_t data_size)
+gearman_client_st *gearman_job_use_client(gearman_job_st *job_shell)
+{
+  if (job_shell and job_shell->impl())
+  {
+    return job_shell->impl()->client();
+  }
+
+  return NULL;
+}
+
+static inline void gearman_job_reset_error(Job* job)
 {
   if (job)
   {
-    const void *args[2];
-    size_t args_size[2];
+    gearman_worker_reset_error(job->_worker);
+  }
+}
 
-    if (job->reducer)
+gearman_return_t gearman_job_send_data(gearman_job_st *job_shell, const void *data, size_t data_size)
+{
+  if (job_shell and job_shell->impl())
+  {
+    Job* job= job_shell->impl();
+
+    if (job->finished() == false)
     {
-      gearman_argument_t value= gearman_argument_make(NULL, 0, static_cast<const char *>(data), data_size);
-      job->reducer->add(value);
+      const void *args[2];
+      size_t args_size[2];
 
-      return GEARMAN_SUCCESS;
-    }
-
-    if ((job->options.work_in_use) == false)
-    {
-      args[0]= job->assigned.arg[0];
-      args_size[0]= job->assigned.arg_size[0];
-      args[1]= data;
-      args_size[1]= data_size;
-      gearman_return_t ret= gearman_packet_create_args(job->worker->universal, job->work,
-                                                       GEARMAN_MAGIC_REQUEST,
-                                                       GEARMAN_COMMAND_WORK_DATA,
-                                                       args, args_size, 2);
-      if (gearman_failed(ret))
+      if (job->reducer)
       {
-        return ret;
+        gearman_argument_t value= gearman_argument_make(NULL, 0, static_cast<const char *>(data), data_size);
+        job->reducer->add(value);
+
+        return GEARMAN_SUCCESS;
       }
 
-      job->options.work_in_use= true;
+      if ((job->options.work_in_use) == false)
+      {
+        args[0]= job->assigned.arg[0];
+        args_size[0]= job->assigned.arg_size[0];
+        args[1]= data;
+        args_size[1]= data_size;
+        gearman_return_t ret= gearman_packet_create_args(job->universal(), job->work,
+                                                         GEARMAN_MAGIC_REQUEST,
+                                                         GEARMAN_COMMAND_WORK_DATA,
+                                                         args, args_size, 2);
+        if (gearman_failed(ret))
+        {
+          return ret;
+        }
+
+        job->options.work_in_use= true;
+      }
+
+      return _job_send(job);
     }
 
-    return _job_send(job);
+    return GEARMAN_SUCCESS;
   }
 
   return GEARMAN_INVALID_ARGUMENT;
 }
 
-gearman_return_t gearman_job_send_warning(gearman_job_st *job,
+gearman_return_t gearman_job_send_warning(gearman_job_st *job_shell,
                                           const void *warning,
                                           size_t warning_size)
 {
-  if (job)
+  if (job_shell and job_shell->impl())
   {
-    const void *args[2];
-    size_t args_size[2];
+    Job* job= job_shell->impl();
 
-    if ((job->options.work_in_use) == false)
+    if (job->finished() == false)
     {
-      args[0]= job->assigned.arg[0];
-      args_size[0]= job->assigned.arg_size[0];
-      args[1]= warning;
-      args_size[1]= warning_size;
+      const void *args[2];
+      size_t args_size[2];
 
-      gearman_return_t ret;
-      ret= gearman_packet_create_args(job->worker->universal, job->work,
-                                      GEARMAN_MAGIC_REQUEST,
-                                      GEARMAN_COMMAND_WORK_WARNING,
-                                      args, args_size, 2);
-      if (gearman_failed(ret))
+      if ((job->options.work_in_use) == false)
       {
-        return ret;
+        args[0]= job->assigned.arg[0];
+        args_size[0]= job->assigned.arg_size[0];
+        args[1]= warning;
+        args_size[1]= warning_size;
+
+        gearman_return_t ret;
+        ret= gearman_packet_create_args(job->universal(), job->work,
+                                        GEARMAN_MAGIC_REQUEST,
+                                        GEARMAN_COMMAND_WORK_WARNING,
+                                        args, args_size, 2);
+        if (gearman_failed(ret))
+        {
+          return ret;
+        }
+
+        job->options.work_in_use= true;
       }
 
-      job->options.work_in_use= true;
+      return _job_send(job);
     }
 
-    return _job_send(job);
+    return GEARMAN_SUCCESS;
   }
 
   return GEARMAN_INVALID_ARGUMENT;
 }
 
-gearman_return_t gearman_job_send_status(gearman_job_st *job,
+gearman_return_t gearman_job_send_status(gearman_job_st *job_shell,
                                          uint32_t numerator,
                                          uint32_t denominator)
 {
-  if (job)
+  if (job_shell and job_shell->impl())
   {
-    char numerator_string[12];
-    char denominator_string[12];
-    const void *args[3];
-    size_t args_size[3];
+    Job* job= job_shell->impl();
 
-    if (not (job->options.work_in_use))
+    if (job->finished() == false)
     {
-      snprintf(numerator_string, 12, "%u", numerator);
-      snprintf(denominator_string, 12, "%u", denominator);
+      char numerator_string[12];
+      char denominator_string[12];
+      const void *args[3];
+      size_t args_size[3];
 
-      args[0]= job->assigned.arg[0];
-      args_size[0]= job->assigned.arg_size[0];
-      args[1]= numerator_string;
-      args_size[1]= strlen(numerator_string) + 1;
-      args[2]= denominator_string;
-      args_size[2]= strlen(denominator_string);
-
-      gearman_return_t ret;
-      ret= gearman_packet_create_args(job->worker->universal, job->work,
-                                      GEARMAN_MAGIC_REQUEST,
-                                      GEARMAN_COMMAND_WORK_STATUS,
-                                      args, args_size, 3);
-      if (gearman_failed(ret))
+      if (not (job->options.work_in_use))
       {
-        return ret;
+        snprintf(numerator_string, 12, "%u", numerator);
+        snprintf(denominator_string, 12, "%u", denominator);
+
+        args[0]= job->assigned.arg[0];
+        args_size[0]= job->assigned.arg_size[0];
+        args[1]= numerator_string;
+        args_size[1]= strlen(numerator_string) + 1;
+        args[2]= denominator_string;
+        args_size[2]= strlen(denominator_string);
+
+        gearman_return_t ret;
+        ret= gearman_packet_create_args(job->universal(), job->work,
+                                        GEARMAN_MAGIC_REQUEST,
+                                        GEARMAN_COMMAND_WORK_STATUS,
+                                        args, args_size, 3);
+        if (gearman_failed(ret))
+        {
+          return ret;
+        }
+
+        job->options.work_in_use= true;
       }
 
-      job->options.work_in_use= true;
+      return _job_send(job);
     }
 
-    return _job_send(job);
+    return GEARMAN_SUCCESS;
   }
 
   return GEARMAN_INVALID_ARGUMENT;
 }
 
-gearman_return_t gearman_job_send_complete(gearman_job_st *job,
+gearman_return_t gearman_job_send_complete(gearman_job_st *job_shell,
                                            const void *result,
                                            size_t result_size)
 {
-  if (job)
+  if (job_shell and job_shell->impl())
   {
-    if (job->reducer)
+    Job* job= job_shell->impl();
+
+    if (job->finished() == false)
     {
-      return GEARMAN_INVALID_ARGUMENT;
+      if (job->reducer)
+      {
+        return GEARMAN_INVALID_ARGUMENT;
+      }
+
+      return gearman_job_send_complete_fin(job, result, result_size);
     }
 
-    return gearman_job_send_complete_fin(job, result, result_size);
+    return GEARMAN_SUCCESS;
   }
 
   return GEARMAN_INVALID_ARGUMENT;
 }
 
-gearman_return_t gearman_job_send_complete_fin(gearman_job_st *job,
+gearman_return_t gearman_job_send_complete_fin(Job* job,
                                                const void *result, size_t result_size)
 {
-  if (job)
+  if (job->finished() == false)
   {
-    if (job->options.finished)
-    {
-      return GEARMAN_SUCCESS;
-    }
-
     if (job->reducer)
     {
       if (result_size)
@@ -392,7 +503,7 @@ gearman_return_t gearman_job_send_complete_fin(gearman_job_st *job,
       gearman_return_t rc= job->reducer->complete();
       if (gearman_failed(rc))
       {
-        return gearman_error(job->worker->universal, rc, "The reducer's complete() returned an error");
+        return gearman_universal_set_error(job->universal(), rc, GEARMAN_AT, "%s couldn't call complete()", job->reducer->name());
       }
 
       const gearman_vector_st *reduced_value= job->reducer->result.string();
@@ -418,7 +529,7 @@ gearman_return_t gearman_job_send_complete_fin(gearman_job_st *job,
 
       args[1]= result;
       args_size[1]= result_size;
-      gearman_return_t ret= gearman_packet_create_args(job->worker->universal, job->work,
+      gearman_return_t ret= gearman_packet_create_args(job->_worker.universal, job->work,
                                                        GEARMAN_MAGIC_REQUEST,
                                                        GEARMAN_COMMAND_WORK_COMPLETE,
                                                        args, args_size, 2);
@@ -434,8 +545,47 @@ gearman_return_t gearman_job_send_complete_fin(gearman_job_st *job,
     {
       return ret;
     }
+    job->finished(true);
+  }
 
-    job->options.finished= true;
+  return GEARMAN_SUCCESS;
+}
+
+gearman_return_t gearman_job_send_exception(gearman_job_st *job_shell,
+                                            const void *exception,
+                                            size_t exception_size)
+{
+  if (job_shell and job_shell->impl())
+  {
+    Job* job= job_shell->impl();
+
+    if (exception == NULL or exception_size == 0)
+    {
+      return gearman_error(job->universal(), GEARMAN_INVALID_ARGUMENT, "No exception was provided");
+    }
+
+    if (job->finished() == false)
+    {
+      if (job->options.work_in_use == false)
+      {
+        gearman_string_t handle_string= { static_cast<const char *>(job->assigned.arg[0]), job->assigned.arg_size[0] };
+        gearman_string_t exception_string= { static_cast<const char *>(exception), exception_size };
+
+        gearman_return_t ret= libgearman::protocol::work_exception(job->_worker.universal, job->work, handle_string, exception_string);
+        if (gearman_failed(ret))
+        {
+          return ret;
+        }
+
+        job->options.work_in_use= true;
+      }
+
+      if (gearman_failed(_job_send(job)))
+      {
+        return job->error_code();
+      }
+      job->finished(true);
+    }
 
     return GEARMAN_SUCCESS;
   }
@@ -443,115 +593,95 @@ gearman_return_t gearman_job_send_complete_fin(gearman_job_st *job,
   return GEARMAN_INVALID_ARGUMENT;
 }
 
-gearman_return_t gearman_job_send_exception(gearman_job_st *job,
-                                            const void *exception,
-                                            size_t exception_size)
+gearman_return_t gearman_job_send_fail(gearman_job_st *job_shell)
 {
-  if (job)
+  if (job_shell and job_shell->impl())
   {
-    const void *args[2];
-    size_t args_size[2];
+    Job* job= job_shell->impl();
 
-    if (not (job->options.work_in_use))
+    if (job->finished() == false)
     {
-      args[0]= job->assigned.arg[0];
-      args_size[0]= job->assigned.arg_size[0];
-      args[1]= exception;
-      args_size[1]= exception_size;
+      if (job->reducer)
+      {
+        return gearman_error(job->universal(), GEARMAN_INVALID_ARGUMENT, "Job has a reducer");
+      }
 
-      gearman_return_t ret= gearman_packet_create_args(job->worker->universal, job->work,
-                                                       GEARMAN_MAGIC_REQUEST,
-                                                       GEARMAN_COMMAND_WORK_EXCEPTION,
-                                                       args, args_size, 2);
-      if (gearman_failed(ret))
-        return ret;
-
-      job->options.work_in_use= true;
+      return gearman_job_send_fail_fin(job);
     }
 
-    return _job_send(job);
+    return GEARMAN_SUCCESS;
   }
 
   return GEARMAN_INVALID_ARGUMENT;
 }
 
-gearman_return_t gearman_job_send_fail(gearman_job_st *job)
+gearman_return_t gearman_job_send_fail_fin(Job* job)
 {
-  if (job)
-  {
-    if (job->reducer)
-    {
-      return GEARMAN_INVALID_ARGUMENT;
-    }
-
-    return gearman_job_send_fail_fin(job);
-  }
-
-  return GEARMAN_INVALID_ARGUMENT;
-}
-
-gearman_return_t gearman_job_send_fail_fin(gearman_job_st *job)
-{
+  assert(job);
   if (job)
   {
     const void *args[1];
     size_t args_size[1];
 
-    if (job->options.finished)
+    if (job->finished() == false)
     {
-      return GEARMAN_SUCCESS;
-    }
+      if (not (job->options.work_in_use))
+      {
+        args[0]= job->assigned.arg[0];
+        args_size[0]= job->assigned.arg_size[0] - 1;
+        gearman_return_t ret= gearman_packet_create_args(job->_worker.universal, job->work,
+                                                         GEARMAN_MAGIC_REQUEST,
+                                                         GEARMAN_COMMAND_WORK_FAIL,
+                                                         args, args_size, 1);
+        if (gearman_failed(ret))
+        {
+          return ret;
+        }
 
-    if (not (job->options.work_in_use))
-    {
-      args[0]= job->assigned.arg[0];
-      args_size[0]= job->assigned.arg_size[0] - 1;
-      gearman_return_t ret= gearman_packet_create_args(job->worker->universal, job->work,
-                                                       GEARMAN_MAGIC_REQUEST,
-                                                       GEARMAN_COMMAND_WORK_FAIL,
-                                                       args, args_size, 1);
+        job->options.work_in_use= true;
+      }
+
+      gearman_return_t ret= _job_send(job);
       if (gearman_failed(ret))
       {
         return ret;
       }
 
-      job->options.work_in_use= true;
+      job->finished(true);
     }
 
-    gearman_return_t ret;
-    ret= _job_send(job);
-    if (gearman_failed(ret))
-      return ret;
-
-    job->options.finished= true;
     return GEARMAN_SUCCESS;
   }
 
   return GEARMAN_INVALID_ARGUMENT;
 }
 
-const char *gearman_job_handle(const gearman_job_st *job)
+const char *gearman_job_handle(const gearman_job_st *job_shell)
 {
-  if (job)
+  if (job_shell and job_shell->impl())
   {
+    Job* job= job_shell->impl();
+
     return static_cast<const char *>(job->assigned.arg[0]);
   }
 
   return NULL;
 }
 
-const char *gearman_job_function_name(const gearman_job_st *job)
+const char *gearman_job_function_name(const gearman_job_st *job_shell)
 {
-  if (job)
+  if (job_shell and job_shell->impl())
   {
+    Job* job= job_shell->impl();
+
     return static_cast<char *>(job->assigned.arg[1]);
   }
-
   return NULL;
 }
 
-gearman_string_t gearman_job_function_name_string(const gearman_job_st *job)
+gearman_string_t gearman_job_function_name_string(const Job* job)
 {
+  assert(job);
   if (job)
   {
     gearman_string_t temp= { job->assigned.arg[1], job->assigned.arg_size[1] };
@@ -562,10 +692,12 @@ gearman_string_t gearman_job_function_name_string(const gearman_job_st *job)
   return ret;
 }
 
-const char *gearman_job_unique(const gearman_job_st *job)
+const char *gearman_job_unique(const gearman_job_st *job_shell)
 {
-  if (job)
+  if (job_shell and job_shell->impl())
   {
+    Job* job= job_shell->impl();
+
     if (job->assigned.command == GEARMAN_COMMAND_JOB_ASSIGN_UNIQ or
         job->assigned.command == GEARMAN_COMMAND_JOB_ASSIGN_ALL)
     {
@@ -578,17 +710,13 @@ const char *gearman_job_unique(const gearman_job_st *job)
   return NULL;
 }
 
-bool gearman_job_is_map(const gearman_job_st *job)
+bool gearman_job_is_map(const Job* job)
 {
-  if (job)
-  {
-    return bool(job->assigned.command == GEARMAN_COMMAND_JOB_ASSIGN_ALL) and job->assigned.arg_size[3] > 1;
-  }
-
-  return false;
+  assert(job);
+  return bool(job->assigned.command == GEARMAN_COMMAND_JOB_ASSIGN_ALL) and job->assigned.arg_size[3] > 1;
 }
 
-gearman_string_t gearman_job_reducer_string(const gearman_job_st *job)
+gearman_string_t gearman_job_reducer_string(const Job* job)
 {
   if (job)
   {
@@ -607,10 +735,12 @@ gearman_string_t gearman_job_reducer_string(const gearman_job_st *job)
   return ret;
 }
 
-const char *gearman_job_reducer(const gearman_job_st *job)
+const char *gearman_job_reducer(const gearman_job_st *job_shell)
 {
-  if (job)
+  if (job_shell and job_shell->impl())
   {
+    Job* job= job_shell->impl();
+
     if (job->assigned.command == GEARMAN_COMMAND_JOB_ASSIGN_ALL)
     {
       return static_cast<const char *>(job->assigned.arg[3]);
@@ -622,40 +752,52 @@ const char *gearman_job_reducer(const gearman_job_st *job)
   return NULL;
 }
 
-const void *gearman_job_workload(const gearman_job_st *job)
+const void *gearman_job_workload(const gearman_job_st *job_shell)
 {
-  if (job)
+  if (job_shell and job_shell->impl())
   {
+    Job* job= job_shell->impl();
+
     return job->assigned.data;
-  } 
+  }
 
   return NULL;
 }
 
-size_t gearman_job_workload_size(const gearman_job_st *job)
+size_t gearman_job_workload_size(const gearman_job_st *job_shell)
 {
-  if (job)
+  if (job_shell and job_shell->impl())
   {
+    Job* job= job_shell->impl();
+
     return job->assigned.data_size;
   }
 
   return 0;
 }
 
-void *gearman_job_take_workload(gearman_job_st *job, size_t *data_size)
+void *gearman_job_take_workload(gearman_job_st *job_shell, size_t *data_size)
 {
-  if (job)
+  if (job_shell and job_shell->impl())
   {
-    return gearman_packet_take_data(job->assigned, data_size);
+    return gearman_packet_take_data(job_shell->impl()->assigned, data_size);
   }
 
   return NULL;
 }
 
-void gearman_job_free(gearman_job_st *job)
+void gearman_job_free(gearman_job_st *job_shell)
 {
-  if (job)
+#ifndef NDEBUG
+  if (job_shell)
   {
+    assert(job_shell->impl());
+  }
+#endif
+  if (job_shell and job_shell->impl())
+  {
+    Job* job= job_shell->impl();
+
     if (job->options.assigned_in_use)
     {
       gearman_packet_free(&(job->assigned));
@@ -666,9 +808,9 @@ void gearman_job_free(gearman_job_st *job)
       gearman_packet_free(&(job->work));
     }
 
-    if (job->worker->job_list == job)
+    if (job->_worker.job_list == job)
     {
-      job->worker->job_list= job->next;
+      job->_worker.job_list= job->next;
     }
 
     if (job->prev)
@@ -680,15 +822,13 @@ void gearman_job_free(gearman_job_st *job)
     {
       job->next->prev= job->prev;
     }
-    job->worker->job_count--;
+    job->_worker.job_count--;
 
-    delete job->reducer;
-    job->reducer= NULL;
-
-    if (job->options.allocated)
-    {
-      delete job;
-    }
+    delete job;
+  }
+  else if (job_shell)
+  {
+    assert(job_shell->impl());
   }
 }
 
@@ -696,44 +836,35 @@ void gearman_job_free(gearman_job_st *job)
  * Static Definitions
  */
 
-static gearman_return_t _job_send(gearman_job_st *job)
+static gearman_return_t _job_send(Job *job)
 {
-  if (job)
+  gearman_return_t ret= job->con->send_packet(job->work, true);
+
+  while ((ret == GEARMAN_IO_WAIT) or (ret == GEARMAN_TIMEOUT))
   {
-    gearman_return_t ret= job->con->send_packet(job->work, true);
-
-    while ((ret == GEARMAN_IO_WAIT) or (ret == GEARMAN_TIMEOUT))
+    ret= gearman_wait(job->universal());
+    if (ret == GEARMAN_SUCCESS)
     {
-#if 0
-      assert(job->work.universal);
-      ret= gearman_wait(*(job->work.universal));
-#endif
-      ret= gearman_wait(job->worker->universal);
-      if (ret == GEARMAN_SUCCESS)
-      {
-        ret= job->con->send_packet(job->work, true);
-      }
+      ret= job->con->send_packet(job->work, true);
     }
-
-    if (gearman_failed(ret))
-    {
-      return ret;
-    }
-
-    gearman_packet_free(&(job->work));
-    job->options.work_in_use= false;
-
-    return GEARMAN_SUCCESS;
   }
 
-  return GEARMAN_INVALID_ARGUMENT;
+  if (gearman_failed(ret))
+  {
+    return ret;
+  }
+
+  gearman_packet_free(&(job->work));
+  job->options.work_in_use= false;
+
+  return GEARMAN_SUCCESS;
 }
 
-const char *gearman_job_error(gearman_job_st *job)
+const char *gearman_job_error(gearman_job_st *job_shell)
 {
-  if (job and job->worker)
+  if (job_shell and job_shell->impl())
   {
-    return gearman_worker_error(job->worker);
+    return job_shell->impl()->_worker.error();
   }
 
   return NULL;
