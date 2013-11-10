@@ -1,4 +1,6 @@
-gearmand (1.0.6-3) UNRELEASED; urgency=low
+gearmand (1.0.6-4~1384119022.gbp42112f) UNRELEASED; urgency=low
+
+  ** SNAPSHOT build @42112f70383aa6b06ca2b2b332fd3d9d8aeb0501 **
 
   * gearman-job-server: listen on "localhost" instead of IPv4 only loopback address
     (Closes: #711859)
@@ -8,8 +10,9 @@ gearmand (1.0.6-3) UNRELEASED; urgency=low
     - Add missing XS-Testsuite header
     - Add procps to server test dependency
     - Add worker/client test
+  * UNRELEASED
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 10 Nov 2013 19:52:38 +0100
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 10 Nov 2013 22:30:23 +0100
 
 gearmand (1.0.6-2) unstable; urgency=low
 
