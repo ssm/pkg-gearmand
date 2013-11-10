@@ -1,2 +1,2 @@
 Tests: run-tests
-Depends: @,perl
+Depends: @,perl,procps
