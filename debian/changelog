@@ -1,3 +1,16 @@
+gearmand (1.0.6-3) UNRELEASED; urgency=low
+
+  * gearman-job-server: listen on "localhost" instead of IPv4 only loopback address
+    (Closes: #711859)
+  * Rename "libgearman-dbg" to "libgearman7-dbg" (Closes: #698371)
+  * debian/watch: track current and next stable release series
+  * Improve autopkgtests
+    - Add missing XS-Testsuite header
+    - Add procps to server test dependency
+    - Add worker/client test
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sun, 10 Nov 2013 19:52:38 +0100
+
 gearmand (1.0.6-2) unstable; urgency=low
 
   [ Pino Toscano ]
