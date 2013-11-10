@@ -60,6 +60,13 @@ Description: Development files for the Gearman Library
  This package contains the development headers for the libgearman library.
 
 Package: libgearman-dbg
+Depends: libgearman7-dbg, ${misc:Depends}
+Architecture: all
+Section: oldlibs
+Description: transitional dummy package
+ This is a transitional dummy package. It can safely be removed.
+
+Package: libgearman7-dbg
 Section: debug
 Architecture: any
 Depends: libgearman7 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
